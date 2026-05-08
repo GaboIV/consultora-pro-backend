@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="src/ConsultoraPro.API/ConsultoraPro.API.csproj" />
+  <Project Path="src/ConsultoraPro.Application/ConsultoraPro.Application.csproj" />
+  <Project Path="src/ConsultoraPro.Domain/ConsultoraPro.Domain.csproj" />
+  <Project Path="src/ConsultoraPro.Infrastructure/ConsultoraPro.Infrastructure.csproj" />
+</Solution>

@@ -1,0 +1,6 @@
+@ConsultoraPro.API_HostAddress = http://localhost:5160
+
+GET {{ConsultoraPro.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
