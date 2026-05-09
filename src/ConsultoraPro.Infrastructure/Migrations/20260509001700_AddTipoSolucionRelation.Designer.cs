@@ -3,6 +3,7 @@ using System;
 using ConsultoraPro.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ConsultoraPro.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260509001700_AddTipoSolucionRelation")]
+    partial class AddTipoSolucionRelation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -59,76 +62,6 @@ namespace ConsultoraPro.Infrastructure.Migrations
                     b.ToTable("Clientes");
                 });
 
-            modelBuilder.Entity("ConsultoraPro.Domain.Models.Desarrollador", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<Guid?>("MemberId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<Guid>("ProyectoId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("Rol")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProyectoId");
-
-                    b.ToTable("Desarrolladores");
-                });
-
-            modelBuilder.Entity("ConsultoraPro.Domain.Models.Member", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("Apellidos")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<string>("Correo")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("varchar(200)");
-
-                    b.Property<string>("Iniciales")
-                        .IsRequired()
-                        .HasMaxLength(2)
-                        .HasColumnType("varchar(2)");
-
-                    b.Property<string>("Nombres")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<string>("Puesto")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<string>("Telefono")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Members");
-                });
-
             modelBuilder.Entity("ConsultoraPro.Domain.Models.Proyecto", b =>
                 {
                     b.Property<Guid>("Id")
@@ -164,6 +97,16 @@ namespace ConsultoraPro.Infrastructure.Migrations
 
                     b.Property<int>("Progreso")
                         .HasColumnType("int");
+
+                    b.Property<string>("TechLead")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("TechLeadIniciales")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("varchar(2)");
 
                     b.Property<Guid>("TipoSolucionId")
                         .HasColumnType("char(36)");
@@ -394,17 +337,6 @@ namespace ConsultoraPro.Infrastructure.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("ConsultoraPro.Domain.Models.Desarrollador", b =>
-                {
-                    b.HasOne("ConsultoraPro.Domain.Models.Proyecto", "Proyecto")
-                        .WithMany("Desarrolladores")
-                        .HasForeignKey("ProyectoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Proyecto");
-                });
-
             modelBuilder.Entity("ConsultoraPro.Domain.Models.Proyecto", b =>
                 {
                     b.HasOne("ConsultoraPro.Domain.Models.Cliente", "Cliente")
@@ -478,11 +410,6 @@ namespace ConsultoraPro.Infrastructure.Migrations
             modelBuilder.Entity("ConsultoraPro.Domain.Models.Cliente", b =>
                 {
                     b.Navigation("Proyectos");
-                });
-
-            modelBuilder.Entity("ConsultoraPro.Domain.Models.Proyecto", b =>
-                {
-                    b.Navigation("Desarrolladores");
                 });
 
             modelBuilder.Entity("ConsultoraPro.Domain.Models.TipoSolucion", b =>

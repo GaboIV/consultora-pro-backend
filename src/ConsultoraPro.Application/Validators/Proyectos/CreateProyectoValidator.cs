@@ -9,10 +9,14 @@ public class CreateProyectoValidator : AbstractValidator<CreateProyectoDto>
     {
         RuleFor(x => x.Nombre).NotEmpty().MaximumLength(200);
         RuleFor(x => x.ClienteId).NotEmpty();
-        RuleFor(x => x.Progreso).InclusiveBetween(0, 100);
-        RuleFor(x => x.FechaFin).GreaterThanOrEqualTo(x => x.FechaInicio);
-        RuleFor(x => x.TechLead).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.TechLeadIniciales).MaximumLength(2);
-        RuleFor(x => x.TotalMiembros).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.TipoSolucionId).NotEmpty();
+        RuleFor(x => x.Desarrolladores)
+            .NotEmpty().WithMessage("Debe asignar al menos un desarrollador")
+            .Must(desarrolladores => desarrolladores == null || desarrolladores.Select(d => d.MemberId).Distinct().Count() == desarrolladores.Count)
+            .WithMessage("Un miembro no puede estar asignado más de una vez al mismo proyecto");
+        RuleForEach(x => x.Desarrolladores).ChildRules(dev =>
+        {
+            dev.RuleFor(d => d.MemberId).NotEmpty();
+        });
     }
 }
