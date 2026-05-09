@@ -17,6 +17,7 @@ public class AutoMapperProfile : Profile
 
         CreateMap<Proyecto, ProyectoDto>()
             .ForMember(dest => dest.ClienteNombre, opt => opt.MapFrom(src => src.Cliente.Nombre))
+            .ForMember(dest => dest.TipoSolucionNombre, opt => opt.MapFrom(src => src.TipoSolucion.Nombre))
             .ForMember(dest => dest.Etapa, opt => opt.MapFrom(src => src.Etapa.ToString()))
             .ForMember(dest => dest.Estado, opt => opt.MapFrom(src => src.Estado.ToString()));
         CreateMap<CreateProyectoDto, Proyecto>();

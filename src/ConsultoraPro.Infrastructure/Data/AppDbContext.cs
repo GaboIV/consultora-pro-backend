@@ -11,6 +11,7 @@ public class AppDbContext : IdentityDbContext<IdentityUser>
 
     public DbSet<Cliente> Clientes => Set<Cliente>();
     public DbSet<Proyecto> Proyectos => Set<Proyecto>();
+    public DbSet<TipoSolucion> TiposSolucion => Set<TipoSolucion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -29,6 +30,13 @@ public class AppDbContext : IdentityDbContext<IdentityUser>
                   .OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<TipoSolucion>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.Nombre).IsRequired().HasMaxLength(100);
+            entity.HasIndex(t => t.Nombre).IsUnique();
+        });
+
         modelBuilder.Entity<Proyecto>(entity =>
         {
             entity.HasKey(p => p.Id);
@@ -37,6 +45,10 @@ public class AppDbContext : IdentityDbContext<IdentityUser>
             entity.Property(p => p.Estado).HasConversion<string>().HasMaxLength(20);
             entity.Property(p => p.TechLead).HasMaxLength(100);
             entity.Property(p => p.TechLeadIniciales).HasMaxLength(2);
+            entity.HasOne(p => p.TipoSolucion)
+                  .WithMany(t => t.Proyectos)
+                  .HasForeignKey(p => p.TipoSolucionId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

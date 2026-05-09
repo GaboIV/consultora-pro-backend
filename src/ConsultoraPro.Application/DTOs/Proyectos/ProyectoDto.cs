@@ -8,6 +8,8 @@ public class ProyectoDto
     public string Nombre { get; set; } = string.Empty;
     public Guid ClienteId { get; set; }
     public string ClienteNombre { get; set; } = string.Empty;
+    public Guid TipoSolucionId { get; set; }
+    public string TipoSolucionNombre { get; set; } = string.Empty;
     public string Etapa { get; set; } = string.Empty;
     public string Estado { get; set; } = string.Empty;
     public int Progreso { get; set; }

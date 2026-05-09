@@ -10,6 +10,21 @@ public static class DataSeeder
     {
         if (await context.Clientes.AnyAsync()) return;
 
+        var portalProveedores = Guid.NewGuid();
+        var factElectronica = Guid.NewGuid();
+        var host2Host = Guid.NewGuid();
+        var guiasRemision = Guid.NewGuid();
+
+        var tipos = new List<TipoSolucion>
+        {
+            new() { Id = portalProveedores, Nombre = "Portal de Proveedores" },
+            new() { Id = factElectronica, Nombre = "Facturación Electrónica" },
+            new() { Id = host2Host, Nombre = "Host2Host" },
+            new() { Id = guiasRemision, Nombre = "Guías de Remisión" }
+        };
+
+        context.TiposSolucion.AddRange(tipos);
+
         var repsolId = Guid.NewGuid();
         var telefonicaId = Guid.NewGuid();
         var bbvaId = Guid.NewGuid();
@@ -57,6 +72,7 @@ public static class DataSeeder
                 Id = Guid.NewGuid(),
                 Nombre = "Plataforma Digital Upstream",
                 ClienteId = repsolId,
+                TipoSolucionId = portalProveedores,
                 Etapa = EtapaProyecto.Desarrollo,
                 Estado = EstadoProyecto.EnCurso,
                 Progreso = 60,
@@ -73,6 +89,7 @@ public static class DataSeeder
                 Id = Guid.NewGuid(),
                 Nombre = "App Mi Movistar",
                 ClienteId = telefonicaId,
+                TipoSolucionId = factElectronica,
                 Etapa = EtapaProyecto.QA,
                 Estado = EstadoProyecto.EnCurso,
                 Progreso = 85,
@@ -89,6 +106,7 @@ public static class DataSeeder
                 Id = Guid.NewGuid(),
                 Nombre = "Banca Digital Empresas",
                 ClienteId = bbvaId,
+                TipoSolucionId = host2Host,
                 Etapa = EtapaProyecto.Diseno,
                 Estado = EstadoProyecto.Planificacion,
                 Progreso = 15,
@@ -105,6 +123,7 @@ public static class DataSeeder
                 Id = Guid.NewGuid(),
                 Nombre = "CRM Comercial Repsol",
                 ClienteId = repsolId,
+                TipoSolucionId = guiasRemision,
                 Etapa = EtapaProyecto.Deploy,
                 Estado = EstadoProyecto.Completado,
                 Progreso = 100,

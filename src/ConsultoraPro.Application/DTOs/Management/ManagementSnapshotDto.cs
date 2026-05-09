@@ -7,8 +7,15 @@ public class ManagementSnapshotDto
     public ExecutiveOverviewDto Executive { get; set; } = new();
     public List<ManagementClientDto> Clients { get; set; } = new();
     public List<ManagementProjectDto> Projects { get; set; } = new();
+    public List<TipoSolucionDto> TiposSolucion { get; set; } = new();
     public InfrastructureOverviewDto Infrastructure { get; set; } = new();
     public TeamOverviewDto Team { get; set; } = new();
+}
+
+public class TipoSolucionDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Nombre { get; set; } = string.Empty;
 }
 
 public class ExecutiveOverviewDto

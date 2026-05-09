@@ -9,15 +9,18 @@ public class ManagementService : IManagementService
 {
     private readonly IClienteRepository _clienteRepository;
     private readonly IProyectoRepository _proyectoRepository;
+    private readonly ITipoSolucionRepository _tipoSolucionRepository;
     private readonly IMapper _mapper;
 
     public ManagementService(
         IClienteRepository clienteRepository,
         IProyectoRepository proyectoRepository,
+        ITipoSolucionRepository tipoSolucionRepository,
         IMapper mapper)
     {
         _clienteRepository = clienteRepository;
         _proyectoRepository = proyectoRepository;
+        _tipoSolucionRepository = tipoSolucionRepository;
         _mapper = mapper;
     }
 
@@ -25,9 +28,15 @@ public class ManagementService : IManagementService
     {
         var clientes = await _clienteRepository.GetAllAsync();
         var proyectos = await _proyectoRepository.GetAllAsync();
+        var tiposSolucion = await _tipoSolucionRepository.GetAllAsync();
 
         var clients = _mapper.Map<List<ManagementClientDto>>(clientes);
         var projects = _mapper.Map<List<ManagementProjectDto>>(proyectos);
+        var tiposSolucionDtos = tiposSolucion.Select(t => new TipoSolucionDto
+        {
+            Id = t.Id.ToString(),
+            Nombre = t.Nombre
+        }).ToList();
 
         var now = DateTime.UtcNow;
         var totalProyectos = projects.Count;
@@ -60,6 +69,7 @@ public class ManagementService : IManagementService
             },
             Clients = clients,
             Projects = projects,
+            TiposSolucion = tiposSolucionDtos,
             Infrastructure = new InfrastructureOverviewDto(),
             Team = new TeamOverviewDto()
         };

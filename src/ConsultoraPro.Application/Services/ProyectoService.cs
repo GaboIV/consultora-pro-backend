@@ -10,12 +10,14 @@ public class ProyectoService : IProyectoService
 {
     private readonly IProyectoRepository _repository;
     private readonly IClienteRepository _clienteRepository;
+    private readonly ITipoSolucionRepository _tipoSolucionRepository;
     private readonly IMapper _mapper;
 
-    public ProyectoService(IProyectoRepository repository, IClienteRepository clienteRepository, IMapper mapper)
+    public ProyectoService(IProyectoRepository repository, IClienteRepository clienteRepository, ITipoSolucionRepository tipoSolucionRepository, IMapper mapper)
     {
         _repository = repository;
         _clienteRepository = clienteRepository;
+        _tipoSolucionRepository = tipoSolucionRepository;
         _mapper = mapper;
     }
 
@@ -43,8 +45,16 @@ public class ProyectoService : IProyectoService
         if (cliente == null)
             throw new KeyNotFoundException($"Cliente con ID {dto.ClienteId} no encontrado");
 
+        var tipoSolucion = await _tipoSolucionRepository.GetByIdAsync(dto.TipoSolucionId);
+        if (tipoSolucion == null)
+            throw new KeyNotFoundException($"Tipo de solución con ID {dto.TipoSolucionId} no encontrado");
+
         var proyecto = _mapper.Map<Proyecto>(dto);
         proyecto.Id = Guid.NewGuid();
+        proyecto.Progreso = 0;
+        proyecto.FechaInicio = DateTime.UtcNow;
+        proyecto.FechaFin = DateTime.UtcNow.AddMonths(3);
+        proyecto.TotalMiembros = 0;
         proyecto.CreatedAt = DateTime.UtcNow;
         proyecto.UpdatedAt = DateTime.UtcNow;
 
@@ -61,6 +71,11 @@ public class ProyectoService : IProyectoService
         var proyecto = await _repository.GetByIdAsync(id);
         if (proyecto == null)
             throw new KeyNotFoundException($"Proyecto con ID {id} no encontrado");
+
+        var tipoSolucion = await _tipoSolucionRepository.GetByIdAsync(dto.TipoSolucionId);
+        if (tipoSolucion == null)
+            throw new KeyNotFoundException($"Tipo de solución con ID {dto.TipoSolucionId} no encontrado");
+
         _mapper.Map(dto, proyecto);
         proyecto.UpdatedAt = DateTime.UtcNow;
         await _repository.UpdateAsync(proyecto);

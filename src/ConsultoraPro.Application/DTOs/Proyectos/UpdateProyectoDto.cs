@@ -6,12 +6,9 @@ public class UpdateProyectoDto
 {
     public string Nombre { get; set; } = string.Empty;
     public Guid ClienteId { get; set; }
+    public Guid TipoSolucionId { get; set; }
     public EtapaProyecto Etapa { get; set; }
     public EstadoProyecto Estado { get; set; }
-    public int Progreso { get; set; }
-    public DateTime FechaInicio { get; set; }
-    public DateTime FechaFin { get; set; }
     public string TechLead { get; set; } = string.Empty;
     public string TechLeadIniciales { get; set; } = string.Empty;
-    public int TotalMiembros { get; set; }
 }
