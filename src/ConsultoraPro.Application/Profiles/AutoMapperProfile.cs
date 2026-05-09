@@ -1,6 +1,7 @@
 using AutoMapper;
 using ConsultoraPro.Application.DTOs.Clientes;
 using ConsultoraPro.Application.DTOs.Management;
+using ConsultoraPro.Application.DTOs.Members;
 using ConsultoraPro.Application.DTOs.Proyectos;
 using ConsultoraPro.Domain.Enums;
 using ConsultoraPro.Domain.Models;
@@ -15,13 +16,24 @@ public class AutoMapperProfile : Profile
         CreateMap<CreateClienteDto, Cliente>();
         CreateMap<UpdateClienteDto, Cliente>();
 
+        CreateMap<Member, MemberDto>();
+        CreateMap<CreateMemberDto, Member>();
+        CreateMap<UpdateMemberDto, Member>();
+
+        CreateMap<Desarrollador, DesarrolladorDto>()
+            .ForMember(dest => dest.Rol, opt => opt.MapFrom(src => src.Rol.ToString()));
+        CreateMap<CreateDesarrolladorDto, Desarrollador>();
+
         CreateMap<Proyecto, ProyectoDto>()
             .ForMember(dest => dest.ClienteNombre, opt => opt.MapFrom(src => src.Cliente.Nombre))
             .ForMember(dest => dest.TipoSolucionNombre, opt => opt.MapFrom(src => src.TipoSolucion.Nombre))
             .ForMember(dest => dest.Etapa, opt => opt.MapFrom(src => src.Etapa.ToString()))
-            .ForMember(dest => dest.Estado, opt => opt.MapFrom(src => src.Estado.ToString()));
-        CreateMap<CreateProyectoDto, Proyecto>();
-        CreateMap<UpdateProyectoDto, Proyecto>();
+            .ForMember(dest => dest.Estado, opt => opt.MapFrom(src => src.Estado.ToString()))
+            .ForMember(dest => dest.TotalMiembros, opt => opt.MapFrom(src => src.Desarrolladores.Count));
+        CreateMap<CreateProyectoDto, Proyecto>()
+            .ForMember(dest => dest.Desarrolladores, opt => opt.Ignore());
+        CreateMap<UpdateProyectoDto, Proyecto>()
+            .ForMember(dest => dest.Desarrolladores, opt => opt.Ignore());
 
         CreateMap<Cliente, ManagementClientDto>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id.ToString()))
@@ -39,18 +51,38 @@ public class AutoMapperProfile : Profile
             .ForMember(dest => dest.ClientName, opt => opt.MapFrom(src => src.Cliente.Nombre))
             .ForMember(dest => dest.Stage, opt => opt.MapFrom(src => MapStageLabel(src.Etapa)))
             .ForMember(dest => dest.StageTone, opt => opt.MapFrom(src => MapStageTone(src.Etapa)))
-            .ForMember(dest => dest.Lead, opt => opt.MapFrom(src => new LeadDto
-            {
-                Initials = src.TechLeadIniciales,
-                Name = src.TechLead,
-                Tone = MapProgressTone(src.Progreso)
-            }))
+            .ForMember(dest => dest.Lead, opt => opt.MapFrom(src => MapLeadFromDevelopers(src.Desarrolladores)))
             .ForMember(dest => dest.ProgressTone, opt => opt.MapFrom(src => MapProgressTone(src.Progreso)))
             .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.FechaInicio.ToString("dd MMM yyyy")))
             .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.FechaFin.ToString("dd MMM yyyy")))
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => MapStatusLabel(src.Estado)))
             .ForMember(dest => dest.StatusTone, opt => opt.MapFrom(src => MapStatusTone(src.Estado)))
-            .ForMember(dest => dest.TeamSize, opt => opt.MapFrom(src => src.TotalMiembros));
+            .ForMember(dest => dest.TeamSize, opt => opt.MapFrom(src => src.Desarrolladores.Count));
+    }
+
+    private static LeadDto MapLeadFromDevelopers(ICollection<Desarrollador> desarrolladores)
+    {
+        var principales = desarrolladores.Where(d => d.Rol == RolDesarrollador.Principal).ToList();
+        var apoyo = desarrolladores.Where(d => d.Rol == RolDesarrollador.Apoyo).ToList();
+
+        if (principales.Count == 0 && apoyo.Count == 0)
+            return new LeadDto { Initials = "--", Name = "Sin asignar", Tone = "gray" };
+
+        var parts = new List<string>();
+        if (principales.Count > 0) parts.Add($"{principales.Count} principal");
+        if (apoyo.Count > 0) parts.Add($"{apoyo.Count} apoyo");
+
+        var total = desarrolladores.Count;
+        var initials = total.ToString();
+        var tone = total switch
+        {
+            >= 5 => "green",
+            >= 3 => "blue",
+            >= 1 => "amber",
+            _ => "gray"
+        };
+
+        return new LeadDto { Initials = initials, Name = string.Join(", ", parts), Tone = tone };
     }
 
     private static string MapColorClass(string colorClass) => colorClass switch

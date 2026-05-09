@@ -1,3 +1,5 @@
+using ConsultoraPro.Application.DTOs.Members;
+
 namespace ConsultoraPro.Application.DTOs.Management;
 
 public class ManagementSnapshotDto
@@ -8,6 +10,7 @@ public class ManagementSnapshotDto
     public List<ManagementClientDto> Clients { get; set; } = new();
     public List<ManagementProjectDto> Projects { get; set; } = new();
     public List<TipoSolucionDto> TiposSolucion { get; set; } = new();
+    public List<MemberDto> Members { get; set; } = new();
     public InfrastructureOverviewDto Infrastructure { get; set; } = new();
     public TeamOverviewDto Team { get; set; } = new();
 }

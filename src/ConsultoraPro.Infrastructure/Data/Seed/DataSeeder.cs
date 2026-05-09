@@ -78,9 +78,13 @@ public static class DataSeeder
                 Progreso = 60,
                 FechaInicio = new DateTime(2024, 6, 1, 0, 0, 0, DateTimeKind.Utc),
                 FechaFin = new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc),
-                TechLead = "Carlos Ruiz",
-                TechLeadIniciales = "CR",
-                TotalMiembros = 12,
+                TotalMiembros = 3,
+                Desarrolladores = new List<Desarrollador>
+                {
+                    new() { Id = Guid.NewGuid(), Nombre = "Carlos Ruiz", Rol = RolDesarrollador.Principal },
+                    new() { Id = Guid.NewGuid(), Nombre = "Jorge Méndez", Rol = RolDesarrollador.Apoyo },
+                    new() { Id = Guid.NewGuid(), Nombre = "Sofía Luna", Rol = RolDesarrollador.Apoyo }
+                },
                 CreatedAt = new DateTime(2024, 6, 1, 0, 0, 0, DateTimeKind.Utc),
                 UpdatedAt = new DateTime(2024, 6, 1, 0, 0, 0, DateTimeKind.Utc)
             },
@@ -95,9 +99,13 @@ public static class DataSeeder
                 Progreso = 85,
                 FechaInicio = new DateTime(2024, 3, 15, 0, 0, 0, DateTimeKind.Utc),
                 FechaFin = new DateTime(2024, 12, 15, 0, 0, 0, DateTimeKind.Utc),
-                TechLead = "Ana García",
-                TechLeadIniciales = "AG",
-                TotalMiembros = 20,
+                TotalMiembros = 3,
+                Desarrolladores = new List<Desarrollador>
+                {
+                    new() { Id = Guid.NewGuid(), Nombre = "Ana García", Rol = RolDesarrollador.Principal },
+                    new() { Id = Guid.NewGuid(), Nombre = "María Vega", Rol = RolDesarrollador.Principal },
+                    new() { Id = Guid.NewGuid(), Nombre = "Carlos Ruiz", Rol = RolDesarrollador.Apoyo }
+                },
                 CreatedAt = new DateTime(2024, 3, 15, 0, 0, 0, DateTimeKind.Utc),
                 UpdatedAt = new DateTime(2024, 3, 15, 0, 0, 0, DateTimeKind.Utc)
             },
@@ -112,9 +120,12 @@ public static class DataSeeder
                 Progreso = 15,
                 FechaInicio = new DateTime(2024, 9, 1, 0, 0, 0, DateTimeKind.Utc),
                 FechaFin = new DateTime(2025, 9, 1, 0, 0, 0, DateTimeKind.Utc),
-                TechLead = "Miguel Torres",
-                TechLeadIniciales = "MT",
-                TotalMiembros = 8,
+                TotalMiembros = 2,
+                Desarrolladores = new List<Desarrollador>
+                {
+                    new() { Id = Guid.NewGuid(), Nombre = "Miguel Torres", Rol = RolDesarrollador.Principal },
+                    new() { Id = Guid.NewGuid(), Nombre = "Andrés Paredes", Rol = RolDesarrollador.Apoyo }
+                },
                 CreatedAt = new DateTime(2024, 9, 1, 0, 0, 0, DateTimeKind.Utc),
                 UpdatedAt = new DateTime(2024, 9, 1, 0, 0, 0, DateTimeKind.Utc)
             },
@@ -129,9 +140,12 @@ public static class DataSeeder
                 Progreso = 100,
                 FechaInicio = new DateTime(2023, 11, 1, 0, 0, 0, DateTimeKind.Utc),
                 FechaFin = new DateTime(2024, 8, 1, 0, 0, 0, DateTimeKind.Utc),
-                TechLead = "Laura Martínez",
-                TechLeadIniciales = "LM",
-                TotalMiembros = 6,
+                TotalMiembros = 2,
+                Desarrolladores = new List<Desarrollador>
+                {
+                    new() { Id = Guid.NewGuid(), Nombre = "Laura Martínez", Rol = RolDesarrollador.Principal },
+                    new() { Id = Guid.NewGuid(), Nombre = "Rodrigo Castillo", Rol = RolDesarrollador.Apoyo }
+                },
                 CreatedAt = new DateTime(2023, 11, 1, 0, 0, 0, DateTimeKind.Utc),
                 UpdatedAt = new DateTime(2023, 11, 1, 0, 0, 0, DateTimeKind.Utc)
             }

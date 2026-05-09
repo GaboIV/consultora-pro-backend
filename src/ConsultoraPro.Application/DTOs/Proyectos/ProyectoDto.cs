@@ -15,9 +15,8 @@ public class ProyectoDto
     public int Progreso { get; set; }
     public DateTime FechaInicio { get; set; }
     public DateTime FechaFin { get; set; }
-    public string TechLead { get; set; } = string.Empty;
-    public string TechLeadIniciales { get; set; } = string.Empty;
     public int TotalMiembros { get; set; }
+    public List<DesarrolladorDto> Desarrolladores { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

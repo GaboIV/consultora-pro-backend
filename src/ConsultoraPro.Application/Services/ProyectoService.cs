@@ -11,13 +11,15 @@ public class ProyectoService : IProyectoService
     private readonly IProyectoRepository _repository;
     private readonly IClienteRepository _clienteRepository;
     private readonly ITipoSolucionRepository _tipoSolucionRepository;
+    private readonly IMemberRepository _memberRepository;
     private readonly IMapper _mapper;
 
-    public ProyectoService(IProyectoRepository repository, IClienteRepository clienteRepository, ITipoSolucionRepository tipoSolucionRepository, IMapper mapper)
+    public ProyectoService(IProyectoRepository repository, IClienteRepository clienteRepository, ITipoSolucionRepository tipoSolucionRepository, IMemberRepository memberRepository, IMapper mapper)
     {
         _repository = repository;
         _clienteRepository = clienteRepository;
         _tipoSolucionRepository = tipoSolucionRepository;
+        _memberRepository = memberRepository;
         _mapper = mapper;
     }
 
@@ -54,9 +56,24 @@ public class ProyectoService : IProyectoService
         proyecto.Progreso = 0;
         proyecto.FechaInicio = DateTime.UtcNow;
         proyecto.FechaFin = DateTime.UtcNow.AddMonths(3);
-        proyecto.TotalMiembros = 0;
+        proyecto.TotalMiembros = dto.Desarrolladores.Count;
         proyecto.CreatedAt = DateTime.UtcNow;
         proyecto.UpdatedAt = DateTime.UtcNow;
+
+        foreach (var devDto in dto.Desarrolladores)
+        {
+            var member = await _memberRepository.GetByIdAsync(devDto.MemberId);
+            if (member == null)
+                throw new KeyNotFoundException($"Miembro con ID {devDto.MemberId} no encontrado");
+
+            proyecto.Desarrolladores.Add(new Desarrollador
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"{member.Nombres} {member.Apellidos}",
+                Rol = devDto.Rol,
+                ProyectoId = proyecto.Id
+            });
+        }
 
         var created = await _repository.CreateAsync(proyecto);
 
@@ -77,7 +94,25 @@ public class ProyectoService : IProyectoService
             throw new KeyNotFoundException($"Tipo de solución con ID {dto.TipoSolucionId} no encontrado");
 
         _mapper.Map(dto, proyecto);
+        proyecto.TotalMiembros = dto.Desarrolladores.Count;
         proyecto.UpdatedAt = DateTime.UtcNow;
+
+        proyecto.Desarrolladores.Clear();
+        foreach (var devDto in dto.Desarrolladores)
+        {
+            var member = await _memberRepository.GetByIdAsync(devDto.MemberId);
+            if (member == null)
+                throw new KeyNotFoundException($"Miembro con ID {devDto.MemberId} no encontrado");
+
+            proyecto.Desarrolladores.Add(new Desarrollador
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"{member.Nombres} {member.Apellidos}",
+                Rol = devDto.Rol,
+                ProyectoId = proyecto.Id
+            });
+        }
+
         await _repository.UpdateAsync(proyecto);
     }
 
