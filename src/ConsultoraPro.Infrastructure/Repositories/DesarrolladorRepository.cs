@@ -46,4 +46,23 @@ public class DesarrolladorRepository : IDesarrolladorRepository
         _context.Desarrolladores.Remove(desarrollador);
         await _context.SaveChangesAsync();
     }
+
+    public async Task ReplaceByProyectoIdAsync(Guid proyectoId, IEnumerable<Desarrollador> desarrolladores)
+    {
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+        await _context.Desarrolladores
+            .Where(d => d.ProyectoId == proyectoId)
+            .ExecuteDeleteAsync();
+
+        foreach (var entry in _context.ChangeTracker.Entries<Desarrollador>()
+                     .Where(e => e.Entity.ProyectoId == proyectoId))
+        {
+            entry.State = EntityState.Detached;
+        }
+
+        _context.Desarrolladores.AddRange(desarrolladores);
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+    }
 }

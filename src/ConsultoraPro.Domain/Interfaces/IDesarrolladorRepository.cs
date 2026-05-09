@@ -9,4 +9,5 @@ public interface IDesarrolladorRepository
     Task<Desarrollador> CreateAsync(Desarrollador desarrollador);
     Task UpdateAsync(Desarrollador desarrollador);
     Task DeleteAsync(Desarrollador desarrollador);
+    Task ReplaceByProyectoIdAsync(Guid proyectoId, IEnumerable<Desarrollador> desarrolladores);
 }

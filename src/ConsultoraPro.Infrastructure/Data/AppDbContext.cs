@@ -58,6 +58,7 @@ public class AppDbContext : IdentityDbContext<IdentityUser>
         modelBuilder.Entity<Desarrollador>(entity =>
         {
             entity.HasKey(d => d.Id);
+            entity.Property(d => d.MemberId);
             entity.Property(d => d.Nombre).IsRequired().HasMaxLength(100);
             entity.Property(d => d.Rol).HasConversion<string>().HasMaxLength(20);
         });

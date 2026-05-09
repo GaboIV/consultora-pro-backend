@@ -1,4 +1,5 @@
 using ConsultoraPro.Application.DTOs.Members;
+using ConsultoraPro.Application.DTOs.Proyectos;
 
 namespace ConsultoraPro.Application.DTOs.Management;
 
@@ -61,8 +62,12 @@ public class ManagementProjectDto
 {
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public string ClientId { get; set; } = string.Empty;
     public string ClientName { get; set; } = string.Empty;
+    public string TipoSolucionId { get; set; } = string.Empty;
+    public string TipoSolucionNombre { get; set; } = string.Empty;
     public string Stage { get; set; } = string.Empty;
+    public string StageValue { get; set; } = string.Empty;
     public string StageTone { get; set; } = "blue";
     public LeadDto Lead { get; set; } = new();
     public int Progress { get; set; }
@@ -70,8 +75,10 @@ public class ManagementProjectDto
     public string StartDate { get; set; } = string.Empty;
     public string EndDate { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public string StatusValue { get; set; } = string.Empty;
     public string StatusTone { get; set; } = "blue";
     public int TeamSize { get; set; }
+    public List<DesarrolladorDto> Desarrolladores { get; set; } = new();
 }
 
 public class LeadDto
