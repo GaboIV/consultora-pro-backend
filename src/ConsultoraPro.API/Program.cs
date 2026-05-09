@@ -1,14 +1,17 @@
 using System.Reflection;
 using System.Text;
 using System.Text.Json.Serialization;
+using ConsultoraPro.API.Authorization;
 using ConsultoraPro.API.Interfaces;
 using ConsultoraPro.API.Middleware;
 using ConsultoraPro.API.Services;
 using ConsultoraPro.Application;
+using ConsultoraPro.Domain.Security;
 using ConsultoraPro.Infrastructure;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -61,6 +64,11 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddAutoMapper(typeof(ConsultoraPro.Application.Profiles.AutoMapperProfile));
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddScoped<IAuthService, AuthService>();
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -72,15 +80,31 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
+            NameClaimType = "userId",
+            RoleClaimType = "role",
+            ClockSkew = TimeSpan.FromMinutes(1),
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
         };
     });
 
-builder.Services.AddAutoMapper(typeof(ConsultoraPro.Application.Profiles.AutoMapperProfile));
-builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddAuthorization(options =>
+{
+    options.DefaultPolicy = new AuthorizationPolicyBuilder(JwtBearerDefaults.AuthenticationScheme)
+        .RequireAuthenticatedUser()
+        .Build();
+
+    foreach (var permission in PermissionCatalog.All)
+    {
+        options.AddPolicy(permission.Clave, policy =>
+        {
+            policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
+            policy.RequireAuthenticatedUser()
+                  .AddRequirements(new PermissionRequirement(permission.Clave));
+        });
+    }
+});
+builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
 var app = builder.Build();
 
@@ -91,10 +115,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+app.UseMiddleware<GlobalExceptionHandler>();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseMiddleware<GlobalExceptionHandler>();
 app.MapControllers();
 
 await app.Services.InitializeDatabaseAsync();

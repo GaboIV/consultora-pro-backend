@@ -1,6 +1,7 @@
 using ConsultoraPro.Application.DTOs.Common;
 using ConsultoraPro.Application.DTOs.Members;
 using ConsultoraPro.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ConsultoraPro.API.Controllers;
@@ -17,6 +18,7 @@ public class MembersController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = "equipo.ver")]
     public async Task<ActionResult<ApiResponse<IEnumerable<MemberDto>>>> GetAll()
     {
         var data = await _memberService.GetAllAsync();
@@ -24,6 +26,7 @@ public class MembersController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [Authorize(Policy = "equipo.ver")]
     public async Task<ActionResult<ApiResponse<MemberDto>>> GetById(Guid id)
     {
         var data = await _memberService.GetByIdAsync(id);
@@ -33,6 +36,7 @@ public class MembersController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "equipo.crear")]
     public async Task<ActionResult<ApiResponse<MemberDto>>> Create([FromBody] CreateMemberDto dto)
     {
         var data = await _memberService.CreateAsync(dto);
@@ -40,6 +44,7 @@ public class MembersController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Policy = "equipo.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Update(Guid id, [FromBody] UpdateMemberDto dto)
     {
         await _memberService.UpdateAsync(id, dto);
@@ -47,6 +52,7 @@ public class MembersController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Policy = "equipo.eliminar")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(Guid id)
     {
         await _memberService.DeleteAsync(id);
