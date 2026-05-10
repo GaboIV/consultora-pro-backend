@@ -9,16 +9,18 @@
 
 ## GRUPO 1 — Estabilidad base y deuda técnica existente
 
-- [ ] Revisar que `GlobalExceptionHandler` capture y loguee correctamente todas las excepciones no controladas (incluyendo `DbUpdateException`, `InvalidOperationException`)
-- [ ] Verificar que todos los endpoints protegidos retornen `ApiResponse` consistente al fallar autorización (no HTML de Identity)
-- [ ] Confirmar que las validaciones de `FluentValidation` en Clientes y Proyectos están registradas con `AddFluentValidationAutoValidation()`
-- [ ] Revisar que los timestamps `CreatedAt` / `UpdatedAt` se asignan automáticamente en EF Core (interceptor o override de `SaveChanges`)
-- [ ] Confirmar que los seeders son completamente idempotentes (si se ejecutan dos veces, no duplican datos)
-- [ ] Revisar que el soft delete de Cliente no rompe proyectos asociados (decidir: bloquear o permitir con advertencia)
-- [ ] Revisar que el recálculo de `TotalProyectos` en Cliente es correcto cuando se elimina un proyecto
-- [ ] Confirmar que `UltimoAcceso` se actualiza al hacer login exitoso
-- [ ] Agregar índice en MySQL para `Email` en `ApplicationUser` (si no fue creado por Identity automáticamente)
-- [ ] Revisar que CORS no permite `*` en producción — solo los orígenes explícitamente definidos
+> Marcado: `H` = se puede hacer ahora. `P` = pendiente; después de `:` se explica por qué no se puede cerrar todavía.
+
+- [H] Revisar que `GlobalExceptionHandler` capture y loguee correctamente todas las excepciones no controladas (incluyendo `DbUpdateException`, `InvalidOperationException`)
+- [H] Verificar que todos los endpoints protegidos retornen `ApiResponse` consistente al fallar autorización (no HTML de Identity)
+- [H] Confirmar que las validaciones de `FluentValidation` en Clientes y Proyectos están registradas con `AddFluentValidationAutoValidation()`
+- [H] Revisar que los timestamps `CreatedAt` / `UpdatedAt` se asignan automáticamente en EF Core (interceptor o override de `SaveChanges`)
+- [H] Confirmar que los seeders son completamente idempotentes (si se ejecutan dos veces, no duplican datos)
+- [H] Revisar que el soft delete de Cliente no rompe proyectos asociados (decidir: bloquear o permitir con advertencia)
+- [H] Revisar que el recálculo de `TotalProyectos` en Cliente es correcto cuando se elimina un proyecto
+- [H] Confirmar que `UltimoAcceso` se actualiza al hacer login exitoso
+- [H] Agregar índice en MySQL para `Email` en `ApplicationUser` (si no fue creado por Identity automáticamente)
+- [P] Revisar que CORS no permite `*` en producción — solo los orígenes explícitamente definidos: no se puede cerrar completamente sin definir primero el dominio real de producción del frontend; por ahora solo se puede dejar preparado por configuración.
 
 ---
 
