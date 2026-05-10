@@ -83,7 +83,7 @@ public class UsuariosController : ControllerBase
     [Authorize(Policy = "roles.crear")]
     public async Task<ActionResult<ApiResponse<UsuarioListDto>>> Create([FromBody] CreateUsuarioDto dto)
     {
-        var validation = ValidateUsuario(dto.Nombres, dto.Apellidos, dto.Correo, dto.Puesto);
+        var validation = ValidateUsuario(dto.Nombres, dto.Apellidos, dto.Correo);
         if (validation.Count > 0)
             return BadRequest(new ApiResponse<object> { Success = false, Message = "Datos inválidos", Errors = validation });
 
@@ -103,7 +103,7 @@ public class UsuariosController : ControllerBase
             Telefono = dto.Telefono.Trim(),
             PhoneNumber = dto.Telefono.Trim(),
             Iniciales = BuildInitials(dto.Nombres, dto.Apellidos, dto.Iniciales),
-            Puesto = dto.Puesto.Trim(),
+            Puesto = role.Name ?? string.Empty,
             Activo = true,
             EmailConfirmed = true,
             FechaAlta = DateTime.UtcNow
@@ -138,7 +138,7 @@ public class UsuariosController : ControllerBase
         if (user is null)
             return NotFound(new ApiResponse<object> { Success = false, Message = "Usuario no encontrado" });
 
-        var validation = ValidateUsuario(dto.Nombres, dto.Apellidos, dto.Correo, dto.Puesto);
+        var validation = ValidateUsuario(dto.Nombres, dto.Apellidos, dto.Correo);
         if (validation.Count > 0)
             return BadRequest(new ApiResponse<object> { Success = false, Message = "Datos inválidos", Errors = validation });
 
@@ -163,7 +163,7 @@ public class UsuariosController : ControllerBase
         user.Telefono = dto.Telefono.Trim();
         user.PhoneNumber = dto.Telefono.Trim();
         user.Iniciales = BuildInitials(dto.Nombres, dto.Apellidos, dto.Iniciales);
-        user.Puesto = dto.Puesto.Trim();
+        user.Puesto = role.Name ?? string.Empty;
 
         var updateResult = await _userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)
@@ -252,7 +252,7 @@ public class UsuariosController : ControllerBase
             Correo = user.Email ?? string.Empty,
             Telefono = user.Telefono,
             Iniciales = user.Iniciales,
-            Puesto = user.Puesto,
+            Puesto = role?.Name ?? user.Puesto,
             RolId = role?.Id,
             Rol = role?.Name ?? string.Empty,
             Activo = user.Activo,
@@ -294,14 +294,13 @@ public class UsuariosController : ControllerBase
         return architects.Any(user => user.Id != currentUserId && user.Activo);
     }
 
-    private static List<string> ValidateUsuario(string nombres, string apellidos, string correo, string puesto)
+    private static List<string> ValidateUsuario(string nombres, string apellidos, string correo)
     {
         var errors = new List<string>();
         if (string.IsNullOrWhiteSpace(nombres)) errors.Add("Los nombres son obligatorios.");
         if (string.IsNullOrWhiteSpace(apellidos)) errors.Add("Los apellidos son obligatorios.");
         if (string.IsNullOrWhiteSpace(correo)) errors.Add("El correo es obligatorio.");
         if (!correo.Contains('@', StringComparison.Ordinal)) errors.Add("El correo no tiene un formato válido.");
-        if (string.IsNullOrWhiteSpace(puesto)) errors.Add("El puesto es obligatorio.");
         return errors;
     }
 
