@@ -19,7 +19,8 @@ public class ProyectoRepository : IProyectoRepository
         return await _context.Proyectos
             .Include(p => p.Cliente)
             .Include(p => p.TipoSolucion)
-            .Include(p => p.Desarrolladores)
+            .Include(p => p.ProyectoMiembros)
+                .ThenInclude(pm => pm.Usuario)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
     }
@@ -29,7 +30,8 @@ public class ProyectoRepository : IProyectoRepository
         return await _context.Proyectos
             .Include(p => p.Cliente)
             .Include(p => p.TipoSolucion)
-            .Include(p => p.Desarrolladores)
+            .Include(p => p.ProyectoMiembros)
+                .ThenInclude(pm => pm.Usuario)
             .FirstOrDefaultAsync(p => p.Id == id);
     }
 
@@ -38,7 +40,8 @@ public class ProyectoRepository : IProyectoRepository
         return await _context.Proyectos
             .Include(p => p.Cliente)
             .Include(p => p.TipoSolucion)
-            .Include(p => p.Desarrolladores)
+            .Include(p => p.ProyectoMiembros)
+                .ThenInclude(pm => pm.Usuario)
             .Where(p => p.ClienteId == clienteId)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();

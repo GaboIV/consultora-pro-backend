@@ -3,6 +3,8 @@ using ConsultoraPro.Application.DTOs.Proyectos;
 using ConsultoraPro.Application.Interfaces;
 using ConsultoraPro.Domain.Interfaces;
 using ConsultoraPro.Domain.Models;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace ConsultoraPro.Application.Services;
 
@@ -11,17 +13,20 @@ public class ProyectoService : IProyectoService
     private readonly IProyectoRepository _repository;
     private readonly IClienteRepository _clienteRepository;
     private readonly ITipoSolucionRepository _tipoSolucionRepository;
-    private readonly IMemberRepository _memberRepository;
-    private readonly IDesarrolladorRepository _desarrolladorRepository;
+    private readonly UserManager<ApplicationUser> _userManager;
     private readonly IMapper _mapper;
 
-    public ProyectoService(IProyectoRepository repository, IClienteRepository clienteRepository, ITipoSolucionRepository tipoSolucionRepository, IMemberRepository memberRepository, IDesarrolladorRepository desarrolladorRepository, IMapper mapper)
+    public ProyectoService(
+        IProyectoRepository repository, 
+        IClienteRepository clienteRepository, 
+        ITipoSolucionRepository tipoSolucionRepository, 
+        UserManager<ApplicationUser> userManager, 
+        IMapper mapper)
     {
         _repository = repository;
         _clienteRepository = clienteRepository;
         _tipoSolucionRepository = tipoSolucionRepository;
-        _memberRepository = memberRepository;
-        _desarrolladorRepository = desarrolladorRepository;
+        _userManager = userManager;
         _mapper = mapper;
     }
 
@@ -58,22 +63,21 @@ public class ProyectoService : IProyectoService
         proyecto.Progreso = 0;
         proyecto.FechaInicio = DateTime.UtcNow;
         proyecto.FechaFin = DateTime.UtcNow.AddMonths(3);
-        proyecto.TotalMiembros = dto.Desarrolladores.Count;
+        proyecto.TotalMiembros = dto.Miembros.Count;
         proyecto.CreatedAt = DateTime.UtcNow;
         proyecto.UpdatedAt = DateTime.UtcNow;
 
-        foreach (var devDto in dto.Desarrolladores)
+        foreach (var mDto in dto.Miembros)
         {
-            var member = await _memberRepository.GetByIdAsync(devDto.MemberId);
-            if (member == null)
-                throw new KeyNotFoundException($"Miembro con ID {devDto.MemberId} no encontrado");
+            var user = await _userManager.FindByIdAsync(mDto.UsuarioId.ToString());
+            if (user == null)
+                throw new KeyNotFoundException($"Usuario con ID {mDto.UsuarioId} no encontrado");
 
-            proyecto.Desarrolladores.Add(new Desarrollador
+            proyecto.ProyectoMiembros.Add(new ProyectoMiembro
             {
                 Id = Guid.NewGuid(),
-                MemberId = member.Id,
-                Nombre = $"{member.Nombres} {member.Apellidos}",
-                Rol = devDto.Rol,
+                UsuarioId = user.Id,
+                Rol = mDto.Rol,
                 ProyectoId = proyecto.Id
             });
         }
@@ -102,27 +106,26 @@ public class ProyectoService : IProyectoService
             throw new KeyNotFoundException($"Tipo de solución con ID {dto.TipoSolucionId} no encontrado");
 
         _mapper.Map(dto, proyecto);
-        proyecto.TotalMiembros = dto.Desarrolladores.Count;
+        proyecto.TotalMiembros = dto.Miembros.Count;
         proyecto.UpdatedAt = DateTime.UtcNow;
 
-        var desarrolladores = new List<Desarrollador>();
-        foreach (var devDto in dto.Desarrolladores)
+        // Clear and update members
+        proyecto.ProyectoMiembros.Clear();
+        foreach (var mDto in dto.Miembros)
         {
-            var member = await _memberRepository.GetByIdAsync(devDto.MemberId);
-            if (member == null)
-                throw new KeyNotFoundException($"Miembro con ID {devDto.MemberId} no encontrado");
+            var user = await _userManager.FindByIdAsync(mDto.UsuarioId.ToString());
+            if (user == null)
+                throw new KeyNotFoundException($"Usuario con ID {mDto.UsuarioId} no encontrado");
 
-            desarrolladores.Add(new Desarrollador
+            proyecto.ProyectoMiembros.Add(new ProyectoMiembro
             {
                 Id = Guid.NewGuid(),
-                MemberId = member.Id,
-                Nombre = $"{member.Nombres} {member.Apellidos}",
-                Rol = devDto.Rol,
+                UsuarioId = user.Id,
+                Rol = mDto.Rol,
                 ProyectoId = proyecto.Id
             });
         }
 
-        await _desarrolladorRepository.ReplaceByProyectoIdAsync(proyecto.Id, desarrolladores);
         await _repository.UpdateAsync(proyecto);
         await RefreshClientProjectCountAsync(previousClienteId);
         if (previousClienteId != dto.ClienteId)

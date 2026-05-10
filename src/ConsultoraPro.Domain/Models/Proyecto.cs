@@ -16,7 +16,7 @@ public class Proyecto
     public DateTime FechaInicio { get; set; }
     public DateTime FechaFin { get; set; }
     public int TotalMiembros { get; set; }
-    public ICollection<Desarrollador> Desarrolladores { get; set; } = new List<Desarrollador>();
+    public ICollection<ProyectoMiembro> ProyectoMiembros { get; set; } = new List<ProyectoMiembro>();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

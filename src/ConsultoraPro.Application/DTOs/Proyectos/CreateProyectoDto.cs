@@ -9,5 +9,5 @@ public class CreateProyectoDto
     public Guid TipoSolucionId { get; set; }
     public EtapaProyecto Etapa { get; set; }
     public EstadoProyecto Estado { get; set; }
-    public List<CreateDesarrolladorDto> Desarrolladores { get; set; } = new();
+    public List<AsignarMiembroDto> Miembros { get; set; } = new();
 }

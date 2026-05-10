@@ -7,16 +7,20 @@ public class UpdateProyectoValidator : AbstractValidator<UpdateProyectoDto>
 {
     public UpdateProyectoValidator()
     {
-        RuleFor(x => x.Nombre).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.ClienteId).NotEmpty();
-        RuleFor(x => x.TipoSolucionId).NotEmpty();
-        RuleFor(x => x.Desarrolladores)
-            .NotEmpty().WithMessage("Debe asignar al menos un desarrollador")
-            .Must(desarrolladores => desarrolladores == null || desarrolladores.Select(d => d.MemberId).Distinct().Count() == desarrolladores.Count)
-            .WithMessage("Un miembro no puede estar asignado más de una vez al mismo proyecto");
-        RuleForEach(x => x.Desarrolladores).ChildRules(dev =>
+        RuleFor(p => p.Nombre).NotEmpty().MaximumLength(200);
+        RuleFor(p => p.ClienteId).NotEmpty();
+        RuleFor(p => p.TipoSolucionId).NotEmpty();
+        RuleFor(p => p.Etapa).IsInEnum();
+        RuleFor(p => p.Estado).IsInEnum();
+        
+        RuleFor(p => p.Miembros)
+            .Must(miembros => miembros == null || miembros.Select(m => m.UsuarioId).Distinct().Count() == miembros.Count)
+            .WithMessage("No se pueden asignar duplicados de un mismo usuario al proyecto.");
+
+        RuleForEach(p => p.Miembros).ChildRules(miembro =>
         {
-            dev.RuleFor(d => d.MemberId).NotEmpty();
+            miembro.RuleFor(m => m.UsuarioId).NotEmpty();
+            miembro.RuleFor(m => m.Rol).IsInEnum();
         });
     }
 }

@@ -1,4 +1,3 @@
-using ConsultoraPro.Application.DTOs.Members;
 using ConsultoraPro.Application.DTOs.Proyectos;
 
 namespace ConsultoraPro.Application.DTOs.Management;
@@ -11,7 +10,7 @@ public class ManagementSnapshotDto
     public List<ManagementClientDto> Clients { get; set; } = new();
     public List<ManagementProjectDto> Projects { get; set; } = new();
     public List<TipoSolucionDto> TiposSolucion { get; set; } = new();
-    public List<MemberDto> Members { get; set; } = new();
+    public List<UsuarioSnapshotDto> Usuarios { get; set; } = new();
     public InfrastructureOverviewDto Infrastructure { get; set; } = new();
     public TeamOverviewDto Team { get; set; } = new();
 }
@@ -78,7 +77,18 @@ public class ManagementProjectDto
     public string StatusValue { get; set; } = string.Empty;
     public string StatusTone { get; set; } = "blue";
     public int TeamSize { get; set; }
-    public List<DesarrolladorDto> Desarrolladores { get; set; } = new();
+    public List<ProyectoMiembroDto> Miembros { get; set; } = new();
+}
+
+public class UsuarioSnapshotDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Nombres { get; set; } = string.Empty;
+    public string Apellidos { get; set; } = string.Empty;
+    public string Correo { get; set; } = string.Empty;
+    public string Telefono { get; set; } = string.Empty;
+    public string Iniciales { get; set; } = string.Empty;
+    public string Puesto { get; set; } = string.Empty;
 }
 
 public class LeadDto

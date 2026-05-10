@@ -109,7 +109,11 @@ public class UsuariosController : ControllerBase
             FechaAlta = DateTime.UtcNow
         };
 
-        var createResult = await _userManager.CreateAsync(user, dto.Password);
+        var password = string.IsNullOrWhiteSpace(dto.Password) 
+            ? dto.Correo.Split('@')[0] 
+            : dto.Password;
+
+        var createResult = await _userManager.CreateAsync(user, password);
         if (!createResult.Succeeded)
             return BadRequest(ToErrorResponse(createResult, "No se pudo crear el usuario"));
 

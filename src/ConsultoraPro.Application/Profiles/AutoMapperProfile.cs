@@ -1,7 +1,6 @@
 using AutoMapper;
 using ConsultoraPro.Application.DTOs.Clientes;
 using ConsultoraPro.Application.DTOs.Management;
-using ConsultoraPro.Application.DTOs.Members;
 using ConsultoraPro.Application.DTOs.Proyectos;
 using ConsultoraPro.Domain.Enums;
 using ConsultoraPro.Domain.Models;
@@ -16,24 +15,26 @@ public class AutoMapperProfile : Profile
         CreateMap<CreateClienteDto, Cliente>();
         CreateMap<UpdateClienteDto, Cliente>();
 
-        CreateMap<Member, MemberDto>();
-        CreateMap<CreateMemberDto, Member>();
-        CreateMap<UpdateMemberDto, Member>();
-
-        CreateMap<Desarrollador, DesarrolladorDto>()
+        // New mappings for ApplicationUser and ProyectoMiembro
+        CreateMap<ApplicationUser, UsuarioSnapshotDto>();
+        
+        CreateMap<ProyectoMiembro, ProyectoMiembroDto>()
+            .ForMember(dest => dest.NombreCompleto, opt => opt.MapFrom(src => $"{src.Usuario.Nombres} {src.Usuario.Apellidos}"))
+            .ForMember(dest => dest.Iniciales, opt => opt.MapFrom(src => src.Usuario.Iniciales))
             .ForMember(dest => dest.Rol, opt => opt.MapFrom(src => src.Rol.ToString()));
-        CreateMap<CreateDesarrolladorDto, Desarrollador>();
 
         CreateMap<Proyecto, ProyectoDto>()
             .ForMember(dest => dest.ClienteNombre, opt => opt.MapFrom(src => src.Cliente.Nombre))
             .ForMember(dest => dest.TipoSolucionNombre, opt => opt.MapFrom(src => src.TipoSolucion.Nombre))
             .ForMember(dest => dest.Etapa, opt => opt.MapFrom(src => src.Etapa.ToString()))
             .ForMember(dest => dest.Estado, opt => opt.MapFrom(src => src.Estado.ToString()))
-            .ForMember(dest => dest.TotalMiembros, opt => opt.MapFrom(src => src.Desarrolladores.Count));
+            .ForMember(dest => dest.TotalMiembros, opt => opt.MapFrom(src => src.ProyectoMiembros.Count))
+            .ForMember(dest => dest.Miembros, opt => opt.MapFrom(src => src.ProyectoMiembros));
+
         CreateMap<CreateProyectoDto, Proyecto>()
-            .ForMember(dest => dest.Desarrolladores, opt => opt.Ignore());
+            .ForMember(dest => dest.ProyectoMiembros, opt => opt.Ignore());
         CreateMap<UpdateProyectoDto, Proyecto>()
-            .ForMember(dest => dest.Desarrolladores, opt => opt.Ignore());
+            .ForMember(dest => dest.ProyectoMiembros, opt => opt.Ignore());
 
         CreateMap<Cliente, ManagementClientDto>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id.ToString()))
@@ -55,20 +56,21 @@ public class AutoMapperProfile : Profile
             .ForMember(dest => dest.Stage, opt => opt.MapFrom(src => MapStageLabel(src.Etapa)))
             .ForMember(dest => dest.StageValue, opt => opt.MapFrom(src => src.Etapa.ToString()))
             .ForMember(dest => dest.StageTone, opt => opt.MapFrom(src => MapStageTone(src.Etapa)))
-            .ForMember(dest => dest.Lead, opt => opt.MapFrom(src => MapLeadFromDevelopers(src.Desarrolladores)))
+            .ForMember(dest => dest.Lead, opt => opt.MapFrom(src => MapLeadFromMiembros(src.ProyectoMiembros)))
             .ForMember(dest => dest.ProgressTone, opt => opt.MapFrom(src => MapProgressTone(src.Progreso)))
             .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.FechaInicio.ToString("dd MMM yyyy")))
             .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.FechaFin.ToString("dd MMM yyyy")))
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => MapStatusLabel(src.Estado)))
             .ForMember(dest => dest.StatusValue, opt => opt.MapFrom(src => src.Estado.ToString()))
             .ForMember(dest => dest.StatusTone, opt => opt.MapFrom(src => MapStatusTone(src.Estado)))
-            .ForMember(dest => dest.TeamSize, opt => opt.MapFrom(src => src.Desarrolladores.Count));
+            .ForMember(dest => dest.TeamSize, opt => opt.MapFrom(src => src.ProyectoMiembros.Count))
+            .ForMember(dest => dest.Miembros, opt => opt.MapFrom(src => src.ProyectoMiembros));
     }
 
-    private static LeadDto MapLeadFromDevelopers(ICollection<Desarrollador> desarrolladores)
+    private static LeadDto MapLeadFromMiembros(ICollection<ProyectoMiembro> miembros)
     {
-        var principales = desarrolladores.Where(d => d.Rol == RolDesarrollador.Principal).ToList();
-        var apoyo = desarrolladores.Where(d => d.Rol == RolDesarrollador.Apoyo).ToList();
+        var principales = miembros.Where(d => d.Rol == RolDesarrollador.Principal).ToList();
+        var apoyo = miembros.Where(d => d.Rol == RolDesarrollador.Apoyo).ToList();
 
         if (principales.Count == 0 && apoyo.Count == 0)
             return new LeadDto { Initials = "--", Name = "Sin asignar", Tone = "gray" };
@@ -77,7 +79,7 @@ public class AutoMapperProfile : Profile
         if (principales.Count > 0) parts.Add($"{principales.Count} principal");
         if (apoyo.Count > 0) parts.Add($"{apoyo.Count} apoyo");
 
-        var total = desarrolladores.Count;
+        var total = miembros.Count;
         var initials = total.ToString();
         var tone = total switch
         {

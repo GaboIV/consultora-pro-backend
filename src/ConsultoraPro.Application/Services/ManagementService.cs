@@ -1,8 +1,10 @@
 using AutoMapper;
 using ConsultoraPro.Application.DTOs.Management;
-using ConsultoraPro.Application.DTOs.Members;
 using ConsultoraPro.Application.Interfaces;
 using ConsultoraPro.Domain.Interfaces;
+using ConsultoraPro.Domain.Models;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace ConsultoraPro.Application.Services;
 
@@ -11,20 +13,20 @@ public class ManagementService : IManagementService
     private readonly IClienteRepository _clienteRepository;
     private readonly IProyectoRepository _proyectoRepository;
     private readonly ITipoSolucionRepository _tipoSolucionRepository;
-    private readonly IMemberRepository _memberRepository;
+    private readonly UserManager<ApplicationUser> _userManager;
     private readonly IMapper _mapper;
 
     public ManagementService(
         IClienteRepository clienteRepository,
         IProyectoRepository proyectoRepository,
         ITipoSolucionRepository tipoSolucionRepository,
-        IMemberRepository memberRepository,
+        UserManager<ApplicationUser> userManager,
         IMapper mapper)
     {
         _clienteRepository = clienteRepository;
         _proyectoRepository = proyectoRepository;
         _tipoSolucionRepository = tipoSolucionRepository;
-        _memberRepository = memberRepository;
+        _userManager = userManager;
         _mapper = mapper;
     }
 
@@ -33,11 +35,11 @@ public class ManagementService : IManagementService
         var clientes = await _clienteRepository.GetAllAsync();
         var proyectos = await _proyectoRepository.GetAllAsync();
         var tiposSolucion = await _tipoSolucionRepository.GetAllAsync();
-        var members = await _memberRepository.GetAllAsync();
+        var users = await _userManager.Users.ToListAsync();
 
         var clients = _mapper.Map<List<ManagementClientDto>>(clientes);
         var projects = _mapper.Map<List<ManagementProjectDto>>(proyectos);
-        var memberDtos = _mapper.Map<List<MemberDto>>(members);
+        var userDtos = _mapper.Map<List<UsuarioSnapshotDto>>(users);
         var tiposSolucionDtos = tiposSolucion.Select(t => new TipoSolucionDto
         {
             Id = t.Id.ToString(),
@@ -76,7 +78,7 @@ public class ManagementService : IManagementService
             Clients = clients,
             Projects = projects,
             TiposSolucion = tiposSolucionDtos,
-            Members = memberDtos,
+            Usuarios = userDtos,
             Infrastructure = new InfrastructureOverviewDto(),
             Team = new TeamOverviewDto()
         };
