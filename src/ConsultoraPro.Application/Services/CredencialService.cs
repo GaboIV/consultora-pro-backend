@@ -9,15 +9,18 @@ public class CredencialService : ICredencialService
 {
     private readonly ICredencialRepository _repository;
     private readonly IProyectoRepository _proyectoRepository;
+    private readonly IAmbienteRepository _ambienteRepository;
     private readonly IEncryptionService _encryptionService;
 
     public CredencialService(
         ICredencialRepository repository,
         IProyectoRepository proyectoRepository,
+        IAmbienteRepository ambienteRepository,
         IEncryptionService encryptionService)
     {
         _repository = repository;
         _proyectoRepository = proyectoRepository;
+        _ambienteRepository = ambienteRepository;
         _encryptionService = encryptionService;
     }
 
@@ -36,6 +39,7 @@ public class CredencialService : ICredencialService
     public async Task<CredencialListDto> CreateAsync(CreateCredencialDto dto, Guid userId)
     {
         await EnsureProjectExistsAsync(dto.ProyectoId);
+        await EnsureEnvironmentBelongsToProjectAsync(dto.AmbienteId, dto.ProyectoId);
 
         var credencial = new Credencial
         {
@@ -62,6 +66,7 @@ public class CredencialService : ICredencialService
     {
         var credencial = await GetActiveEntityAsync(id);
         await EnsureProjectExistsAsync(dto.ProyectoId);
+        await EnsureEnvironmentBelongsToProjectAsync(dto.AmbienteId, dto.ProyectoId);
 
         credencial.Nombre = dto.Nombre.Trim();
         credencial.Tipo = dto.Tipo;
@@ -149,6 +154,19 @@ public class CredencialService : ICredencialService
             throw new KeyNotFoundException($"Proyecto con ID {proyectoId} no encontrado");
     }
 
+    private async Task EnsureEnvironmentBelongsToProjectAsync(Guid? ambienteId, Guid proyectoId)
+    {
+        if (!ambienteId.HasValue)
+            return;
+
+        var ambiente = await _ambienteRepository.GetByIdAsync(ambienteId.Value);
+        if (ambiente is null || !ambiente.Activo)
+            throw new KeyNotFoundException($"Ambiente con ID {ambienteId.Value} no encontrado");
+
+        if (ambiente.ProyectoId != proyectoId)
+            throw new InvalidOperationException("El ambiente seleccionado no pertenece al proyecto indicado");
+    }
+
     private static CredencialListDto ToListDto(Credencial credencial)
     {
         var dias = (int)Math.Ceiling((credencial.FechaVencimiento.Date - DateTime.UtcNow.Date).TotalDays);
@@ -161,6 +179,7 @@ public class CredencialService : ICredencialService
             ProyectoId = credencial.ProyectoId,
             ProyectoNombre = credencial.Proyecto?.Nombre ?? string.Empty,
             AmbienteId = credencial.AmbienteId,
+            AmbienteNombre = credencial.Ambiente?.Nombre,
             FechaVencimiento = credencial.FechaVencimiento,
             DiasParaVencer = dias,
             EstadoVencimiento = MapExpirationState(dias),
@@ -185,6 +204,7 @@ public class CredencialService : ICredencialService
         dto.ProyectoId = list.ProyectoId;
         dto.ProyectoNombre = list.ProyectoNombre;
         dto.AmbienteId = list.AmbienteId;
+        dto.AmbienteNombre = list.AmbienteNombre;
         dto.FechaVencimiento = list.FechaVencimiento;
         dto.DiasParaVencer = list.DiasParaVencer;
         dto.EstadoVencimiento = list.EstadoVencimiento;

@@ -19,6 +19,7 @@ public class CredencialRepository : ICredencialRepository
         var query = _context.Credenciales
             .AsNoTracking()
             .Include(c => c.Proyecto)
+            .Include(c => c.Ambiente)
             .Where(c => c.Activo);
 
         if (proyectoId.HasValue)
@@ -34,6 +35,7 @@ public class CredencialRepository : ICredencialRepository
     {
         return await _context.Credenciales
             .Include(c => c.Proyecto)
+            .Include(c => c.Ambiente)
             .Include(c => c.Creador)
             .FirstOrDefaultAsync(c => c.Id == id);
     }
@@ -59,6 +61,7 @@ public class CredencialRepository : ICredencialRepository
         return await _context.Credenciales
             .AsNoTracking()
             .Include(c => c.Proyecto)
+            .Include(c => c.Ambiente)
             .Where(c => c.Activo && c.FechaVencimiento.Date <= limit)
             .OrderBy(c => c.FechaVencimiento)
             .ToListAsync();

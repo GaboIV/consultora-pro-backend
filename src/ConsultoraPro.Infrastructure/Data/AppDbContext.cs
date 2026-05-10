@@ -15,6 +15,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<Permiso> Permisos => Set<Permiso>();
     public DbSet<RolPermiso> RolPermisos => Set<RolPermiso>();
     public DbSet<ProyectoMiembro> ProyectoMiembros => Set<ProyectoMiembro>();
+    public DbSet<Ambiente> Ambientes => Set<Ambiente>();
     public DbSet<Credencial> Credenciales => Set<Credencial>();
     public DbSet<AuditoriaCredencial> AuditoriasCredenciales => Set<AuditoriaCredencial>();
 
@@ -114,6 +115,25 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
                   .OnDelete(DeleteBehavior.Restrict);
         });
 
+        modelBuilder.Entity<Ambiente>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.Nombre).IsRequired().HasMaxLength(160);
+            entity.Property(a => a.Tipo).HasConversion<string>().HasMaxLength(30);
+            entity.Property(a => a.Url).IsRequired().HasMaxLength(300);
+            entity.Property(a => a.Tecnologia).IsRequired().HasMaxLength(120);
+            entity.Property(a => a.Estado).HasConversion<string>().HasMaxLength(30);
+            entity.Property(a => a.UptimePorcentaje).HasPrecision(5, 2);
+            entity.Property(a => a.Activo).HasDefaultValue(true);
+            entity.Property(a => a.FechaCreacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(a => new { a.ProyectoId, a.Activo });
+            entity.HasIndex(a => a.Estado);
+            entity.HasOne(a => a.Proyecto)
+                  .WithMany(p => p.Ambientes)
+                  .HasForeignKey(a => a.ProyectoId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<Credencial>(entity =>
         {
             entity.HasKey(c => c.Id);
@@ -130,6 +150,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
                   .WithMany()
                   .HasForeignKey(c => c.ProyectoId)
                   .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(c => c.Ambiente)
+                  .WithMany(a => a.Credenciales)
+                  .HasForeignKey(c => c.AmbienteId)
+                  .OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(c => c.Creador)
                   .WithMany()
                   .HasForeignKey(c => c.CreadoPor)
@@ -190,6 +214,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
                         credencial.FechaCreacion = now;
                     credencial.UpdatedAt = now;
                 }
+
+                if (entry.Entity is Ambiente ambiente && ambiente.FechaCreacion == default)
+                    ambiente.FechaCreacion = now;
 
                 if (entry.Entity is AuditoriaCredencial auditoria && auditoria.FechaRevelacion == default)
                     auditoria.FechaRevelacion = now;

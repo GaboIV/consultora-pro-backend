@@ -1,6 +1,7 @@
 using AutoMapper;
 using ConsultoraPro.Application.DTOs.Management;
 using ConsultoraPro.Application.Interfaces;
+using ConsultoraPro.Domain.Enums;
 using ConsultoraPro.Domain.Interfaces;
 using ConsultoraPro.Domain.Models;
 using Microsoft.AspNetCore.Identity;
@@ -14,6 +15,7 @@ public class ManagementService : IManagementService
     private readonly IProyectoRepository _proyectoRepository;
     private readonly ITipoSolucionRepository _tipoSolucionRepository;
     private readonly ICredencialRepository _credencialRepository;
+    private readonly IAmbienteRepository _ambienteRepository;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IMapper _mapper;
 
@@ -22,6 +24,7 @@ public class ManagementService : IManagementService
         IProyectoRepository proyectoRepository,
         ITipoSolucionRepository tipoSolucionRepository,
         ICredencialRepository credencialRepository,
+        IAmbienteRepository ambienteRepository,
         UserManager<ApplicationUser> userManager,
         IMapper mapper)
     {
@@ -29,6 +32,7 @@ public class ManagementService : IManagementService
         _proyectoRepository = proyectoRepository;
         _tipoSolucionRepository = tipoSolucionRepository;
         _credencialRepository = credencialRepository;
+        _ambienteRepository = ambienteRepository;
         _userManager = userManager;
         _mapper = mapper;
     }
@@ -40,6 +44,7 @@ public class ManagementService : IManagementService
         var tiposSolucion = await _tipoSolucionRepository.GetAllAsync();
         var users = await _userManager.Users.ToListAsync();
         var credencialesPorVencer = (await _credencialRepository.GetExpiringWithinAsync(7)).ToList();
+        var ambientes = (await _ambienteRepository.GetAllAsync()).ToList();
 
         var clients = _mapper.Map<List<ManagementClientDto>>(clientes);
         var projects = _mapper.Map<List<ManagementProjectDto>>(proyectos);
@@ -54,6 +59,10 @@ public class ManagementService : IManagementService
         var totalProyectos = projects.Count;
         var activos = clients.Count;
         var completados = projects.Count(p => p.StatusTone == "green");
+        var ambientesOnline = ambientes.Count(a => a.Estado == EstadoAmbiente.Online);
+        var ambientesAlerta = ambientes.Count(a => a.Estado == EstadoAmbiente.Alerta);
+        var ambientesOffline = ambientes.Count(a => a.Estado == EstadoAmbiente.Offline);
+        var ambientesConfigurando = ambientes.Count(a => a.Estado == EstadoAmbiente.Configurando);
 
         var alerts = new List<AlertMessageDto>
         {
@@ -69,6 +78,15 @@ public class ManagementService : IManagementService
             });
         }
 
+        if (ambientesAlerta > 0)
+        {
+            alerts.Add(new AlertMessageDto
+            {
+                Tone = "warn",
+                Text = $"{ambientesAlerta} ambiente(s) requieren atención operativa"
+            });
+        }
+
         var snapshot = new ManagementSnapshotDto
         {
             GeneratedAt = now.ToString("yyyy-MM-ddTHH:mm:sszzz"),
@@ -79,7 +97,7 @@ public class ManagementService : IManagementService
                 {
                     new() { Label = "Clientes activos", Value = activos.ToString(), Detail = $"Gestionando {totalProyectos} proyectos", Tone = "blue" },
                     new() { Label = "Proyectos en curso", Value = projects.Count(p => p.StatusTone is "amber" or "blue").ToString(), Detail = completados > 0 ? $"{completados} completados" : "0 completados", Tone = "green" },
-                    new() { Label = "Proyectos totales", Value = totalProyectos.ToString(), Detail = $"Distribuidos en {activos} clientes", Tone = "purple" },
+                    new() { Label = "Ambientes activos", Value = ambientes.Count.ToString(), Detail = $"{ambientesOnline} online · {ambientesAlerta} alerta · {ambientesOffline} offline", Tone = ambientesAlerta > 0 ? "amber" : "teal", DetailTone = ambientesAlerta > 0 ? "warn" : "up" },
                     new() { Label = "Progreso promedio", Value = projects.Any() ? $"{(int)projects.Average(p => p.Progress)}%" : "0%", Detail = "General de todos los proyectos", Tone = "amber" }
                 },
                 Alerts = alerts,
@@ -96,6 +114,27 @@ public class ManagementService : IManagementService
             Usuarios = userDtos,
             Infrastructure = new InfrastructureOverviewDto
             {
+                EnvironmentSummary = new EnvironmentSummaryDto
+                {
+                    Total = ambientes.Count,
+                    Online = ambientesOnline,
+                    Alertas = ambientesAlerta,
+                    Offline = ambientesOffline,
+                    Configurando = ambientesConfigurando
+                },
+                EnvironmentGroups = ambientes
+                    .GroupBy(a => new
+                    {
+                        a.ProyectoId,
+                        ProjectName = $"{a.Proyecto?.Cliente?.Nombre ?? "Cliente"} · {a.Proyecto?.Nombre ?? "Proyecto"}"
+                    })
+                    .Select(group => new EnvironmentGroupDto
+                    {
+                        ProjectId = group.Key.ProyectoId.ToString(),
+                        ProjectName = group.Key.ProjectName,
+                        Items = group.Select(ToEnvironmentItemDto).ToList()
+                    })
+                    .ToList(),
                 Credentials = credencialesPorVencer.Select(ToCredentialAlertDto).ToList()
             },
             Team = new TeamOverviewDto()
@@ -104,14 +143,30 @@ public class ManagementService : IManagementService
         return snapshot;
     }
 
+    private static EnvironmentItemDto ToEnvironmentItemDto(Ambiente ambiente)
+    {
+        return new EnvironmentItemDto
+        {
+            Id = ambiente.Id.ToString(),
+            ProjectId = ambiente.ProyectoId.ToString(),
+            Name = ambiente.Nombre,
+            Type = MapEnvironmentTypeLabel(ambiente.Tipo),
+            Url = ambiente.Url,
+            Stack = ambiente.Tecnologia,
+            State = MapEnvironmentStateLabel(ambiente.Estado),
+            StateTone = MapEnvironmentStateTone(ambiente.Estado),
+            Availability = $"{ambiente.UptimePorcentaje:0.##}%"
+        };
+    }
+
     private static CredentialDto ToCredentialAlertDto(Credencial credencial)
     {
         var days = (int)Math.Ceiling((credencial.FechaVencimiento.Date - DateTime.UtcNow.Date).TotalDays);
         return new CredentialDto
         {
             Service = credencial.Nombre,
-            Environment = credencial.Proyecto?.Nombre ?? "Proyecto no disponible",
-            EnvironmentTone = "blue",
+            Environment = credencial.Ambiente?.Nombre ?? credencial.Proyecto?.Nombre ?? "Proyecto no disponible",
+            EnvironmentTone = credencial.Ambiente is null ? "blue" : MapEnvironmentTypeTone(credencial.Ambiente.Tipo),
             Kind = credencial.Tipo.ToString(),
             ExpiresIn = days switch
             {
@@ -123,4 +178,40 @@ public class ManagementService : IManagementService
             Tone = days < 7 ? "red" : "amber"
         };
     }
+
+    private static string MapEnvironmentTypeLabel(TipoAmbiente tipo) => tipo switch
+    {
+        TipoAmbiente.Produccion => "Producción",
+        TipoAmbiente.Staging => "Staging",
+        TipoAmbiente.Desarrollo => "Desarrollo",
+        TipoAmbiente.QA => "QA",
+        _ => tipo.ToString()
+    };
+
+    private static string MapEnvironmentStateLabel(EstadoAmbiente estado) => estado switch
+    {
+        EstadoAmbiente.Online => "Online",
+        EstadoAmbiente.Offline => "Offline",
+        EstadoAmbiente.Alerta => "Alerta",
+        EstadoAmbiente.Configurando => "Configurando",
+        _ => estado.ToString()
+    };
+
+    private static string MapEnvironmentStateTone(EstadoAmbiente estado) => estado switch
+    {
+        EstadoAmbiente.Online => "green",
+        EstadoAmbiente.Alerta => "amber",
+        EstadoAmbiente.Offline => "red",
+        EstadoAmbiente.Configurando => "blue",
+        _ => "gray"
+    };
+
+    private static string MapEnvironmentTypeTone(TipoAmbiente tipo) => tipo switch
+    {
+        TipoAmbiente.Produccion => "red",
+        TipoAmbiente.Staging => "amber",
+        TipoAmbiente.Desarrollo => "blue",
+        TipoAmbiente.QA => "purple",
+        _ => "gray"
+    };
 }

@@ -11,10 +11,12 @@ El backend es una API REST construida en .NET 8 para administrar una consultora 
 - Roles y permisos granulares por modulo.
 - Clientes.
 - Proyectos.
+- Ambientes por proyecto.
 - Tipos de solucion.
 - Asignacion de usuarios a proyectos como desarrolladores principales o de apoyo.
 - Snapshot consolidado para el frontend.
 - Catalogo inicial de credenciales protegido por permisos.
+- CRUD de ambientes protegido por permisos.
 - Seed automatico de datos base para desarrollo.
 - Migraciones automaticas con Entity Framework Core.
 
@@ -62,6 +64,7 @@ Archivos clave:
 
 - `Models/Cliente.cs`
 - `Models/Proyecto.cs`
+- `Models/Ambiente.cs`
 - `Models/TipoSolucion.cs`
 - `Models/ApplicationUser.cs`
 - `Models/ApplicationRole.cs`
@@ -71,9 +74,12 @@ Archivos clave:
 - `Enums/EtapaProyecto.cs`
 - `Enums/EstadoProyecto.cs`
 - `Enums/RolDesarrollador.cs`
+- `Enums/TipoAmbiente.cs`
+- `Enums/EstadoAmbiente.cs`
 - `Security/PermissionCatalog.cs`
 - `Interfaces/IClienteRepository.cs`
 - `Interfaces/IProyectoRepository.cs`
+- `Interfaces/IAmbienteRepository.cs`
 - `Interfaces/ITipoSolucionRepository.cs`
 
 ### Application
@@ -290,6 +296,24 @@ Cubre:
 - Total de miembros.
 - Timestamps.
 - Miembros asignados.
+- Ambientes asociados.
+
+### Ambiente
+
+Ambiente tecnico asociado a un proyecto.
+
+Cubre:
+
+- Nombre.
+- Tipo: Produccion, Staging, Desarrollo o QA.
+- URL.
+- Proyecto asociado.
+- Tecnologia o stack.
+- Estado: Online, Offline, Alerta o Configurando.
+- UptimePorcentaje.
+- Activo para soft delete.
+- FechaCreacion.
+- Credenciales asociadas opcionalmente.
 
 ### ProyectoMiembro
 
@@ -334,6 +358,24 @@ Rol del usuario dentro de un proyecto:
 
 - `Principal`
 - `Apoyo`
+
+### TipoAmbiente
+
+Representa el tipo operativo de un ambiente:
+
+- `Produccion`
+- `Staging`
+- `Desarrollo`
+- `QA`
+
+### EstadoAmbiente
+
+Representa el estado operativo:
+
+- `Online`
+- `Offline`
+- `Alerta`
+- `Configurando`
 
 ## Seguridad Y Permisos
 
@@ -563,6 +605,8 @@ El snapshot incluye:
 - Tipos de solucion.
 - Usuarios disponibles para asignacion.
 - Estructuras de infraestructura y equipo.
+- Resumen de ambientes: total, online, alertas, offline y configurando.
+- Ambientes agrupados por proyecto para el dashboard e infraestructura.
 
 ### Credenciales
 
@@ -576,6 +620,18 @@ El snapshot incluye:
 | PUT | `/credenciales/{id}/valor` | `credenciales.editar` | Actualiza el valor cifrado de la credencial. |
 | DELETE | `/credenciales/{id}` | `credenciales.editar` | Desactiva la credencial con soft delete. |
 | GET | `/credenciales/{id}/auditoria` | `credenciales.ver` | Lista accesos de revelado registrados. |
+
+### Ambientes
+
+| Metodo | Ruta | Permiso | Descripcion |
+|---|---|---|---|
+| GET | `/ambientes` | `ambientes.ver` | Lista ambientes activos. Acepta filtro opcional por `proyectoId`. |
+| GET | `/ambientes/{id}` | `ambientes.ver` | Obtiene un ambiente por Id. |
+| GET | `/ambientes/proyecto/{proyectoId}` | `ambientes.ver` | Lista ambientes activos de un proyecto. |
+| POST | `/ambientes` | `ambientes.crear` | Crea ambiente. |
+| PUT | `/ambientes/{id}` | `ambientes.editar` | Actualiza ambiente completo. |
+| PUT | `/ambientes/{id}/estado` | `ambientes.editar` | Cambia estado y opcionalmente uptime. |
+| DELETE | `/ambientes/{id}` | `ambientes.editar` | Desactiva ambiente con soft delete. |
 
 ## Contratos Principales
 
@@ -643,6 +699,25 @@ Incluye:
 - Fechas.
 - TotalMiembros.
 - Miembros.
+
+### AmbienteDto
+
+Representa ambientes para API CRUD.
+
+Incluye:
+
+- Id.
+- Nombre.
+- Tipo.
+- Url.
+- ProyectoId.
+- ProyectoNombre.
+- ClienteNombre.
+- Tecnologia.
+- Estado.
+- UptimePorcentaje.
+- Activo.
+- FechaCreacion.
 
 ### UsuarioListDto
 
@@ -725,6 +800,34 @@ Incluye:
 3. Se elimina.
 4. Se recalcula total de proyectos del cliente.
 
+### Crear ambiente
+
+1. Se valida permiso `ambientes.crear`.
+2. Se valida que el proyecto exista.
+3. Se valida URL absoluta `http://` o `https://`, enum de tipo/estado y uptime entre 0 y 100.
+4. Se crea ambiente activo con fecha de creacion UTC.
+5. La API devuelve `AmbienteDto`.
+
+### Editar ambiente
+
+1. Se valida permiso `ambientes.editar`.
+2. Se busca ambiente activo.
+3. Se valida proyecto, URL, tipo, estado, tecnologia y uptime.
+4. Se actualizan datos.
+
+### Cambiar estado de ambiente
+
+1. Se valida permiso `ambientes.editar`.
+2. Se busca ambiente activo.
+3. Se actualiza `Estado`.
+4. Si llega `UptimePorcentaje`, se actualiza tambien.
+
+### Eliminar ambiente
+
+1. Se valida permiso `ambientes.editar`.
+2. Se busca ambiente activo.
+3. Se marca `Activo = false`.
+
 ### Crear usuario
 
 1. Se valida permiso `roles.crear`.
@@ -803,6 +906,8 @@ Datos funcionales sembrados:
   - App Mi Movistar.
   - Banca Digital Empresas.
   - CRM Comercial Repsol.
+- Ambientes:
+  - Produccion, Staging y Desarrollo por proyecto de ejemplo.
 
 Importante:
 
@@ -823,6 +928,14 @@ Usan validadores en:
 
 - `CreateProyectoValidator.cs`
 - `UpdateProyectoValidator.cs`
+
+### Ambientes
+
+Usan validadores en:
+
+- `CreateAmbienteValidator.cs`
+- `UpdateAmbienteValidator.cs`
+- `UpdateAmbienteEstadoValidator.cs`
 
 ### Usuarios y roles
 
@@ -865,6 +978,16 @@ Cubre:
 - Listar tipos.
 - Obtener tipo por Id.
 
+### AmbienteRepository
+
+Cubre:
+
+- Listar ambientes activos.
+- Filtrar por proyecto.
+- Obtener por Id con proyecto y cliente.
+- Crear.
+- Actualizar.
+
 ## Mapeos AutoMapper
 
 El perfil `AutoMapperProfile` cubre:
@@ -876,6 +999,7 @@ El perfil `AutoMapperProfile` cubre:
 - Proyecto a DTO CRUD.
 - Proyecto a DTO de management.
 - Cliente a DTO de management.
+- Ambientes a estructuras de infraestructura del snapshot mediante mapeo manual en `ManagementService`.
 
 Tambien calcula etiquetas visuales para frontend:
 
@@ -916,9 +1040,9 @@ Objetivo:
 ### Preparado o parcial
 
 - Credenciales: CRUD, revelado temporal y auditoria funcionales; queda pendiente cerrar la estrategia productiva de clave de cifrado.
-- Ambientes: permisos definidos, aun sin CRUD real.
+- Ambientes: CRUD funcional, validaciones, migracion, seed y snapshot operativo listos.
 - Despliegues: permisos definidos, aun sin CRUD real.
-- Infraestructura tecnica: representada principalmente en contratos/frontend, pendiente de persistencia real.
+- Infraestructura tecnica: ambientes ya persistidos; despliegues y repositorios siguen pendientes.
 
 ## Consideraciones De Produccion
 

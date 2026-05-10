@@ -13,7 +13,11 @@ public static class DataSeeder
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager)
     {
-        if (await context.Clientes.AnyAsync()) return;
+        if (await context.Clientes.AnyAsync())
+        {
+            await SeedAmbientesAsync(context);
+            return;
+        }
 
         var portalProveedores = Guid.NewGuid();
         var factElectronica = Guid.NewGuid();
@@ -205,5 +209,97 @@ public static class DataSeeder
 
         context.Proyectos.AddRange(proyectos);
         await context.SaveChangesAsync();
+        await SeedAmbientesAsync(context);
+    }
+
+    private static async Task SeedAmbientesAsync(AppDbContext context)
+    {
+        if (await context.Ambientes.AnyAsync())
+            return;
+
+        var proyectos = await context.Proyectos
+            .Include(p => p.Cliente)
+            .Include(p => p.TipoSolucion)
+            .OrderBy(p => p.Cliente.Nombre)
+            .ThenBy(p => p.Nombre)
+            .ToListAsync();
+
+        if (proyectos.Count == 0)
+            return;
+
+        var ambientes = new List<Ambiente>();
+
+        foreach (var proyecto in proyectos.Take(4))
+        {
+            ambientes.Add(new Ambiente
+            {
+                Id = Guid.NewGuid(),
+                Nombre = "Producción",
+                Tipo = TipoAmbiente.Produccion,
+                Url = $"https://{Slug(proyecto.Cliente.Nombre)}-{Slug(proyecto.Nombre)}.consultorapro.local",
+                ProyectoId = proyecto.Id,
+                Tecnologia = StackForProject(proyecto),
+                Estado = proyecto.Estado == EstadoProyecto.Completado ? EstadoAmbiente.Online : EstadoAmbiente.Online,
+                UptimePorcentaje = 99.72m,
+                Activo = true,
+                FechaCreacion = DateTime.UtcNow
+            });
+
+            ambientes.Add(new Ambiente
+            {
+                Id = Guid.NewGuid(),
+                Nombre = "Staging",
+                Tipo = TipoAmbiente.Staging,
+                Url = $"https://stg-{Slug(proyecto.Cliente.Nombre)}-{Slug(proyecto.Nombre)}.consultorapro.local",
+                ProyectoId = proyecto.Id,
+                Tecnologia = StackForProject(proyecto),
+                Estado = proyecto.Estado == EstadoProyecto.EnCurso ? EstadoAmbiente.Alerta : EstadoAmbiente.Online,
+                UptimePorcentaje = proyecto.Estado == EstadoProyecto.EnCurso ? 94.35m : 98.2m,
+                Activo = true,
+                FechaCreacion = DateTime.UtcNow
+            });
+
+            ambientes.Add(new Ambiente
+            {
+                Id = Guid.NewGuid(),
+                Nombre = "Desarrollo",
+                Tipo = TipoAmbiente.Desarrollo,
+                Url = $"https://dev-{Slug(proyecto.Cliente.Nombre)}-{Slug(proyecto.Nombre)}.consultorapro.local",
+                ProyectoId = proyecto.Id,
+                Tecnologia = "Docker Compose · MySQL",
+                Estado = proyecto.Estado == EstadoProyecto.Planificacion ? EstadoAmbiente.Configurando : EstadoAmbiente.Online,
+                UptimePorcentaje = proyecto.Estado == EstadoProyecto.Planificacion ? 87.5m : 97.1m,
+                Activo = true,
+                FechaCreacion = DateTime.UtcNow
+            });
+        }
+
+        context.Ambientes.AddRange(ambientes);
+        await context.SaveChangesAsync();
+    }
+
+    private static string StackForProject(Proyecto proyecto)
+    {
+        return proyecto.TipoSolucion?.Nombre switch
+        {
+            "Host2Host" => ".NET 8 · Worker Service · MySQL",
+            "Facturación Electrónica" => ".NET 8 · Angular · SQL Server",
+            "Guías de Remisión" => ".NET 8 · Angular · Azure",
+            _ => ".NET 8 · Angular · MySQL"
+        };
+    }
+
+    private static string Slug(string value)
+    {
+        return value
+            .ToLowerInvariant()
+            .Replace("á", "a")
+            .Replace("é", "e")
+            .Replace("í", "i")
+            .Replace("ó", "o")
+            .Replace("ú", "u")
+            .Replace("ñ", "n")
+            .Replace(" ", "-")
+            .Replace(".", string.Empty);
     }
 }

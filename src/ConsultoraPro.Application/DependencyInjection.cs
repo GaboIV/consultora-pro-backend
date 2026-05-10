@@ -12,6 +12,7 @@ public static class DependencyInjection
         services.AddScoped<IProyectoService, ProyectoService>();
         services.AddScoped<IManagementService, ManagementService>();
         services.AddScoped<ICredencialService, CredencialService>();
+        services.AddScoped<IAmbienteService, AmbienteService>();
         return services;
     }
 }

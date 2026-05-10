@@ -109,21 +109,35 @@ public class GanttItemDto
 
 public class InfrastructureOverviewDto
 {
+    public EnvironmentSummaryDto EnvironmentSummary { get; set; } = new();
     public List<EnvironmentGroupDto> EnvironmentGroups { get; set; } = new();
     public List<DeploymentDto> Deployments { get; set; } = new();
     public List<RepositoryHealthDto> Repositories { get; set; } = new();
     public List<CredentialDto> Credentials { get; set; } = new();
 }
 
+public class EnvironmentSummaryDto
+{
+    public int Total { get; set; }
+    public int Online { get; set; }
+    public int Alertas { get; set; }
+    public int Offline { get; set; }
+    public int Configurando { get; set; }
+}
+
 public class EnvironmentGroupDto
 {
+    public string ProjectId { get; set; } = string.Empty;
     public string ProjectName { get; set; } = string.Empty;
     public List<EnvironmentItemDto> Items { get; set; } = new();
 }
 
 public class EnvironmentItemDto
 {
+    public string Id { get; set; } = string.Empty;
+    public string ProjectId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
     public string Url { get; set; } = string.Empty;
     public string Stack { get; set; } = string.Empty;
     public string State { get; set; } = string.Empty;

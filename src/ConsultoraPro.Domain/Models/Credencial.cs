@@ -11,6 +11,7 @@ public class Credencial
     public Guid ProyectoId { get; set; }
     public Proyecto Proyecto { get; set; } = null!;
     public Guid? AmbienteId { get; set; }
+    public Ambiente? Ambiente { get; set; }
     public string ValorCifrado { get; set; } = string.Empty;
     public DateTime FechaVencimiento { get; set; }
     public Guid CreadoPor { get; set; }

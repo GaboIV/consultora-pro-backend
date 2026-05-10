@@ -57,26 +57,26 @@ El endpoint existe pero devuelve lista vacía. Este grupo lo convierte en funcio
 
 ## GRUPO 3 — Módulo de Ambientes (nuevo)
 
-Los permisos ya existen en el catálogo. El CRUD completo está pendiente.
+Los permisos ya existen en el catálogo. El CRUD completo queda funcional.
 
-- [ ] Crear entidad `Ambiente` en Domain: Id, Nombre, Tipo (enum), Url, ProyectoId, Tecnologia, Estado (enum), UptimePorcentaje, Activo, FechaCreacion
-- [ ] Crear enum `TipoAmbiente`: `Produccion`, `Staging`, `Desarrollo`, `QA`
-- [ ] Crear enum `EstadoAmbiente`: `Online`, `Offline`, `Alerta`, `Configurando`
-- [ ] Crear migración para tabla `Ambientes`
-- [ ] Crear `IAmbienteRepository` en Domain
-- [ ] Implementar `AmbienteRepository` en Infrastructure
-- [ ] Crear DTOs: `AmbienteDto`, `CreateAmbienteDto`, `UpdateAmbienteDto`
-- [ ] Crear `AmbienteService` en Application
-- [ ] Crear `AmbientesController` con endpoints:
+- [H] Crear entidad `Ambiente` en Domain: Id, Nombre, Tipo (enum), Url, ProyectoId, Tecnologia, Estado (enum), UptimePorcentaje, Activo, FechaCreacion
+- [H] Crear enum `TipoAmbiente`: `Produccion`, `Staging`, `Desarrollo`, `QA`
+- [H] Crear enum `EstadoAmbiente`: `Online`, `Offline`, `Alerta`, `Configurando`
+- [H] Crear migración para tabla `Ambientes`
+- [H] Crear `IAmbienteRepository` en Domain
+- [H] Implementar `AmbienteRepository` en Infrastructure
+- [H] Crear DTOs: `AmbienteDto`, `CreateAmbienteDto`, `UpdateAmbienteDto`
+- [H] Crear `AmbienteService` en Application
+- [H] Crear `AmbientesController` con endpoints:
   - `GET /ambientes` → lista todos (requiere `ambientes.ver`)
   - `GET /ambientes/proyecto/{proyectoId}` → filtrado por proyecto (requiere `ambientes.ver`)
   - `POST /ambientes` → crear (requiere `ambientes.crear`)
   - `PUT /ambientes/{id}` → editar (requiere `ambientes.editar`)
   - `PUT /ambientes/{id}/estado` → cambiar estado sin editar todo (requiere `ambientes.editar`)
   - `DELETE /ambientes/{id}` → soft delete (requiere `ambientes.editar`)
-- [ ] Agregar validaciones FluentValidation
-- [ ] Incluir resumen de ambientes (total, online, con alerta) en el snapshot de management
-- [ ] Agregar seed de ambientes de ejemplo asociados a los proyectos existentes
+- [H] Agregar validaciones FluentValidation
+- [H] Incluir resumen de ambientes (total, online, con alerta) en el snapshot de management
+- [H] Agregar seed de ambientes de ejemplo asociados a los proyectos existentes
 
 ---
 
@@ -256,13 +256,13 @@ Actualmente todos los listados devuelven todos los registros. Cuando la data cre
 | Miembros de proyecto | ✅ Operativo |
 | Snapshot de management | ✅ Operativo |
 | Credenciales | 🟡 CRUD funcional y auditoría lista; clave de cifrado productiva pendiente |
-| Ambientes | 🔴 Solo permisos definidos |
+| Ambientes | ✅ CRUD funcional, snapshot y seed listos |
 | Repositorios | 🔴 Pendiente |
 | Despliegues | 🔴 Solo permisos definidos |
 | Screenshots | 🔴 Pendiente |
 | Perfil propio | 🟡 `/auth/me` existe, edición pendiente |
 | Paginación / filtros | 🔴 Pendiente |
-| Notificaciones / alertas | 🟡 Estructura en snapshot, sin datos reales |
+| Notificaciones / alertas | 🟡 Snapshot con alertas reales de credenciales y ambientes; proyectos pendiente |
 | Refresh token | 🔴 Pendiente |
 | Reportes / exportación | 🔴 Pendiente |
 | Logs estructurados | 🔴 Pendiente |

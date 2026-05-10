@@ -11,6 +11,7 @@ public class CredencialListDto
     public Guid ProyectoId { get; set; }
     public string ProyectoNombre { get; set; } = string.Empty;
     public Guid? AmbienteId { get; set; }
+    public string? AmbienteNombre { get; set; }
     public DateTime FechaVencimiento { get; set; }
     public int DiasParaVencer { get; set; }
     public string EstadoVencimiento { get; set; } = string.Empty;

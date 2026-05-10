@@ -38,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<IProyectoRepository, ProyectoRepository>();
         services.AddScoped<ITipoSolucionRepository, TipoSolucionRepository>();
         services.AddScoped<ICredencialRepository, CredencialRepository>();
+        services.AddScoped<IAmbienteRepository, AmbienteRepository>();
         services.AddScoped<IEncryptionService, EncryptionService>();
 
 
