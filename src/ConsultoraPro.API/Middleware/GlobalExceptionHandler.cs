@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using ConsultoraPro.Application.DTOs.Common;
+using Microsoft.EntityFrameworkCore;
 
 namespace ConsultoraPro.API.Middleware;
 
@@ -30,6 +31,16 @@ public class GlobalExceptionHandler
         {
             _logger.LogWarning(ex, "Acceso no autorizado");
             await WriteErrorResponse(context, HttpStatusCode.Unauthorized, ex.Message);
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Error de persistencia");
+            await WriteErrorResponse(context, HttpStatusCode.Conflict, "No se pudo guardar la información solicitada");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Operación inválida");
+            await WriteErrorResponse(context, HttpStatusCode.BadRequest, ex.Message);
         }
         catch (Exception ex)
         {

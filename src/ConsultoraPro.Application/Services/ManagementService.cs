@@ -13,6 +13,7 @@ public class ManagementService : IManagementService
     private readonly IClienteRepository _clienteRepository;
     private readonly IProyectoRepository _proyectoRepository;
     private readonly ITipoSolucionRepository _tipoSolucionRepository;
+    private readonly ICredencialRepository _credencialRepository;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IMapper _mapper;
 
@@ -20,12 +21,14 @@ public class ManagementService : IManagementService
         IClienteRepository clienteRepository,
         IProyectoRepository proyectoRepository,
         ITipoSolucionRepository tipoSolucionRepository,
+        ICredencialRepository credencialRepository,
         UserManager<ApplicationUser> userManager,
         IMapper mapper)
     {
         _clienteRepository = clienteRepository;
         _proyectoRepository = proyectoRepository;
         _tipoSolucionRepository = tipoSolucionRepository;
+        _credencialRepository = credencialRepository;
         _userManager = userManager;
         _mapper = mapper;
     }
@@ -36,6 +39,7 @@ public class ManagementService : IManagementService
         var proyectos = await _proyectoRepository.GetAllAsync();
         var tiposSolucion = await _tipoSolucionRepository.GetAllAsync();
         var users = await _userManager.Users.ToListAsync();
+        var credencialesPorVencer = (await _credencialRepository.GetExpiringWithinAsync(7)).ToList();
 
         var clients = _mapper.Map<List<ManagementClientDto>>(clientes);
         var projects = _mapper.Map<List<ManagementProjectDto>>(proyectos);
@@ -51,6 +55,20 @@ public class ManagementService : IManagementService
         var activos = clients.Count;
         var completados = projects.Count(p => p.StatusTone == "green");
 
+        var alerts = new List<AlertMessageDto>
+        {
+            new() { Tone = "info", Text = $"Última actualización: {now:dd/MM/yyyy HH:mm} UTC" }
+        };
+
+        if (credencialesPorVencer.Count > 0)
+        {
+            alerts.Add(new AlertMessageDto
+            {
+                Tone = "warn",
+                Text = $"{credencialesPorVencer.Count} credencial(es) vencen en menos de 7 días"
+            });
+        }
+
         var snapshot = new ManagementSnapshotDto
         {
             GeneratedAt = now.ToString("yyyy-MM-ddTHH:mm:sszzz"),
@@ -64,10 +82,7 @@ public class ManagementService : IManagementService
                     new() { Label = "Proyectos totales", Value = totalProyectos.ToString(), Detail = $"Distribuidos en {activos} clientes", Tone = "purple" },
                     new() { Label = "Progreso promedio", Value = projects.Any() ? $"{(int)projects.Average(p => p.Progress)}%" : "0%", Detail = "General de todos los proyectos", Tone = "amber" }
                 },
-                Alerts = new List<AlertMessageDto>
-                {
-                    new() { Tone = "info", Text = $"Última actualización: {now:dd/MM/yyyy HH:mm} UTC" }
-                },
+                Alerts = alerts,
                 SpotlightProjects = projects.OrderByDescending(p => p.Progress).Take(3).ToList(),
                 Gantt = new List<GanttItemDto>(),
                 Milestones = new List<AlertMessageDto>
@@ -79,10 +94,33 @@ public class ManagementService : IManagementService
             Projects = projects,
             TiposSolucion = tiposSolucionDtos,
             Usuarios = userDtos,
-            Infrastructure = new InfrastructureOverviewDto(),
+            Infrastructure = new InfrastructureOverviewDto
+            {
+                Credentials = credencialesPorVencer.Select(ToCredentialAlertDto).ToList()
+            },
             Team = new TeamOverviewDto()
         };
 
         return snapshot;
+    }
+
+    private static CredentialDto ToCredentialAlertDto(Credencial credencial)
+    {
+        var days = (int)Math.Ceiling((credencial.FechaVencimiento.Date - DateTime.UtcNow.Date).TotalDays);
+        return new CredentialDto
+        {
+            Service = credencial.Nombre,
+            Environment = credencial.Proyecto?.Nombre ?? "Proyecto no disponible",
+            EnvironmentTone = "blue",
+            Kind = credencial.Tipo.ToString(),
+            ExpiresIn = days switch
+            {
+                < 0 => $"Vencida hace {Math.Abs(days)} día(s)",
+                0 => "Vence hoy",
+                1 => "Vence mañana",
+                _ => $"Vence en {days} días"
+            },
+            Tone = days < 7 ? "red" : "amber"
+        };
     }
 }

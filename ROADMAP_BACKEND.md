@@ -11,15 +11,15 @@
 
 > Marcado: `H` = se puede hacer ahora. `P` = pendiente; después de `:` se explica por qué no se puede cerrar todavía.
 
-- [H] Revisar que `GlobalExceptionHandler` capture y loguee correctamente todas las excepciones no controladas (incluyendo `DbUpdateException`, `InvalidOperationException`)
-- [H] Verificar que todos los endpoints protegidos retornen `ApiResponse` consistente al fallar autorización (no HTML de Identity)
-- [H] Confirmar que las validaciones de `FluentValidation` en Clientes y Proyectos están registradas con `AddFluentValidationAutoValidation()`
-- [H] Revisar que los timestamps `CreatedAt` / `UpdatedAt` se asignan automáticamente en EF Core (interceptor o override de `SaveChanges`)
-- [H] Confirmar que los seeders son completamente idempotentes (si se ejecutan dos veces, no duplican datos)
-- [H] Revisar que el soft delete de Cliente no rompe proyectos asociados (decidir: bloquear o permitir con advertencia)
-- [H] Revisar que el recálculo de `TotalProyectos` en Cliente es correcto cuando se elimina un proyecto
-- [H] Confirmar que `UltimoAcceso` se actualiza al hacer login exitoso
-- [H] Agregar índice en MySQL para `Email` en `ApplicationUser` (si no fue creado por Identity automáticamente)
+- [x] Revisar que `GlobalExceptionHandler` capture y loguee correctamente todas las excepciones no controladas (incluyendo `DbUpdateException`, `InvalidOperationException`)
+- [x] Verificar que todos los endpoints protegidos retornen `ApiResponse` consistente al fallar autorización (no HTML de Identity)
+- [x] Confirmar que las validaciones de `FluentValidation` en Clientes y Proyectos están registradas con `AddFluentValidationAutoValidation()`
+- [x] Revisar que los timestamps `CreatedAt` / `UpdatedAt` se asignan automáticamente en EF Core (interceptor o override de `SaveChanges`)
+- [x] Confirmar que los seeders son completamente idempotentes (si se ejecutan dos veces, no duplican datos)
+- [x] Revisar que el soft delete de Cliente no rompe proyectos asociados (decidir: bloquear o permitir con advertencia)
+- [x] Revisar que el recálculo de `TotalProyectos` en Cliente es correcto cuando se elimina un proyecto
+- [x] Confirmar que `UltimoAcceso` se actualiza al hacer login exitoso
+- [x] Agregar índice en MySQL para `Email` en `ApplicationUser` (si no fue creado por Identity automáticamente)
 - [P] Revisar que CORS no permite `*` en producción — solo los orígenes explícitamente definidos: no se puede cerrar completamente sin definir primero el dominio real de producción del frontend; por ahora solo se puede dejar preparado por configuración.
 
 ---
@@ -28,28 +28,30 @@
 
 El endpoint existe pero devuelve lista vacía. Este grupo lo convierte en funcional.
 
-- [ ] Crear entidad `Credencial` en Domain con campos: Id, Nombre, Tipo, Servidor, ProyectoId, AmbienteId (nullable), ValorCifrado, FechaVencimiento, CreadoPor, FechaCreacion, Activo
-- [ ] Crear enum `TipoCredencial`: `BaseDatos`, `SSHKey`, `APIKey`, `ServiceAccount`, `CertificadoSSL`, `Otro`
-- [ ] Implementar cifrado AES-256 como servicio `IEncryptionService` / `EncryptionService` — la clave viene de configuración, nunca hardcodeada
-- [ ] Crear migración para tabla `Credenciales`
-- [ ] Crear `ICredencialRepository` en Domain
-- [ ] Implementar `CredencialRepository` en Infrastructure
-- [ ] Crear DTOs: `CredencialListDto`, `CredencialDetalleDto`, `CreateCredencialDto`, `UpdateCredencialDto`
-- [ ] En `CredencialListDto` el valor **nunca** se incluye — solo metadatos
-- [ ] Crear `CredencialService` con lógica: cifrar al guardar, descifrar solo en endpoint de revelar
-- [ ] Crear `CredencialesController` con endpoints:
+> Marcado: `H` = se puede hacer ahora. `P` = pendiente; después de `:` se explica por qué no se puede cerrar todavía.
+
+- [x] Crear entidad `Credencial` en Domain con campos: Id, Nombre, Tipo, Servidor, ProyectoId, AmbienteId (nullable), ValorCifrado, FechaVencimiento, CreadoPor, FechaCreacion, Activo
+- [x] Crear enum `TipoCredencial`: `BaseDatos`, `SSHKey`, `APIKey`, `ServiceAccount`, `CertificadoSSL`, `Otro`
+- [P] Cerrar estrategia productiva de cifrado AES-256 para `IEncryptionService` / `EncryptionService` — la clave viene de configuración, nunca hardcodeada: el servicio ya queda funcional, pero no se puede cerrar de forma segura hasta definir dónde vivirá la clave real por ambiente (variables de entorno, user-secrets, Key Vault u otro mecanismo); usar una clave de desarrollo no cierra el requisito de seguridad.
+- [x] Crear migración para tabla `Credenciales`
+- [x] Crear `ICredencialRepository` en Domain
+- [x] Implementar `CredencialRepository` en Infrastructure
+- [x] Crear DTOs: `CredencialListDto`, `CredencialDetalleDto`, `CreateCredencialDto`, `UpdateCredencialDto`
+- [x] En `CredencialListDto` el valor **nunca** se incluye — solo metadatos
+- [P] Aprobar `CredencialService` para uso productivo con lógica de cifrar al guardar y descifrar solo en endpoint de revelar: el servicio ya queda funcional, pero depende de cerrar primero la estrategia de clave de cifrado; sin clave segura por ambiente, no queda aprobado para uso real.
+- [x] Crear `CredencialesController` con endpoints:
   - `GET /credenciales` → lista sin revelar valores (requiere `credenciales.ver`)
   - `GET /credenciales/{id}/revelar` → devuelve el valor descifrado, registra auditoría (requiere `credenciales.revelar`)
   - `POST /credenciales` → crear (requiere `credenciales.crear`)
   - `PUT /credenciales/{id}` → editar metadatos (requiere `credenciales.editar`)
   - `PUT /credenciales/{id}/valor` → actualizar el valor cifrado (requiere `credenciales.editar`)
   - `DELETE /credenciales/{id}` → soft delete (requiere `credenciales.editar`)
-- [ ] Crear entidad `AuditoriaCredencial`: quién, cuándo, qué credencial fue revelada
-- [ ] Implementar registro automático de auditoría en cada llamada a `revelar`
-- [ ] Agregar endpoint `GET /credenciales/{id}/auditoria` para ver historial de accesos (requiere `credenciales.ver`)
-- [ ] Agregar validaciones FluentValidation para `CreateCredencialDto` y `UpdateCredencialDto`
-- [ ] Incluir credenciales próximas a vencer (< 7 días) en el snapshot de management como alertas
-- [ ] Documentar en Swagger que el endpoint `/revelar` registra auditoría
+- [x] Crear entidad `AuditoriaCredencial`: quién, cuándo, qué credencial fue revelada
+- [x] Implementar registro automático de auditoría en cada llamada a `revelar`
+- [x] Agregar endpoint `GET /credenciales/{id}/auditoria` para ver historial de accesos (requiere `credenciales.ver`)
+- [x] Agregar validaciones FluentValidation para `CreateCredencialDto` y `UpdateCredencialDto`
+- [x] Incluir credenciales próximas a vencer (< 7 días) en el snapshot de management como alertas
+- [x] Documentar en Swagger que el endpoint `/revelar` registra auditoría
 
 ---
 
@@ -253,7 +255,7 @@ Actualmente todos los listados devuelven todos los registros. Cuando la data cre
 | Tipos de solución | ✅ Operativo |
 | Miembros de proyecto | ✅ Operativo |
 | Snapshot de management | ✅ Operativo |
-| Credenciales | 🟡 Endpoint vacío — sin CRUD ni cifrado |
+| Credenciales | 🟡 CRUD funcional y auditoría lista; clave de cifrado productiva pendiente |
 | Ambientes | 🔴 Solo permisos definidos |
 | Repositorios | 🔴 Pendiente |
 | Despliegues | 🔴 Solo permisos definidos |

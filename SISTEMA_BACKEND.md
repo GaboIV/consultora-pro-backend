@@ -568,7 +568,14 @@ El snapshot incluye:
 
 | Metodo | Ruta | Permiso | Descripcion |
 |---|---|---|---|
-| GET | `/credenciales` | `credenciales.ver` | Endpoint protegido preparado para catalogo de credenciales. Actualmente devuelve lista vacia. |
+| GET | `/credenciales` | `credenciales.ver` | Lista credenciales activas sin exponer valores sensibles. Acepta filtro opcional por `proyectoId`. |
+| GET | `/credenciales/{id}` | `credenciales.ver` | Devuelve metadatos de una credencial sin valor sensible. |
+| GET | `/credenciales/{id}/revelar` | `credenciales.revelar` | Devuelve temporalmente el valor descifrado y registra auditoria automatica. |
+| POST | `/credenciales` | `credenciales.crear` | Crea credencial cifrando el valor. |
+| PUT | `/credenciales/{id}` | `credenciales.editar` | Edita metadatos de la credencial. |
+| PUT | `/credenciales/{id}/valor` | `credenciales.editar` | Actualiza el valor cifrado de la credencial. |
+| DELETE | `/credenciales/{id}` | `credenciales.editar` | Desactiva la credencial con soft delete. |
+| GET | `/credenciales/{id}/auditoria` | `credenciales.ver` | Lista accesos de revelado registrados. |
 
 ## Contratos Principales
 
@@ -908,7 +915,7 @@ Objetivo:
 
 ### Preparado o parcial
 
-- Credenciales: endpoint protegido creado, respuesta vacia.
+- Credenciales: CRUD, revelado temporal y auditoria funcionales; queda pendiente cerrar la estrategia productiva de clave de cifrado.
 - Ambientes: permisos definidos, aun sin CRUD real.
 - Despliegues: permisos definidos, aun sin CRUD real.
 - Infraestructura tecnica: representada principalmente en contratos/frontend, pendiente de persistencia real.
@@ -960,4 +967,3 @@ Swagger local:
 ```text
 https://localhost:7001/swagger
 ```
-

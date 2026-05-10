@@ -1,11 +1,13 @@
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using ConsultoraPro.API.Authorization;
 using ConsultoraPro.API.Interfaces;
 using ConsultoraPro.API.Middleware;
 using ConsultoraPro.API.Services;
 using ConsultoraPro.Application;
+using ConsultoraPro.Application.DTOs.Common;
 using ConsultoraPro.Domain.Security;
 using ConsultoraPro.Infrastructure;
 using FluentValidation;
@@ -86,6 +88,24 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnChallenge = async context =>
+            {
+                context.HandleResponse();
+                await WriteAuthErrorResponseAsync(
+                    context.Response,
+                    StatusCodes.Status401Unauthorized,
+                    "No autenticado o token inválido");
+            },
+            OnForbidden = async context =>
+            {
+                await WriteAuthErrorResponseAsync(
+                    context.Response,
+                    StatusCodes.Status403Forbidden,
+                    "No tienes permiso para realizar esta acción");
+            }
+        };
     });
 
 builder.Services.AddAuthorization(options =>
@@ -123,3 +143,23 @@ app.MapControllers();
 
 await app.Services.InitializeDatabaseAsync();
 app.Run();
+
+static async Task WriteAuthErrorResponseAsync(HttpResponse response, int statusCode, string message)
+{
+    if (response.HasStarted)
+        return;
+
+    response.ContentType = "application/json";
+    response.StatusCode = statusCode;
+
+    var payload = new ApiResponse<object>
+    {
+        Success = false,
+        Message = message
+    };
+
+    await response.WriteAsync(JsonSerializer.Serialize(payload, new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    }));
+}

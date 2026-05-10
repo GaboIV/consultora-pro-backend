@@ -15,6 +15,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<Permiso> Permisos => Set<Permiso>();
     public DbSet<RolPermiso> RolPermisos => Set<RolPermiso>();
     public DbSet<ProyectoMiembro> ProyectoMiembros => Set<ProyectoMiembro>();
+    public DbSet<Credencial> Credenciales => Set<Credencial>();
+    public DbSet<AuditoriaCredencial> AuditoriasCredenciales => Set<AuditoriaCredencial>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,6 +32,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             entity.Property(u => u.Activo).HasDefaultValue(true);
             entity.Property(u => u.FechaAlta).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.HasIndex(u => u.NormalizedEmail).IsUnique();
+            entity.HasIndex(u => u.Email);
         });
 
         modelBuilder.Entity<ApplicationRole>(entity =>
@@ -110,5 +113,96 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
                   .HasForeignKey(p => p.TipoSolucionId)
                   .OnDelete(DeleteBehavior.Restrict);
         });
+
+        modelBuilder.Entity<Credencial>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Nombre).IsRequired().HasMaxLength(160);
+            entity.Property(c => c.Tipo).HasConversion<string>().HasMaxLength(40);
+            entity.Property(c => c.Servidor).IsRequired().HasMaxLength(220);
+            entity.Property(c => c.ValorCifrado).IsRequired().HasMaxLength(7000);
+            entity.Property(c => c.FechaCreacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(c => c.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(c => c.Activo).HasDefaultValue(true);
+            entity.HasIndex(c => new { c.ProyectoId, c.Activo });
+            entity.HasIndex(c => c.FechaVencimiento);
+            entity.HasOne(c => c.Proyecto)
+                  .WithMany()
+                  .HasForeignKey(c => c.ProyectoId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(c => c.Creador)
+                  .WithMany()
+                  .HasForeignKey(c => c.CreadoPor)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AuditoriaCredencial>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.FechaRevelacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(a => a.Ip).HasMaxLength(80);
+            entity.Property(a => a.UserAgent).HasMaxLength(500);
+            entity.HasIndex(a => new { a.CredencialId, a.FechaRevelacion });
+            entity.HasOne(a => a.Credencial)
+                  .WithMany(c => c.Auditorias)
+                  .HasForeignKey(a => a.CredencialId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(a => a.Usuario)
+                  .WithMany()
+                  .HasForeignKey(a => a.UsuarioId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+
+    public override int SaveChanges()
+    {
+        ApplyAutomaticTimestamps();
+        return base.SaveChanges();
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        ApplyAutomaticTimestamps();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void ApplyAutomaticTimestamps()
+    {
+        var now = DateTime.UtcNow;
+
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                if (entry.Entity is Proyecto proyecto)
+                {
+                    if (proyecto.CreatedAt == default)
+                        proyecto.CreatedAt = now;
+                    proyecto.UpdatedAt = now;
+                }
+
+                if (entry.Entity is Cliente cliente && cliente.FechaAlta == default)
+                    cliente.FechaAlta = now;
+
+                if (entry.Entity is Credencial credencial)
+                {
+                    if (credencial.FechaCreacion == default)
+                        credencial.FechaCreacion = now;
+                    credencial.UpdatedAt = now;
+                }
+
+                if (entry.Entity is AuditoriaCredencial auditoria && auditoria.FechaRevelacion == default)
+                    auditoria.FechaRevelacion = now;
+            }
+
+            if (entry.State == EntityState.Modified)
+            {
+                if (entry.Entity is Proyecto proyecto)
+                    proyecto.UpdatedAt = now;
+
+                if (entry.Entity is Credencial credencial)
+                    credencial.UpdatedAt = now;
+            }
+        }
     }
 }
