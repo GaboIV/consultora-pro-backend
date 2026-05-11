@@ -82,22 +82,22 @@ Los permisos ya existen en el catálogo. El CRUD completo queda funcional.
 
 ## GRUPO 4 — Módulo de Repositorios (nuevo)
 
-- [ ] Crear entidad `Repositorio` en Domain: Id, Nombre, ProyectoId, Proveedor (enum), RamaPrincipal, Url, EstadoPipeline (enum), Activo, FechaCreacion
-- [ ] Crear enum `ProveedorRepositorio`: `GitHub`, `GitLab`, `AzureDevOps`, `Bitbucket`, `Otro`
-- [ ] Crear enum `EstadoPipeline`: `Passing`, `Failed`, `Desconocido`, `EnEjecucion`
-- [ ] Crear migración para tabla `Repositorios`
-- [ ] Crear `IRepositorioRepository` en Domain
-- [ ] Implementar `RepositorioRepository` en Infrastructure
-- [ ] Crear DTOs: `RepositorioDto`, `CreateRepositorioDto`, `UpdateRepositorioDto`
-- [ ] Crear `RepositoriosController` con endpoints:
+- [H] Crear entidad `Repositorio` en Domain: Id, Nombre, ProyectoId, Proveedor (enum), RamaPrincipal, Url, EstadoPipeline (enum), Activo, FechaCreacion
+- [H] Crear enum `ProveedorRepositorio`: `GitHub`, `GitLab`, `AzureDevOps`, `Bitbucket`, `Otro`
+- [H] Crear enum `EstadoPipeline`: `Passing`, `Failed`, `Desconocido`, `EnEjecucion`
+- [H] Crear migración para tabla `Repositorios`
+- [H] Crear `IRepositorioRepository` en Domain
+- [H] Implementar `RepositorioRepository` en Infrastructure
+- [H] Crear DTOs: `RepositorioDto`, `CreateRepositorioDto`, `UpdateRepositorioDto`
+- [H] Crear `RepositoriosController` con endpoints:
   - `GET /repositorios` → lista todos (requiere `proyectos.ver`)
   - `GET /repositorios/proyecto/{proyectoId}` → filtrado por proyecto (requiere `proyectos.ver`)
   - `POST /repositorios` → crear (requiere `proyectos.editar`)
   - `PUT /repositorios/{id}` → editar (requiere `proyectos.editar`)
   - `DELETE /repositorios/{id}` → eliminar (requiere `proyectos.editar`)
-- [ ] Agregar validaciones FluentValidation (URL válida, proveedor válido)
-- [ ] Incluir repositorios en el snapshot de management agrupados por proyecto
-- [ ] Agregar seed de repositorios de ejemplo
+- [H] Agregar validaciones FluentValidation (URL válida, proveedor válido)
+- [P] Incluir repositorios en el snapshot de management agrupados por proyecto: el ManagementService aún no incluye datos reales de repositorios en el snapshot; requiere integrar IRepositorioRepository en ManagementService y poblar InfrastructureOverview.repositories.
+- [H] Agregar seed de repositorios de ejemplo
 
 ---
 
@@ -257,7 +257,7 @@ Actualmente todos los listados devuelven todos los registros. Cuando la data cre
 | Snapshot de management | ✅ Operativo |
 | Credenciales | 🟡 CRUD funcional y auditoría lista; clave de cifrado productiva pendiente |
 | Ambientes | ✅ CRUD funcional, snapshot y seed listos |
-| Repositorios | 🔴 Pendiente |
+| Repositorios | ✅ CRUD funcional, validaciones y seed listos |
 | Despliegues | 🔴 Solo permisos definidos |
 | Screenshots | 🔴 Pendiente |
 | Perfil propio | 🟡 `/auth/me` existe, edición pendiente |

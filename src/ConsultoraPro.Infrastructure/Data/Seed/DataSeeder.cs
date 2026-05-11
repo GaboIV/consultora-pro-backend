@@ -16,6 +16,7 @@ public static class DataSeeder
         if (await context.Clientes.AnyAsync())
         {
             await SeedAmbientesAsync(context);
+            await SeedRepositoriosAsync(context);
             return;
         }
 
@@ -210,6 +211,7 @@ public static class DataSeeder
         context.Proyectos.AddRange(proyectos);
         await context.SaveChangesAsync();
         await SeedAmbientesAsync(context);
+        await SeedRepositoriosAsync(context);
     }
 
     private static async Task SeedAmbientesAsync(AppDbContext context)
@@ -275,6 +277,59 @@ public static class DataSeeder
         }
 
         context.Ambientes.AddRange(ambientes);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedRepositoriosAsync(AppDbContext context)
+    {
+        if (await context.Repositorios.AnyAsync())
+            return;
+
+        var proyectos = await context.Proyectos
+            .Include(p => p.Cliente)
+            .Include(p => p.TipoSolucion)
+            .OrderBy(p => p.Cliente.Nombre)
+            .ThenBy(p => p.Nombre)
+            .ToListAsync();
+
+        if (proyectos.Count == 0)
+            return;
+
+        var repositorios = new List<Repositorio>();
+
+        foreach (var proyecto in proyectos.Take(4))
+        {
+            repositorios.Add(new Repositorio
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"{Slug(proyecto.Cliente.Nombre)}-{Slug(proyecto.Nombre)}",
+                ProyectoId = proyecto.Id,
+                Proveedor = ProveedorRepositorio.GitHub,
+                RamaPrincipal = "main",
+                Url = $"https://github.com/consultorapro/{Slug(proyecto.Cliente.Nombre)}-{Slug(proyecto.Nombre)}",
+                EstadoPipeline = proyecto.Estado == EstadoProyecto.Completado ? EstadoPipeline.Passing : EstadoPipeline.EnEjecucion,
+                Activo = true,
+                FechaCreacion = DateTime.UtcNow
+            });
+
+            if (proyecto.Estado != EstadoProyecto.Planificacion)
+            {
+                repositorios.Add(new Repositorio
+                {
+                    Id = Guid.NewGuid(),
+                    Nombre = $"{Slug(proyecto.Cliente.Nombre)}-{Slug(proyecto.Nombre)}-worker",
+                    ProyectoId = proyecto.Id,
+                    Proveedor = ProveedorRepositorio.GitHub,
+                    RamaPrincipal = "develop",
+                    Url = $"https://github.com/consultorapro/{Slug(proyecto.Cliente.Nombre)}-{Slug(proyecto.Nombre)}-worker",
+                    EstadoPipeline = proyecto.Estado == EstadoProyecto.Completado ? EstadoPipeline.Passing : EstadoPipeline.Failed,
+                    Activo = true,
+                    FechaCreacion = DateTime.UtcNow
+                });
+            }
+        }
+
+        context.Repositorios.AddRange(repositorios);
         await context.SaveChangesAsync();
     }
 

@@ -18,6 +18,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<Ambiente> Ambientes => Set<Ambiente>();
     public DbSet<Credencial> Credenciales => Set<Credencial>();
     public DbSet<AuditoriaCredencial> AuditoriasCredenciales => Set<AuditoriaCredencial>();
+    public DbSet<Repositorio> Repositorios => Set<Repositorio>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -157,6 +158,24 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             entity.HasOne(c => c.Creador)
                   .WithMany()
                   .HasForeignKey(c => c.CreadoPor)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Repositorio>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.Nombre).IsRequired().HasMaxLength(160);
+            entity.Property(r => r.Proveedor).HasConversion<string>().HasMaxLength(30);
+            entity.Property(r => r.RamaPrincipal).IsRequired().HasMaxLength(120);
+            entity.Property(r => r.Url).IsRequired().HasMaxLength(500);
+            entity.Property(r => r.EstadoPipeline).HasConversion<string>().HasMaxLength(30);
+            entity.Property(r => r.Activo).HasDefaultValue(true);
+            entity.Property(r => r.FechaCreacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(r => new { r.ProyectoId, r.Activo });
+            entity.HasIndex(r => r.EstadoPipeline);
+            entity.HasOne(r => r.Proyecto)
+                  .WithMany(p => p.Repositorios)
+                  .HasForeignKey(r => r.ProyectoId)
                   .OnDelete(DeleteBehavior.Restrict);
         });
 

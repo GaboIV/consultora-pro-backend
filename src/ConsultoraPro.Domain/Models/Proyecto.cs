@@ -18,6 +18,7 @@ public class Proyecto
     public int TotalMiembros { get; set; }
     public ICollection<ProyectoMiembro> ProyectoMiembros { get; set; } = new List<ProyectoMiembro>();
     public ICollection<Ambiente> Ambientes { get; set; } = new List<Ambiente>();
+    public ICollection<Repositorio> Repositorios { get; set; } = new List<Repositorio>();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

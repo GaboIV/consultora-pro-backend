@@ -1,10 +1,10 @@
+using ConsultoraPro.Application.Interfaces;
 using ConsultoraPro.Domain.Interfaces;
 using ConsultoraPro.Domain.Models;
 using ConsultoraPro.Infrastructure.Data;
 using ConsultoraPro.Infrastructure.Data.Seed;
 using ConsultoraPro.Infrastructure.Repositories;
 using ConsultoraPro.Infrastructure.Security;
-using ConsultoraPro.Application.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<ITipoSolucionRepository, TipoSolucionRepository>();
         services.AddScoped<ICredencialRepository, CredencialRepository>();
         services.AddScoped<IAmbienteRepository, AmbienteRepository>();
+        services.AddScoped<IRepositorioRepository, RepositorioRepository>();
         services.AddScoped<IEncryptionService, EncryptionService>();
 
 
