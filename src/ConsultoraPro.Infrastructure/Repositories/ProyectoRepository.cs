@@ -61,7 +61,36 @@ public class ProyectoRepository : IProyectoRepository
 
     public async Task DeleteAsync(Proyecto proyecto)
     {
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+        var proyectoId = proyecto.Id;
+
+        var credenciales = await _context.Credenciales
+            .Where(c => c.ProyectoId == proyectoId)
+            .ToListAsync();
+        if (credenciales.Count != 0)
+            _context.Credenciales.RemoveRange(credenciales);
+
+        var ambientes = await _context.Ambientes
+            .Where(a => a.ProyectoId == proyectoId)
+            .ToListAsync();
+        if (ambientes.Count != 0)
+            _context.Ambientes.RemoveRange(ambientes);
+
+        var repositorios = await _context.Repositorios
+            .Where(r => r.ProyectoId == proyectoId)
+            .ToListAsync();
+        if (repositorios.Count != 0)
+            _context.Repositorios.RemoveRange(repositorios);
+
+        var miembros = await _context.ProyectoMiembros
+            .Where(pm => pm.ProyectoId == proyectoId)
+            .ToListAsync();
+        if (miembros.Count != 0)
+            _context.ProyectoMiembros.RemoveRange(miembros);
+
         _context.Proyectos.Remove(proyecto);
         await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
     }
 }
