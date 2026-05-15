@@ -14,6 +14,7 @@ public static class DependencyInjection
         services.AddScoped<ICredencialService, CredencialService>();
         services.AddScoped<IAmbienteService, AmbienteService>();
         services.AddScoped<IRepositorioService, RepositorioService>();
+        services.AddScoped<IDespliegueService, DespliegueService>();
         services.AddScoped<ISearchService, SearchService>();
         return services;
     }

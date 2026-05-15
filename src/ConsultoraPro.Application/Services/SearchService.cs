@@ -70,6 +70,9 @@ public class SearchService : ISearchService
         if (searchTypes.Contains("repositorio") && HasPermission(context, "proyectos.ver"))
             tasks.Add(SearchRepositoriosAsync(safeQuery, context));
 
+        if (searchTypes.Contains("despliegue") && HasPermission(context, "despliegues.ver"))
+            tasks.Add(SearchDesplieguesAsync(safeQuery, context));
+
         var matches = tasks.Count == 0
             ? new List<SearchItemDto>()
             : (await Task.WhenAll(tasks))
@@ -325,6 +328,40 @@ public class SearchService : ISearchService
             .ToList();
     }
 
+    private async Task<List<SearchItemDto>> SearchDesplieguesAsync(string query, SearchContext context)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var repository = scope.ServiceProvider.GetRequiredService<IDespliegueRepository>();
+        var despliegues = await repository.GetRecentAsync(20);
+
+        return despliegues
+            .Where(d => CanSeeProject(d.ProyectoId, context))
+            .Select(d =>
+            {
+                var actorName = d.EjecutadoPor is null ? string.Empty : $"{d.EjecutadoPor.Nombres} {d.EjecutadoPor.Apellidos}".Trim();
+                var score = CombinedScore(
+                    d.Proyecto?.Nombre ?? string.Empty,
+                    query,
+                    [d.Version, d.Ambiente?.Nombre ?? string.Empty, actorName, d.Notas, MapDeploymentStatusLabel(d.Estado)]);
+
+                return new SearchItemDto
+                {
+                    Id = d.Id.ToString(),
+                    Type = "despliegue",
+                    Name = $"{d.Proyecto?.Nombre ?? "Proyecto"} · v{d.Version}",
+                    Subtitle = $"{d.Ambiente?.Nombre ?? "Ambiente"} · {actorName} · {d.FechaHora:dd/MM/yyyy HH:mm}",
+                    Badge = MapDeploymentStatusLabel(d.Estado),
+                    BadgeVariant = MapDeploymentStatusTone(d.Estado),
+                    Icon = "rocket",
+                    Score = score,
+                    UpdatedAt = d.FechaHora,
+                    NavigateTo = $"/despliegues?proyectoId={d.ProyectoId}"
+                };
+            })
+            .Where(item => ShouldInclude(query, item.Score))
+            .ToList();
+    }
+
     private static HashSet<string> NormalizeTypes(IReadOnlyCollection<string> types)
     {
         return types
@@ -530,6 +567,24 @@ public class SearchService : ISearchService
         EstadoPipeline.EnEjecucion => "En ejecución",
         EstadoPipeline.Desconocido => "Desconocido",
         _ => estado.ToString()
+    };
+
+    private static string MapDeploymentStatusLabel(EstadoDespliegue estado) => estado switch
+    {
+        EstadoDespliegue.Exitoso => "Exitoso",
+        EstadoDespliegue.Fallido => "Fallido",
+        EstadoDespliegue.EnCurso => "En curso",
+        EstadoDespliegue.Cancelado => "Cancelado",
+        _ => estado.ToString()
+    };
+
+    private static string MapDeploymentStatusTone(EstadoDespliegue estado) => estado switch
+    {
+        EstadoDespliegue.Exitoso => "green",
+        EstadoDespliegue.Fallido => "red",
+        EstadoDespliegue.EnCurso => "amber",
+        EstadoDespliegue.Cancelado => "gray",
+        _ => "gray"
     };
 
     private static string MapPipelineTone(EstadoPipeline estado) => estado switch

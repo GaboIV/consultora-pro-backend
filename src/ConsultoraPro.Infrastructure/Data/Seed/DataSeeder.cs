@@ -17,6 +17,7 @@ public static class DataSeeder
         {
             await SeedAmbientesAsync(context);
             await SeedRepositoriosAsync(context);
+            await SeedDesplieguesAsync(context);
             return;
         }
 
@@ -212,6 +213,7 @@ public static class DataSeeder
         await context.SaveChangesAsync();
         await SeedAmbientesAsync(context);
         await SeedRepositoriosAsync(context);
+        await SeedDesplieguesAsync(context);
     }
 
     private static async Task SeedAmbientesAsync(AppDbContext context)
@@ -330,6 +332,69 @@ public static class DataSeeder
         }
 
         context.Repositorios.AddRange(repositorios);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedDesplieguesAsync(AppDbContext context)
+    {
+        if (await context.Despliegues.AnyAsync())
+            return;
+
+        var proyectos = await context.Proyectos
+            .Include(p => p.Cliente)
+            .Include(p => p.Ambientes)
+            .OrderBy(p => p.Cliente.Nombre)
+            .ThenBy(p => p.Nombre)
+            .ToListAsync();
+
+        if (proyectos.Count == 0)
+            return;
+
+        var users = await context.Users
+            .OrderBy(u => u.Nombres)
+            .ToListAsync();
+
+        if (users.Count == 0)
+            return;
+
+        var rng = new Random(42);
+        var despliegues = new List<Despliegue>();
+
+        foreach (var proyecto in proyectos.Take(3))
+        {
+            var ambientes = proyecto.Ambientes.Where(a => a.Activo).ToList();
+            var prod = ambientes.FirstOrDefault(a => a.Tipo == TipoAmbiente.Produccion);
+            var staging = ambientes.FirstOrDefault(a => a.Tipo == TipoAmbiente.Staging);
+
+            var destinos = new[] { prod, staging }.Where(a => a is not null).Cast<Ambiente>().ToList();
+            if (destinos.Count == 0) continue;
+
+            var user = users[rng.Next(users.Count)];
+            var baseDate = DateTime.UtcNow.AddDays(-rng.Next(1, 45));
+
+            for (var i = 0; i < rng.Next(3, 7); i++)
+            {
+                var destino = destinos[rng.Next(destinos.Count)];
+                var fecha = baseDate.AddDays(i * rng.Next(2, 6));
+                var esExitoso = rng.NextDouble() > 0.2;
+
+                despliegues.Add(new Despliegue
+                {
+                    Id = Guid.NewGuid(),
+                    ProyectoId = proyecto.Id,
+                    AmbienteId = destino.Id,
+                    Version = $"2.{rng.Next(0, 9)}.{rng.Next(0, 20)}",
+                    EjecutadoPorId = user.Id,
+                    FechaHora = fecha,
+                    Estado = esExitoso ? EstadoDespliegue.Exitoso : EstadoDespliegue.Fallido,
+                    DuracionSegundos = rng.Next(30, 1800),
+                    Notas = esExitoso ? "Despliegue automático completado." : "Fallo en validaciones post-deploy.",
+                    Activo = true
+                });
+            }
+        }
+
+        context.Despliegues.AddRange(despliegues);
         await context.SaveChangesAsync();
     }
 

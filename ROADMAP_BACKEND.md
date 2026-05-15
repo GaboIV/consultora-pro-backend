@@ -103,22 +103,26 @@ Los permisos ya existen en el catálogo. El CRUD completo queda funcional.
 
 ## GRUPO 5 — Módulo de Despliegues (nuevo)
 
-- [ ] Crear entidad `Despliegue` en Domain: Id, ProyectoId, AmbienteId, Version, EjecutadoPorId, FechaHora, Estado (enum), DuracionSegundos, Notas
-- [ ] Crear enum `EstadoDespliegue`: `Exitoso`, `Fallido`, `EnCurso`, `Cancelado`
-- [ ] Crear migración para tabla `Despliegues`
-- [ ] Crear `IDespliegueRepository` en Domain
-- [ ] Implementar `DespliegueRepository` en Infrastructure
-- [ ] Crear DTOs: `DespliegueDto`, `DespliegueListDto`, `CreateDespliegueDto`
-- [ ] Crear `DesplieguesController` con endpoints:
+> Marcado: `H` = se puede hacer ahora. `P` = pendiente; después de `:` se explica por qué no se puede cerrar todavía.
+
+- [H] Crear entidad `Despliegue` en Domain: Id, ProyectoId, AmbienteId, Version, EjecutadoPorId, FechaHora, Estado (enum), DuracionSegundos, Notas
+- [H] Crear enum `EstadoDespliegue`: `Exitoso`, `Fallido`, `EnCurso`, `Cancelado`
+- [H] Crear migración para tabla `Despliegues`
+- [H] Crear `IDespliegueRepository` en Domain
+- [H] Implementar `DespliegueRepository` en Infrastructure
+- [H] Crear DTOs: `DespliegueDto`, `DespliegueListDto`, `CreateDespliegueDto`, `UpdateDespliegueEstadoDto`, `PagedResultDto`
+- [H] Crear `DesplieguesController` con endpoints:
   - `GET /despliegues` → historial completo paginado (requiere `despliegues.historial`)
   - `GET /despliegues/proyecto/{proyectoId}` → historial por proyecto (requiere `despliegues.historial`)
   - `GET /despliegues/recientes` → últimos 10 para dashboard (requiere `despliegues.ver`)
+  - `GET /despliegues/{id}` → detalle del despliegue (requiere `despliegues.ver`)
   - `POST /despliegues` → registrar despliegue (requiere `despliegues.ejecutar`)
   - `PUT /despliegues/{id}/estado` → actualizar estado de un despliegue en curso (requiere `despliegues.ejecutar`)
-- [ ] El campo `EjecutadoPorId` se toma del claim `userId` del JWT, nunca del body
-- [ ] Calcular tasa de éxito del mes y exponerla en el snapshot de management
-- [ ] Agregar los últimos 5 despliegues en el snapshot de management para el dashboard
-- [ ] Agregar seed de despliegues de ejemplo
+- [H] El campo `EjecutadoPorId` se toma del claim `userId` del JWT, nunca del body
+- [H] Calcular tasa de éxito del mes y exponerla en el snapshot de management
+- [H] Agregar los últimos 5 despliegues en el snapshot de management para el dashboard
+- [H] Agregar seed de despliegues de ejemplo
+- [H] Agregar `SearchDesplieguesAsync` en `SearchService` para permitir búsqueda global de despliegues (icono `rocket`, navega a `/despliegues`)
 
 ---
 
@@ -258,7 +262,7 @@ Actualmente todos los listados devuelven todos los registros. Cuando la data cre
 | Credenciales | 🟡 CRUD funcional y auditoría lista; clave de cifrado productiva pendiente |
 | Ambientes | ✅ CRUD funcional, snapshot y seed listos |
 | Repositorios | ✅ CRUD funcional, validaciones y seed listos |
-| Despliegues | 🔴 Solo permisos definidos |
+| Despliegues | ✅ CRUD funcional con endpoints paginados, snapshot con últimos 5 y tasa de éxito, search global, seed de ejemplo |
 | Screenshots | 🔴 Pendiente |
 | Perfil propio | 🟡 `/auth/me` existe, edición pendiente |
 | Paginación / filtros | 🔴 Pendiente |

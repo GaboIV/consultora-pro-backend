@@ -19,6 +19,7 @@ public class Proyecto
     public ICollection<ProyectoMiembro> ProyectoMiembros { get; set; } = new List<ProyectoMiembro>();
     public ICollection<Ambiente> Ambientes { get; set; } = new List<Ambiente>();
     public ICollection<Repositorio> Repositorios { get; set; } = new List<Repositorio>();
+    public ICollection<Despliegue> Despliegues { get; set; } = new List<Despliegue>();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

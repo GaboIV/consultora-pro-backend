@@ -19,6 +19,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<Credencial> Credenciales => Set<Credencial>();
     public DbSet<AuditoriaCredencial> AuditoriasCredenciales => Set<AuditoriaCredencial>();
     public DbSet<Repositorio> Repositorios => Set<Repositorio>();
+    public DbSet<Despliegue> Despliegues => Set<Despliegue>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -176,6 +177,30 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             entity.HasOne(r => r.Proyecto)
                   .WithMany(p => p.Repositorios)
                   .HasForeignKey(r => r.ProyectoId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Despliegue>(entity =>
+        {
+            entity.HasKey(d => d.Id);
+            entity.Property(d => d.Version).IsRequired().HasMaxLength(60);
+            entity.Property(d => d.Notas).HasMaxLength(1000);
+            entity.Property(d => d.Estado).HasConversion<string>().HasMaxLength(20);
+            entity.Property(d => d.FechaHora).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(d => d.Activo).HasDefaultValue(true);
+            entity.HasIndex(d => new { d.ProyectoId, d.Activo });
+            entity.HasIndex(d => d.FechaHora);
+            entity.HasOne(d => d.Proyecto)
+                  .WithMany(p => p.Despliegues)
+                  .HasForeignKey(d => d.ProyectoId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(d => d.Ambiente)
+                  .WithMany(a => a.Despliegues)
+                  .HasForeignKey(d => d.AmbienteId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(d => d.EjecutadoPor)
+                  .WithMany()
+                  .HasForeignKey(d => d.EjecutadoPorId)
                   .OnDelete(DeleteBehavior.Restrict);
         });
 

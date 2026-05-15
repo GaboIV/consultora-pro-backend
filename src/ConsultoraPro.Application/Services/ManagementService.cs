@@ -16,6 +16,7 @@ public class ManagementService : IManagementService
     private readonly ITipoSolucionRepository _tipoSolucionRepository;
     private readonly ICredencialRepository _credencialRepository;
     private readonly IAmbienteRepository _ambienteRepository;
+    private readonly IDespliegueRepository _despliegueRepository;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IMapper _mapper;
 
@@ -25,6 +26,7 @@ public class ManagementService : IManagementService
         ITipoSolucionRepository tipoSolucionRepository,
         ICredencialRepository credencialRepository,
         IAmbienteRepository ambienteRepository,
+        IDespliegueRepository despliegueRepository,
         UserManager<ApplicationUser> userManager,
         IMapper mapper)
     {
@@ -33,6 +35,7 @@ public class ManagementService : IManagementService
         _tipoSolucionRepository = tipoSolucionRepository;
         _credencialRepository = credencialRepository;
         _ambienteRepository = ambienteRepository;
+        _despliegueRepository = despliegueRepository;
         _userManager = userManager;
         _mapper = mapper;
     }
@@ -45,6 +48,8 @@ public class ManagementService : IManagementService
         var users = await _userManager.Users.ToListAsync();
         var credencialesPorVencer = (await _credencialRepository.GetExpiringWithinAsync(7)).ToList();
         var ambientes = (await _ambienteRepository.GetAllAsync()).ToList();
+        var despliegues = (await _despliegueRepository.GetRecentAsync(5)).ToList();
+        var (totalDesplieguesMes, exitososDesplieguesMes) = await _despliegueRepository.GetMonthlyStatsAsync();
 
         var clients = _mapper.Map<List<ManagementClientDto>>(clientes);
         var projects = _mapper.Map<List<ManagementProjectDto>>(proyectos);
@@ -98,7 +103,14 @@ public class ManagementService : IManagementService
                     new() { Label = "Clientes activos", Value = activos.ToString(), Detail = $"Gestionando {totalProyectos} proyectos", Tone = "blue" },
                     new() { Label = "Proyectos en curso", Value = projects.Count(p => p.StatusTone is "amber" or "blue").ToString(), Detail = completados > 0 ? $"{completados} completados" : "0 completados", Tone = "green" },
                     new() { Label = "Ambientes activos", Value = ambientes.Count.ToString(), Detail = $"{ambientesOnline} online · {ambientesAlerta} alerta · {ambientesOffline} offline", Tone = ambientesAlerta > 0 ? "amber" : "teal", DetailTone = ambientesAlerta > 0 ? "warn" : "up" },
-                    new() { Label = "Progreso promedio", Value = projects.Any() ? $"{(int)projects.Average(p => p.Progress)}%" : "0%", Detail = "General de todos los proyectos", Tone = "amber" }
+                    new() { Label = "Progreso promedio", Value = projects.Any() ? $"{(int)projects.Average(p => p.Progress)}%" : "0%", Detail = "General de todos los proyectos", Tone = "amber" },
+                    new()
+                    {
+                        Label = "Despliegues del mes",
+                        Value = totalDesplieguesMes.ToString(),
+                        Detail = totalDesplieguesMes > 0 ? $"{(exitososDesplieguesMes * 100 / totalDesplieguesMes)}% tasa de éxito" : "Sin despliegues este mes",
+                        Tone = totalDesplieguesMes > 0 && exitososDesplieguesMes * 100 / totalDesplieguesMes >= 90 ? "green" : totalDesplieguesMes > 0 ? "amber" : "gray"
+                    }
                 },
                 Alerts = alerts,
                 SpotlightProjects = projects.OrderByDescending(p => p.Progress).Take(3).ToList(),
@@ -135,7 +147,8 @@ public class ManagementService : IManagementService
                         Items = group.Select(ToEnvironmentItemDto).ToList()
                     })
                     .ToList(),
-                Credentials = credencialesPorVencer.Select(ToCredentialAlertDto).ToList()
+                Credentials = credencialesPorVencer.Select(ToCredentialAlertDto).ToList(),
+                Deployments = despliegues.Select(ToDeploymentDto).ToList()
             },
             Team = new TeamOverviewDto()
         };
@@ -203,6 +216,47 @@ public class ManagementService : IManagementService
         EstadoAmbiente.Alerta => "amber",
         EstadoAmbiente.Offline => "red",
         EstadoAmbiente.Configurando => "blue",
+        _ => "gray"
+    };
+
+    private static DeploymentDto ToDeploymentDto(Despliegue d)
+    {
+        var actorName = d.EjecutadoPor is null ? string.Empty : $"{d.EjecutadoPor.Nombres} {d.EjecutadoPor.Apellidos}".Trim();
+        var duration = d.DuracionSegundos switch
+        {
+            < 60 => $"{d.DuracionSegundos}s",
+            < 3600 => $"{d.DuracionSegundos / 60}m {d.DuracionSegundos % 60}s",
+            _ => $"{d.DuracionSegundos / 3600}h {(d.DuracionSegundos % 3600) / 60}m"
+        };
+
+        return new DeploymentDto
+        {
+            ProjectName = d.Proyecto?.Nombre ?? string.Empty,
+            Target = d.Ambiente?.Nombre ?? string.Empty,
+            When = d.FechaHora.ToString("dd/MM/yyyy HH:mm"),
+            Actor = actorName,
+            Duration = duration,
+            Version = d.Version,
+            Status = MapDeploymentStatusLabel(d.Estado),
+            Tone = MapDeploymentStatusTone(d.Estado)
+        };
+    }
+
+    private static string MapDeploymentStatusLabel(EstadoDespliegue estado) => estado switch
+    {
+        EstadoDespliegue.Exitoso => "Exitoso",
+        EstadoDespliegue.Fallido => "Fallido",
+        EstadoDespliegue.EnCurso => "En curso",
+        EstadoDespliegue.Cancelado => "Cancelado",
+        _ => estado.ToString()
+    };
+
+    private static string MapDeploymentStatusTone(EstadoDespliegue estado) => estado switch
+    {
+        EstadoDespliegue.Exitoso => "green",
+        EstadoDespliegue.Fallido => "red",
+        EstadoDespliegue.EnCurso => "amber",
+        EstadoDespliegue.Cancelado => "gray",
         _ => "gray"
     };
 

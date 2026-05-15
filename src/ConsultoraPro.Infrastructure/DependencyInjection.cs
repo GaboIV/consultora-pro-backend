@@ -40,6 +40,7 @@ public static class DependencyInjection
         services.AddScoped<ICredencialRepository, CredencialRepository>();
         services.AddScoped<IAmbienteRepository, AmbienteRepository>();
         services.AddScoped<IRepositorioRepository, RepositorioRepository>();
+        services.AddScoped<IDespliegueRepository, DespliegueRepository>();
         services.AddScoped<IEncryptionService, EncryptionService>();
 
 

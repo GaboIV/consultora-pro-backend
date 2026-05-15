@@ -16,4 +16,5 @@ public class Ambiente
     public bool Activo { get; set; } = true;
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
     public ICollection<Credencial> Credenciales { get; set; } = new List<Credencial>();
+    public ICollection<Despliegue> Despliegues { get; set; } = new List<Despliegue>();
 }
