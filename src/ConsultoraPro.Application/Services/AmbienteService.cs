@@ -38,6 +38,7 @@ public class AmbienteService : IAmbienteService
             Nombre = dto.Nombre.Trim(),
             Tipo = dto.Tipo,
             Url = dto.Url.Trim(),
+            HealthCheckUrl = dto.HealthCheckUrl?.Trim(),
             ProyectoId = dto.ProyectoId,
             Tecnologia = dto.Tecnologia.Trim(),
             Estado = dto.Estado,
@@ -59,6 +60,7 @@ public class AmbienteService : IAmbienteService
         ambiente.Nombre = dto.Nombre.Trim();
         ambiente.Tipo = dto.Tipo;
         ambiente.Url = dto.Url.Trim();
+        ambiente.HealthCheckUrl = dto.HealthCheckUrl?.Trim();
         ambiente.ProyectoId = dto.ProyectoId;
         ambiente.Tecnologia = dto.Tecnologia.Trim();
         ambiente.Estado = dto.Estado;
@@ -109,6 +111,7 @@ public class AmbienteService : IAmbienteService
             Nombre = ambiente.Nombre,
             Tipo = ambiente.Tipo,
             Url = ambiente.Url,
+            HealthCheckUrl = ambiente.HealthCheckUrl,
             ProyectoId = ambiente.ProyectoId,
             ProyectoNombre = ambiente.Proyecto?.Nombre ?? string.Empty,
             ClienteNombre = ambiente.Proyecto?.Cliente?.Nombre ?? string.Empty,

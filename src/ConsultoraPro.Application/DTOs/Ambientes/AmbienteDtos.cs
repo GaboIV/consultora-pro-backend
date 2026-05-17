@@ -8,6 +8,7 @@ public class AmbienteDto
     public string Nombre { get; set; } = string.Empty;
     public TipoAmbiente Tipo { get; set; }
     public string Url { get; set; } = string.Empty;
+    public string? HealthCheckUrl { get; set; }
     public Guid ProyectoId { get; set; }
     public string ProyectoNombre { get; set; } = string.Empty;
     public string ClienteNombre { get; set; } = string.Empty;
@@ -23,6 +24,7 @@ public class CreateAmbienteDto
     public string Nombre { get; set; } = string.Empty;
     public TipoAmbiente Tipo { get; set; }
     public string Url { get; set; } = string.Empty;
+    public string? HealthCheckUrl { get; set; }
     public Guid ProyectoId { get; set; }
     public string Tecnologia { get; set; } = string.Empty;
     public EstadoAmbiente Estado { get; set; } = EstadoAmbiente.Configurando;
@@ -34,6 +36,7 @@ public class UpdateAmbienteDto
     public string Nombre { get; set; } = string.Empty;
     public TipoAmbiente Tipo { get; set; }
     public string Url { get; set; } = string.Empty;
+    public string? HealthCheckUrl { get; set; }
     public Guid ProyectoId { get; set; }
     public string Tecnologia { get; set; } = string.Empty;
     public EstadoAmbiente Estado { get; set; }

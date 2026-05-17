@@ -8,6 +8,7 @@ public class Ambiente
     public string Nombre { get; set; } = string.Empty;
     public TipoAmbiente Tipo { get; set; }
     public string Url { get; set; } = string.Empty;
+    public string? HealthCheckUrl { get; set; }
     public Guid ProyectoId { get; set; }
     public Proyecto Proyecto { get; set; } = null!;
     public string Tecnologia { get; set; } = string.Empty;
@@ -17,4 +18,7 @@ public class Ambiente
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
     public ICollection<Credencial> Credenciales { get; set; } = new List<Credencial>();
     public ICollection<Despliegue> Despliegues { get; set; } = new List<Despliegue>();
+    public ICollection<AmbienteComponente> Componentes { get; set; } = new List<AmbienteComponente>();
+    public ICollection<AmbienteTestUser> TestUsers { get; set; } = new List<AmbienteTestUser>();
+    public ICollection<AmbienteCloudResource> CloudResources { get; set; } = new List<AmbienteCloudResource>();
 }

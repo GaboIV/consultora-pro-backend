@@ -42,7 +42,9 @@ public static class DependencyInjection
         services.AddScoped<IRepositorioRepository, RepositorioRepository>();
         services.AddScoped<IDespliegueRepository, DespliegueRepository>();
         services.AddScoped<IEncryptionService, EncryptionService>();
-
+        services.AddScoped<IAmbienteComponenteRepository, AmbienteComponenteRepository>();
+        services.AddScoped<IAmbienteTestUserRepository, AmbienteTestUserRepository>();
+        services.AddScoped<IAmbienteCloudResourceRepository, AmbienteCloudResourceRepository>();
 
         return services;
     }

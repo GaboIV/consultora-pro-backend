@@ -28,7 +28,7 @@ public static class PermissionCatalog
 
         new(9, "ambientes.ver", "Ver ambientes", "Ambientes", "Permite consultar ambientes."),
         new(10, "ambientes.crear", "Crear ambientes", "Ambientes", "Permite crear ambientes."),
-        new(11, "ambientes.editar", "Editar ambientes", "Ambientes", "Permite modificar ambientes."),
+        new(11, "ambientes.editar", "Editar ambientes", "Ambientes", "Permite modificar ambientes, componentes, usuarios de prueba y recursos en la nube."),
 
         new(12, "credenciales.ver", "Ver credenciales", "Credenciales", "Permite consultar el listado de credenciales."),
         new(13, "credenciales.revelar", "Revelar credenciales", "Credenciales", "Permite revelar valores sensibles."),

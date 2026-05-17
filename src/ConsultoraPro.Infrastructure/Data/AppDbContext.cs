@@ -20,6 +20,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<AuditoriaCredencial> AuditoriasCredenciales => Set<AuditoriaCredencial>();
     public DbSet<Repositorio> Repositorios => Set<Repositorio>();
     public DbSet<Despliegue> Despliegues => Set<Despliegue>();
+    public DbSet<AmbienteComponente> AmbienteComponentes => Set<AmbienteComponente>();
+    public DbSet<AmbienteTestUser> AmbienteTestUsers => Set<AmbienteTestUser>();
+    public DbSet<AmbienteCloudResource> AmbienteCloudResources => Set<AmbienteCloudResource>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -123,6 +126,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             entity.Property(a => a.Nombre).IsRequired().HasMaxLength(160);
             entity.Property(a => a.Tipo).HasConversion<string>().HasMaxLength(30);
             entity.Property(a => a.Url).IsRequired().HasMaxLength(300);
+            entity.Property(a => a.HealthCheckUrl).HasMaxLength(300);
             entity.Property(a => a.Tecnologia).IsRequired().HasMaxLength(120);
             entity.Property(a => a.Estado).HasConversion<string>().HasMaxLength(30);
             entity.Property(a => a.UptimePorcentaje).HasPrecision(5, 2);
@@ -134,6 +138,52 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
                   .WithMany(p => p.Ambientes)
                   .HasForeignKey(a => a.ProyectoId)
                   .OnDelete(DeleteBehavior.Restrict);
+            entity.HasMany(a => a.Componentes)
+                  .WithOne(c => c.Ambiente)
+                  .HasForeignKey(c => c.AmbienteId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(a => a.TestUsers)
+                  .WithOne(t => t.Ambiente)
+                  .HasForeignKey(t => t.AmbienteId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(a => a.CloudResources)
+                  .WithOne(r => r.Ambiente)
+                  .HasForeignKey(r => r.AmbienteId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AmbienteComponente>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Rol).IsRequired().HasMaxLength(80);
+            entity.Property(c => c.IpPublica).HasMaxLength(45);
+            entity.Property(c => c.IpPrivada).HasMaxLength(45);
+            entity.Property(c => c.Hostname).HasMaxLength(220);
+            entity.Property(c => c.Tecnologia).HasMaxLength(120);
+            entity.Property(c => c.Especificaciones).HasMaxLength(200);
+            entity.Property(c => c.Activo).HasDefaultValue(true);
+            entity.HasIndex(c => new { c.AmbienteId, c.Activo });
+        });
+
+        modelBuilder.Entity<AmbienteTestUser>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.RolAplicacion).IsRequired().HasMaxLength(80);
+            entity.Property(t => t.Correo).IsRequired().HasMaxLength(200);
+            entity.Property(t => t.PasswordCifrado).IsRequired().HasMaxLength(2000);
+            entity.Property(t => t.Notas).HasMaxLength(500);
+            entity.Property(t => t.Activo).HasDefaultValue(true);
+            entity.HasIndex(t => new { t.AmbienteId, t.Activo });
+        });
+
+        modelBuilder.Entity<AmbienteCloudResource>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.TipoRecurso).IsRequired().HasMaxLength(80);
+            entity.Property(r => r.NombreRecurso).IsRequired().HasMaxLength(200);
+            entity.Property(r => r.DeepLink).HasMaxLength(500);
+            entity.Property(r => r.Activo).HasDefaultValue(true);
+            entity.HasIndex(r => new { r.AmbienteId, r.Activo });
         });
 
         modelBuilder.Entity<Credencial>(entity =>

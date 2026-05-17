@@ -14,6 +14,10 @@ public class CreateAmbienteValidator : AbstractValidator<CreateAmbienteDto>
             .MaximumLength(300)
             .Must(BeHttpUrl)
             .WithMessage("La URL debe ser absoluta y empezar con http:// o https://.");
+        RuleFor(x => x.HealthCheckUrl)
+            .MaximumLength(300)
+            .Must(BeHttpUrlOrEmpty)
+            .WithMessage("El Health Check URL debe ser una URL absoluta empezando con http:// o https://.");
         RuleFor(x => x.ProyectoId).NotEmpty();
         RuleFor(x => x.Tecnologia).NotEmpty().MaximumLength(120);
         RuleFor(x => x.Estado).IsInEnum();
@@ -22,6 +26,14 @@ public class CreateAmbienteValidator : AbstractValidator<CreateAmbienteDto>
 
     private static bool BeHttpUrl(string value)
     {
+        return Uri.TryCreate(value, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+    }
+
+    private static bool BeHttpUrlOrEmpty(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return true;
         return Uri.TryCreate(value, UriKind.Absolute, out var uri)
             && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
     }
