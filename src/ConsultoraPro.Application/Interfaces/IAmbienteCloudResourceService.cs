@@ -9,4 +9,5 @@ public interface IAmbienteCloudResourceService
     Task<AmbienteCloudResourceDto> CreateAsync(CreateAmbienteCloudResourceDto dto);
     Task UpdateAsync(Guid id, UpdateAmbienteCloudResourceDto dto);
     Task DeleteAsync(Guid id);
+    Task<ImportCloudResourcesCsvResponse> ImportFromCsvAsync(Guid ambienteId, ImportCloudResourcesCsvRequest request);
 }

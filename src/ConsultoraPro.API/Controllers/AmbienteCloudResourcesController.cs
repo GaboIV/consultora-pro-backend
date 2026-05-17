@@ -65,4 +65,25 @@ public class AmbienteCloudResourcesController : ControllerBase
         await _service.DeleteAsync(id);
         return Ok(new ApiResponse<object> { Success = true, Message = "Recurso en la nube desactivado exitosamente" });
     }
+
+    [HttpPost("import-csv")]
+    [Authorize(Policy = "ambientes.editar")]
+    public async Task<ActionResult<ApiResponse<ImportCloudResourcesCsvResponse>>> ImportCsv(Guid ambienteId, [FromBody] ImportCloudResourcesCsvRequest request)
+    {
+        var result = await _service.ImportFromCsvAsync(ambienteId, request);
+
+        var message = result.ImportedCount > 0
+            ? $"Se importaron {result.ImportedCount} recurso(s) correctamente."
+            : "No se importaron recursos.";
+
+        if (result.Errors.Count > 0)
+            message += $" {result.Errors.Count} error(es): {string.Join(" | ", result.Errors.Take(5))}";
+
+        return Ok(new ApiResponse<ImportCloudResourcesCsvResponse>
+        {
+            Success = result.Errors.Count == 0 || result.ImportedCount > 0,
+            Data = result,
+            Message = message
+        });
+    }
 }

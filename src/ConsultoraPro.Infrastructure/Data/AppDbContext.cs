@@ -182,6 +182,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             entity.Property(r => r.TipoRecurso).IsRequired().HasMaxLength(80);
             entity.Property(r => r.NombreRecurso).IsRequired().HasMaxLength(200);
             entity.Property(r => r.DeepLink).HasMaxLength(500);
+            entity.Property(r => r.Plataforma).IsRequired().HasMaxLength(60).HasDefaultValue("Azure");
+            entity.Property(r => r.Ubicacion).HasMaxLength(120);
+            entity.Property(r => r.Nota).HasMaxLength(500);
             entity.Property(r => r.Activo).HasDefaultValue(true);
             entity.HasIndex(r => new { r.AmbienteId, r.Activo });
         });
