@@ -45,6 +45,7 @@ public static class DependencyInjection
         services.AddScoped<IAmbienteComponenteRepository, AmbienteComponenteRepository>();
         services.AddScoped<IAmbienteTestUserRepository, AmbienteTestUserRepository>();
         services.AddScoped<IAmbienteCloudResourceRepository, AmbienteCloudResourceRepository>();
+        services.AddScoped<IAzureSubscriptionTenantMappingRepository, AzureSubscriptionTenantMappingRepository>();
 
         return services;
     }

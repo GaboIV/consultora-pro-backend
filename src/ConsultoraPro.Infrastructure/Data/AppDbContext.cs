@@ -23,6 +23,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<AmbienteComponente> AmbienteComponentes => Set<AmbienteComponente>();
     public DbSet<AmbienteTestUser> AmbienteTestUsers => Set<AmbienteTestUser>();
     public DbSet<AmbienteCloudResource> AmbienteCloudResources => Set<AmbienteCloudResource>();
+    public DbSet<AzureSubscriptionTenantMapping> AzureSubscriptionTenantMappings => Set<AzureSubscriptionTenantMapping>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -257,6 +258,19 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
                   .OnDelete(DeleteBehavior.Restrict);
         });
 
+        modelBuilder.Entity<AzureSubscriptionTenantMapping>(entity =>
+        {
+            entity.HasKey(m => m.Id);
+            entity.Property(m => m.SubscriptionId).IsRequired();
+            entity.Property(m => m.TenantId).IsRequired();
+            entity.Property(m => m.Alias).HasMaxLength(120);
+            entity.Property(m => m.Environment).HasMaxLength(60);
+            entity.Property(m => m.IsActive).HasDefaultValue(true);
+            entity.Property(m => m.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(m => m.SubscriptionId).IsUnique();
+            entity.HasIndex(m => m.IsActive);
+        });
+
         modelBuilder.Entity<AuditoriaCredencial>(entity =>
         {
             entity.HasKey(a => a.Id);
@@ -317,6 +331,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
 
                 if (entry.Entity is AuditoriaCredencial auditoria && auditoria.FechaRevelacion == default)
                     auditoria.FechaRevelacion = now;
+
+                if (entry.Entity is AzureSubscriptionTenantMapping mapping && mapping.CreatedAt == default)
+                    mapping.CreatedAt = now;
             }
 
             if (entry.State == EntityState.Modified)

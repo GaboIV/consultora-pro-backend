@@ -9,23 +9,34 @@ public class AmbienteCloudResourceService : IAmbienteCloudResourceService
 {
     private readonly IAmbienteCloudResourceRepository _repository;
     private readonly IAmbienteRepository _ambienteRepository;
+    private readonly IAzurePortalUrlResolver _urlResolver;
 
-    public AmbienteCloudResourceService(IAmbienteCloudResourceRepository repository, IAmbienteRepository ambienteRepository)
+    public AmbienteCloudResourceService(
+        IAmbienteCloudResourceRepository repository,
+        IAmbienteRepository ambienteRepository,
+        IAzurePortalUrlResolver urlResolver)
     {
         _repository = repository;
         _ambienteRepository = ambienteRepository;
+        _urlResolver = urlResolver;
     }
 
     public async Task<IEnumerable<AmbienteCloudResourceDto>> GetByAmbienteAsync(Guid ambienteId)
     {
         var items = await _repository.GetByAmbienteAsync(ambienteId);
-        return items.Where(x => x.Activo).Select(ToDto);
+        var dtos = items.Where(x => x.Activo).Select(ToDto).ToList();
+        foreach (var dto in dtos)
+            dto.DeepLink = await _urlResolver.ResolveAsync(dto.DeepLink);
+        return dtos;
     }
 
     public async Task<AmbienteCloudResourceDto?> GetByIdAsync(Guid id)
     {
         var entity = await _repository.GetByIdAsync(id);
-        return entity is null || !entity.Activo ? null : ToDto(entity);
+        if (entity is null || !entity.Activo) return null;
+        var dto = ToDto(entity);
+        dto.DeepLink = await _urlResolver.ResolveAsync(dto.DeepLink);
+        return dto;
     }
 
     public async Task<AmbienteCloudResourceDto> CreateAsync(CreateAmbienteCloudResourceDto dto)

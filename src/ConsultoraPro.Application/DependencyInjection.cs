@@ -19,6 +19,8 @@ public static class DependencyInjection
         services.AddScoped<IAmbienteComponenteService, AmbienteComponenteService>();
         services.AddScoped<IAmbienteTestUserService, AmbienteTestUserService>();
         services.AddScoped<IAmbienteCloudResourceService, AmbienteCloudResourceService>();
+        services.AddScoped<IAzureSubscriptionTenantMappingService, AzureSubscriptionTenantMappingService>();
+        services.AddScoped<IAzurePortalUrlResolver, AzurePortalUrlResolver>();
         return services;
     }
 }
