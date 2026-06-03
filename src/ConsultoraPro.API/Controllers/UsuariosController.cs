@@ -30,19 +30,45 @@ public class UsuariosController : ControllerBase
 
     [HttpGet]
     [Authorize(Policy = "roles.ver")]
-    public async Task<ActionResult<ApiResponse<IEnumerable<UsuarioListDto>>>> GetAll()
+    public async Task<ActionResult<ApiResponse<PagedResultDto<UsuarioListDto>>>> GetAll(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? rol = null)
     {
-        var users = await _userManager.Users
-            .OrderByDescending(u => u.Activo)
-            .ThenBy(u => u.Nombres)
-            .ThenBy(u => u.Apellidos)
+        var query = _userManager.Users.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(rol))
+        {
+            query = from u in query
+                    join ur in _context.UserRoles on u.Id equals ur.UserId
+                    join r in _context.Roles on ur.RoleId equals r.Id
+                    where r.Name == rol
+                    select u;
+        }
+
+        query = query.OrderByDescending(u => u.Activo)
+                     .ThenBy(u => u.Nombres)
+                     .ThenBy(u => u.Apellidos);
+
+        var total = await query.CountAsync();
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
 
-        var data = new List<UsuarioListDto>();
-        foreach (var user in users)
-            data.Add(await MapListDtoAsync(user));
+        var list = new List<UsuarioListDto>();
+        foreach (var user in items)
+            list.Add(await MapListDtoAsync(user));
 
-        return Ok(new ApiResponse<IEnumerable<UsuarioListDto>> { Success = true, Data = data });
+        var data = new PagedResultDto<UsuarioListDto>
+        {
+            Data = list,
+            TotalCount = total,
+            Page = page,
+            PageSize = pageSize
+        };
+
+        return Ok(new ApiResponse<PagedResultDto<UsuarioListDto>> { Success = true, Data = data });
     }
 
     [HttpGet("{id:guid}")]

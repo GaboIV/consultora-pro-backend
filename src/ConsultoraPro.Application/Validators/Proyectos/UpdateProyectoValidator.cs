@@ -12,6 +12,10 @@ public class UpdateProyectoValidator : AbstractValidator<UpdateProyectoDto>
         RuleFor(p => p.TipoSolucionId).NotEmpty();
         RuleFor(p => p.Etapa).IsInEnum();
         RuleFor(p => p.Estado).IsInEnum();
+        RuleFor(p => p.Progreso).InclusiveBetween(0, 100);
+        RuleFor(p => p.FechaInicio).NotEmpty();
+        RuleFor(p => p.FechaFin).NotEmpty().GreaterThanOrEqualTo(p => p.FechaInicio)
+            .WithMessage("La fecha de fin debe ser mayor o igual a la fecha de inicio.");
         
         RuleFor(p => p.Miembros)
             .Must(miembros => miembros == null || miembros.Select(m => m.UsuarioId).Distinct().Count() == miembros.Count)

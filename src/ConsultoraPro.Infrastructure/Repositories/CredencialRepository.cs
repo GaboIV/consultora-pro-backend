@@ -82,4 +82,35 @@ public class CredencialRepository : ICredencialRepository
             .OrderByDescending(a => a.FechaRevelacion)
             .ToListAsync();
     }
+
+    public async Task<IEnumerable<Credencial>> GetPagedAsync(int page, int pageSize, Guid? proyectoId = null)
+    {
+        var query = _context.Credenciales
+            .AsNoTracking()
+            .Include(c => c.Proyecto)
+            .Include(c => c.Ambiente)
+            .Where(c => c.Activo);
+
+        if (proyectoId.HasValue)
+            query = query.Where(c => c.ProyectoId == proyectoId.Value);
+
+        return await query
+            .OrderBy(c => c.FechaVencimiento)
+            .ThenBy(c => c.Nombre)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<int> GetTotalCountAsync(Guid? proyectoId = null)
+    {
+        var query = _context.Credenciales
+            .AsNoTracking()
+            .Where(c => c.Activo);
+
+        if (proyectoId.HasValue)
+            query = query.Where(c => c.ProyectoId == proyectoId.Value);
+
+        return await query.CountAsync();
+    }
 }

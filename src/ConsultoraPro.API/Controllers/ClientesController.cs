@@ -19,10 +19,13 @@ public class ClientesController : ControllerBase
 
     [HttpGet]
     [Authorize(Policy = "clientes.ver")]
-    public async Task<ActionResult<ApiResponse<IEnumerable<ClienteDto>>>> GetAll()
+    public async Task<ActionResult<ApiResponse<PagedResultDto<ClienteDto>>>> GetAll(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null)
     {
-        var data = await _clienteService.GetAllAsync();
-        return Ok(new ApiResponse<IEnumerable<ClienteDto>> { Success = true, Data = data });
+        var data = await _clienteService.GetAllAsync(page, pageSize, search);
+        return Ok(new ApiResponse<PagedResultDto<ClienteDto>> { Success = true, Data = data });
     }
 
     [HttpGet("{id}")]

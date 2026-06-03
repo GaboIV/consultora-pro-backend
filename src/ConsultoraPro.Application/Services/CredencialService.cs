@@ -1,4 +1,5 @@
 using ConsultoraPro.Application.DTOs.Credenciales;
+using ConsultoraPro.Application.DTOs.Common;
 using ConsultoraPro.Application.Interfaces;
 using ConsultoraPro.Domain.Interfaces;
 using ConsultoraPro.Domain.Models;
@@ -24,10 +25,18 @@ public class CredencialService : ICredencialService
         _encryptionService = encryptionService;
     }
 
-    public async Task<IEnumerable<CredencialListDto>> GetAllAsync(Guid? proyectoId = null)
+    public async Task<PagedResultDto<CredencialListDto>> GetAllAsync(int page = 1, int pageSize = 20, Guid? proyectoId = null)
     {
-        var credenciales = await _repository.GetAllAsync(proyectoId);
-        return credenciales.Select(ToListDto);
+        var items = await _repository.GetPagedAsync(page, pageSize, proyectoId);
+        var total = await _repository.GetTotalCountAsync(proyectoId);
+
+        return new PagedResultDto<CredencialListDto>
+        {
+            Data = items.Select(ToListDto).ToList(),
+            TotalCount = total,
+            Page = page,
+            PageSize = pageSize
+        };
     }
 
     public async Task<CredencialDetalleDto?> GetByIdAsync(Guid id)

@@ -1,8 +1,10 @@
 using AutoMapper;
 using ConsultoraPro.Application.DTOs.Proyectos;
+using ConsultoraPro.Application.DTOs.Common;
 using ConsultoraPro.Application.Interfaces;
 using ConsultoraPro.Domain.Interfaces;
 using ConsultoraPro.Domain.Models;
+using ConsultoraPro.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,10 +32,18 @@ public class ProyectoService : IProyectoService
         _mapper = mapper;
     }
 
-    public async Task<IEnumerable<ProyectoDto>> GetAllAsync()
+    public async Task<PagedResultDto<ProyectoDto>> GetAllAsync(int page = 1, int pageSize = 20, EstadoProyecto? estado = null, Guid? clienteId = null)
     {
-        var proyectos = await _repository.GetAllAsync();
-        return _mapper.Map<IEnumerable<ProyectoDto>>(proyectos);
+        var items = await _repository.GetPagedAsync(page, pageSize, estado, clienteId);
+        var total = await _repository.GetTotalCountAsync(estado, clienteId);
+
+        return new PagedResultDto<ProyectoDto>
+        {
+            Data = _mapper.Map<List<ProyectoDto>>(items),
+            TotalCount = total,
+            Page = page,
+            PageSize = pageSize
+        };
     }
 
     public async Task<ProyectoDto?> GetByIdAsync(Guid id)
@@ -60,9 +70,9 @@ public class ProyectoService : IProyectoService
 
         var proyecto = _mapper.Map<Proyecto>(dto);
         proyecto.Id = Guid.NewGuid();
-        proyecto.Progreso = 0;
-        proyecto.FechaInicio = DateTime.UtcNow;
-        proyecto.FechaFin = DateTime.UtcNow.AddMonths(3);
+        proyecto.Progreso = dto.Progreso;
+        proyecto.FechaInicio = DateTime.SpecifyKind(dto.FechaInicio, DateTimeKind.Utc);
+        proyecto.FechaFin = DateTime.SpecifyKind(dto.FechaFin, DateTimeKind.Utc);
         proyecto.TotalMiembros = dto.Miembros.Count;
         proyecto.CreatedAt = DateTime.UtcNow;
         proyecto.UpdatedAt = DateTime.UtcNow;
@@ -106,6 +116,8 @@ public class ProyectoService : IProyectoService
             throw new KeyNotFoundException($"Tipo de solución con ID {dto.TipoSolucionId} no encontrado");
 
         _mapper.Map(dto, proyecto);
+        proyecto.FechaInicio = DateTime.SpecifyKind(dto.FechaInicio, DateTimeKind.Utc);
+        proyecto.FechaFin = DateTime.SpecifyKind(dto.FechaFin, DateTimeKind.Utc);
         proyecto.TotalMiembros = dto.Miembros.Count;
         proyecto.UpdatedAt = DateTime.UtcNow;
 

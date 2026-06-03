@@ -20,10 +20,13 @@ public class CredencialesController : ControllerBase
 
     [HttpGet]
     [Authorize(Policy = "credenciales.ver")]
-    public async Task<ActionResult<ApiResponse<IEnumerable<CredencialListDto>>>> GetAll([FromQuery] Guid? proyectoId)
+    public async Task<ActionResult<ApiResponse<PagedResultDto<CredencialListDto>>>> GetAll(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] Guid? proyectoId = null)
     {
-        var data = await _credencialService.GetAllAsync(proyectoId);
-        return Ok(new ApiResponse<IEnumerable<CredencialListDto>> { Success = true, Data = data });
+        var data = await _credencialService.GetAllAsync(page, pageSize, proyectoId);
+        return Ok(new ApiResponse<PagedResultDto<CredencialListDto>> { Success = true, Data = data });
     }
 
     [HttpGet("{id}")]

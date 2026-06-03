@@ -1,5 +1,6 @@
 using ConsultoraPro.Domain.Interfaces;
 using ConsultoraPro.Domain.Models;
+using ConsultoraPro.Domain.Enums;
 using ConsultoraPro.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -101,5 +102,43 @@ public class ProyectoRepository : IProyectoRepository
         _context.Proyectos.Remove(proyecto);
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();
+    }
+
+    public async Task<IEnumerable<Proyecto>> GetPagedAsync(int page, int pageSize, EstadoProyecto? estado = null, Guid? clienteId = null)
+    {
+        var query = _context.Proyectos
+            .Include(p => p.Cliente)
+            .Include(p => p.TipoSolucion)
+            .Include(p => p.Repositorios)
+            .Include(p => p.Screenshots)
+                .ThenInclude(s => s.SubidoPor)
+            .Include(p => p.ProyectoMiembros)
+                .ThenInclude(pm => pm.Usuario)
+            .AsQueryable();
+
+        if (estado.HasValue)
+            query = query.Where(p => p.Estado == estado.Value);
+
+        if (clienteId.HasValue)
+            query = query.Where(p => p.ClienteId == clienteId.Value);
+
+        return await query
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<int> GetTotalCountAsync(EstadoProyecto? estado = null, Guid? clienteId = null)
+    {
+        var query = _context.Proyectos.AsQueryable();
+
+        if (estado.HasValue)
+            query = query.Where(p => p.Estado == estado.Value);
+
+        if (clienteId.HasValue)
+            query = query.Where(p => p.ClienteId == clienteId.Value);
+
+        return await query.CountAsync();
     }
 }

@@ -5,6 +5,8 @@ namespace ConsultoraPro.Domain.Interfaces;
 public interface ICredencialRepository
 {
     Task<IEnumerable<Credencial>> GetAllAsync(Guid? proyectoId = null);
+    Task<IEnumerable<Credencial>> GetPagedAsync(int page, int pageSize, Guid? proyectoId = null);
+    Task<int> GetTotalCountAsync(Guid? proyectoId = null);
     Task<Credencial?> GetByIdAsync(Guid id);
     Task<Credencial> CreateAsync(Credencial credencial);
     Task UpdateAsync(Credencial credencial);

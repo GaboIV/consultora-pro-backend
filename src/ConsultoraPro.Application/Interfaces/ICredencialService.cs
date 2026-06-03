@@ -1,10 +1,11 @@
 using ConsultoraPro.Application.DTOs.Credenciales;
+using ConsultoraPro.Application.DTOs.Common;
 
 namespace ConsultoraPro.Application.Interfaces;
 
 public interface ICredencialService
 {
-    Task<IEnumerable<CredencialListDto>> GetAllAsync(Guid? proyectoId = null);
+    Task<PagedResultDto<CredencialListDto>> GetAllAsync(int page = 1, int pageSize = 20, Guid? proyectoId = null);
     Task<CredencialDetalleDto?> GetByIdAsync(Guid id);
     Task<CredencialListDto> CreateAsync(CreateCredencialDto dto, Guid userId);
     Task UpdateAsync(Guid id, UpdateCredencialDto dto);

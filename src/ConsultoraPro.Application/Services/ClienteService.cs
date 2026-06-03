@@ -18,10 +18,18 @@ public class ClienteService : IClienteService
         _mapper = mapper;
     }
 
-    public async Task<IEnumerable<ClienteDto>> GetAllAsync()
+    public async Task<PagedResultDto<ClienteDto>> GetAllAsync(int page = 1, int pageSize = 20, string? search = null)
     {
-        var clientes = await _repository.GetAllAsync();
-        return _mapper.Map<IEnumerable<ClienteDto>>(clientes);
+        var items = await _repository.GetPagedAsync(page, pageSize, search);
+        var total = await _repository.GetTotalCountAsync(search);
+
+        return new PagedResultDto<ClienteDto>
+        {
+            Data = _mapper.Map<List<ClienteDto>>(items),
+            TotalCount = total,
+            Page = page,
+            PageSize = pageSize
+        };
     }
 
     public async Task<ClienteDto?> GetByIdAsync(Guid id)

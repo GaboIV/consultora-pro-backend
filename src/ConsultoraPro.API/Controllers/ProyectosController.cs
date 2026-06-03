@@ -1,6 +1,7 @@
 using ConsultoraPro.Application.DTOs.Common;
 using ConsultoraPro.Application.DTOs.Proyectos;
 using ConsultoraPro.Application.Interfaces;
+using ConsultoraPro.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,10 +20,20 @@ public class ProyectosController : ControllerBase
 
     [HttpGet]
     [Authorize(Policy = "proyectos.ver")]
-    public async Task<ActionResult<ApiResponse<IEnumerable<ProyectoDto>>>> GetAll()
+    public async Task<ActionResult<ApiResponse<PagedResultDto<ProyectoDto>>>> GetAll(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? estado = null,
+        [FromQuery] Guid? clienteId = null)
     {
-        var data = await _proyectoService.GetAllAsync();
-        return Ok(new ApiResponse<IEnumerable<ProyectoDto>> { Success = true, Data = data });
+        EstadoProyecto? estadoEnum = null;
+        if (!string.IsNullOrWhiteSpace(estado) && Enum.TryParse<EstadoProyecto>(estado, true, out var parsedEstado))
+        {
+            estadoEnum = parsedEstado;
+        }
+
+        var data = await _proyectoService.GetAllAsync(page, pageSize, estadoEnum, clienteId);
+        return Ok(new ApiResponse<PagedResultDto<ProyectoDto>> { Success = true, Data = data });
     }
 
     [HttpGet("{id}")]

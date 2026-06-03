@@ -9,5 +9,8 @@ public class CreateProyectoDto
     public Guid TipoSolucionId { get; set; }
     public EtapaProyecto Etapa { get; set; }
     public EstadoProyecto Estado { get; set; }
+    public int Progreso { get; set; }
+    public DateTime FechaInicio { get; set; }
+    public DateTime FechaFin { get; set; }
     public List<AsignarMiembroDto> Miembros { get; set; } = new();
 }

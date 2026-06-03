@@ -59,45 +59,45 @@ El endpoint existe pero devuelve lista vacía. Este grupo lo convierte en funcio
 
 Los permisos ya existen en el catálogo. El CRUD completo queda funcional.
 
-- [H] Crear entidad `Ambiente` en Domain: Id, Nombre, Tipo (enum), Url, ProyectoId, Tecnologia, Estado (enum), UptimePorcentaje, Activo, FechaCreacion
-- [H] Crear enum `TipoAmbiente`: `Produccion`, `Staging`, `Desarrollo`, `QA`
-- [H] Crear enum `EstadoAmbiente`: `Online`, `Offline`, `Alerta`, `Configurando`
-- [H] Crear migración para tabla `Ambientes`
-- [H] Crear `IAmbienteRepository` en Domain
-- [H] Implementar `AmbienteRepository` en Infrastructure
-- [H] Crear DTOs: `AmbienteDto`, `CreateAmbienteDto`, `UpdateAmbienteDto`
-- [H] Crear `AmbienteService` en Application
-- [H] Crear `AmbientesController` con endpoints:
+- [x] Crear entidad `Ambiente` en Domain: Id, Nombre, Tipo (enum), Url, ProyectoId, Tecnologia, Estado (enum), UptimePorcentaje, Activo, FechaCreacion
+- [x] Crear enum `TipoAmbiente`: `Produccion`, `Staging`, `Desarrollo`, `QA`
+- [x] Crear enum `EstadoAmbiente`: `Online`, `Offline`, `Alerta`, `Configurando`
+- [x] Crear migración para tabla `Ambientes`
+- [x] Crear `IAmbienteRepository` en Domain
+- [x] Implementar `AmbienteRepository` en Infrastructure
+- [x] Crear DTOs: `AmbienteDto`, `CreateAmbienteDto`, `UpdateAmbienteDto`
+- [x] Crear `AmbienteService` en Application
+- [x] Crear `AmbientesController` con endpoints:
   - `GET /ambientes` → lista todos (requiere `ambientes.ver`)
   - `GET /ambientes/proyecto/{proyectoId}` → filtrado por proyecto (requiere `ambientes.ver`)
   - `POST /ambientes` → crear (requiere `ambientes.crear`)
   - `PUT /ambientes/{id}` → editar (requiere `ambientes.editar`)
   - `PUT /ambientes/{id}/estado` → cambiar estado sin editar todo (requiere `ambientes.editar`)
   - `DELETE /ambientes/{id}` → soft delete (requiere `ambientes.editar`)
-- [H] Agregar validaciones FluentValidation
+- [x] Agregar validaciones FluentValidation
 - [x] Incluir resumen de ambientes (total, online, con alerta) en el snapshot de management
-- [H] Agregar seed de ambientes de ejemplo asociados a los proyectos existentes
+- [x] Agregar seed de ambientes de ejemplo asociados a los proyectos existentes
 
 ---
 
 ## GRUPO 4 — Módulo de Repositorios (nuevo)
 
-- [H] Crear entidad `Repositorio` en Domain: Id, Nombre, ProyectoId, Proveedor (enum), RamaPrincipal, Url, EstadoPipeline (enum), Activo, FechaCreacion
-- [H] Crear enum `ProveedorRepositorio`: `GitHub`, `GitLab`, `AzureDevOps`, `Bitbucket`, `Otro`
-- [H] Crear enum `EstadoPipeline`: `Passing`, `Failed`, `Desconocido`, `EnEjecucion`
-- [H] Crear migración para tabla `Repositorios`
-- [H] Crear `IRepositorioRepository` en Domain
-- [H] Implementar `RepositorioRepository` en Infrastructure
-- [H] Crear DTOs: `RepositorioDto`, `CreateRepositorioDto`, `UpdateRepositorioDto`
-- [H] Crear `RepositoriosController` con endpoints:
+- [x] Crear entidad `Repositorio` en Domain: Id, Nombre, ProyectoId, Proveedor (enum), RamaPrincipal, Url, EstadoPipeline (enum), Activo, FechaCreacion
+- [x] Crear enum `ProveedorRepositorio`: `GitHub`, `GitLab`, `AzureDevOps`, `Bitbucket`, `Otro`
+- [x] Crear enum `EstadoPipeline`: `Passing`, `Failed`, `Desconocido`, `EnEjecucion`
+- [x] Crear migración para tabla `Repositorios`
+- [x] Crear `IRepositorioRepository` en Domain
+- [x] Implementar `RepositorioRepository` en Infrastructure
+- [x] Crear DTOs: `RepositorioDto`, `CreateRepositorioDto`, `UpdateRepositorioDto`
+- [x] Crear `RepositoriosController` con endpoints:
   - `GET /repositorios` → lista todos (requiere `proyectos.ver`)
   - `GET /repositorios/proyecto/{proyectoId}` → filtrado por proyecto (requiere `proyectos.ver`)
   - `POST /repositorios` → crear (requiere `proyectos.editar`)
   - `PUT /repositorios/{id}` → editar (requiere `proyectos.editar`)
   - `DELETE /repositorios/{id}` → eliminar (requiere `proyectos.editar`)
-- [H] Agregar validaciones FluentValidation (URL válida, proveedor válido)
+- [x] Agregar validaciones FluentValidation (URL válida, proveedor válido)
 - [x] Incluir repositorios en el snapshot de management agrupados por proyecto: el ManagementService aún no incluye datos reales de repositorios en el snapshot; requiere integrar IRepositorioRepository en ManagementService y poblar InfrastructureOverview.repositories.
-- [H] Agregar seed de repositorios de ejemplo
+- [x] Agregar seed de repositorios de ejemplo
 
 ---
 
@@ -105,24 +105,24 @@ Los permisos ya existen en el catálogo. El CRUD completo queda funcional.
 
 > Marcado: `H` = se puede hacer ahora. `P` = pendiente; después de `:` se explica por qué no se puede cerrar todavía.
 
-- [H] Crear entidad `Despliegue` en Domain: Id, ProyectoId, AmbienteId, Version, EjecutadoPorId, FechaHora, Estado (enum), DuracionSegundos, Notas
-- [H] Crear enum `EstadoDespliegue`: `Exitoso`, `Fallido`, `EnCurso`, `Cancelado`
-- [H] Crear migración para tabla `Despliegues`
-- [H] Crear `IDespliegueRepository` en Domain
-- [H] Implementar `DespliegueRepository` en Infrastructure
-- [H] Crear DTOs: `DespliegueDto`, `DespliegueListDto`, `CreateDespliegueDto`, `UpdateDespliegueEstadoDto`, `PagedResultDto`
-- [H] Crear `DesplieguesController` con endpoints:
+- [x] Crear entidad `Despliegue` en Domain: Id, ProyectoId, AmbienteId, Version, EjecutadoPorId, FechaHora, Estado (enum), DuracionSegundos, Notas
+- [x] Crear enum `EstadoDespliegue`: `Exitoso`, `Fallido`, `EnCurso`, `Cancelado`
+- [x] Crear migración para tabla `Despliegues`
+- [x] Crear `IDespliegueRepository` en Domain
+- [x] Implementar `DespliegueRepository` en Infrastructure
+- [x] Crear DTOs: `DespliegueDto`, `DespliegueListDto`, `CreateDespliegueDto`, `UpdateDespliegueEstadoDto`, `PagedResultDto`
+- [x] Crear `DesplieguesController` con endpoints:
   - `GET /despliegues` → historial completo paginado (requiere `despliegues.historial`)
   - `GET /despliegues/proyecto/{proyectoId}` → historial por proyecto (requiere `despliegues.historial`)
   - `GET /despliegues/recientes` → últimos 10 para dashboard (requiere `despliegues.ver`)
   - `GET /despliegues/{id}` → detalle del despliegue (requiere `despliegues.ver`)
   - `POST /despliegues` → registrar despliegue (requiere `despliegues.ejecutar`)
   - `PUT /despliegues/{id}/estado` → actualizar estado de un despliegue en curso (requiere `despliegues.ejecutar`)
-- [H] El campo `EjecutadoPorId` se toma del claim `userId` del JWT, nunca del body
+- [x] El campo `EjecutadoPorId` se toma del claim `userId` del JWT, nunca del body
 - [x] Calcular tasa de éxito del mes y exponerla en el snapshot de management
 - [x] Agregar los últimos 5 despliegues en el snapshot de management para el dashboard
-- [H] Agregar seed de despliegues de ejemplo
-- [H] Agregar `SearchDesplieguesAsync` en `SearchService` para permitir búsqueda global de despliegues (icono `rocket`, navega a `/despliegues`)
+- [x] Agregar seed de despliegues de ejemplo
+- [x] Agregar `SearchDesplieguesAsync` en `SearchService` para permitir búsqueda global de despliegues (icono `rocket`, navega a `/despliegues`)
 
 ---
 

@@ -1,3 +1,4 @@
+using ConsultoraPro.Application.DTOs.Common;
 using ConsultoraPro.Application.DTOs.Despliegues;
 
 namespace ConsultoraPro.Application.Interfaces;
