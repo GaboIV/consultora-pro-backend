@@ -91,6 +91,25 @@ public class AuthService : IAuthService
         ThrowIfFailed(result);
     }
 
+    public async Task<AuthResponseDto> UpdatePerfilAsync(Guid userId, UpdatePerfilDto dto)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user is null || !user.Activo)
+            throw new KeyNotFoundException("Usuario no encontrado o inactivo");
+
+        user.Nombres = dto.Nombres.Trim();
+        user.Apellidos = dto.Apellidos.Trim();
+        user.Telefono = dto.Telefono.Trim();
+        user.Iniciales = string.IsNullOrWhiteSpace(dto.Iniciales)
+            ? BuildInitials(dto.Nombres, dto.Apellidos)
+            : dto.Iniciales.Trim().ToUpperInvariant();
+
+        var result = await _userManager.UpdateAsync(user);
+        ThrowIfFailed(result);
+
+        return await GenerateTokenAsync(user);
+    }
+
     private async Task<AuthResponseDto> GenerateTokenAsync(ApplicationUser user)
     {
         var (roleName, permisos) = await GetRoleAndPermissionsAsync(user);
@@ -106,6 +125,9 @@ public class AuthService : IAuthService
             new("apellidos", user.Apellidos),
             new("iniciales", user.Iniciales),
             new("puesto", user.Puesto),
+            new("telefono", user.Telefono),
+            new("fechaAlta", user.FechaAlta.ToString("o")),
+            new("ultimoAcceso", user.UltimoAcceso?.ToString("o") ?? string.Empty),
             new("role", roleName),
             new("permisos", JsonSerializer.Serialize(permisos), JsonClaimValueTypes.JsonArray)
         };
@@ -159,8 +181,12 @@ public class AuthService : IAuthService
             Nombres = user.Nombres,
             Apellidos = user.Apellidos,
             Iniciales = user.Iniciales,
+            Email = user.Email ?? string.Empty,
+            Telefono = user.Telefono,
             Puesto = user.Puesto,
             Rol = roleName,
+            FechaAlta = user.FechaAlta,
+            UltimoAcceso = user.UltimoAcceso,
             Permisos = permisos
         };
     }

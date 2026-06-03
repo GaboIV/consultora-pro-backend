@@ -128,11 +128,11 @@ Los permisos ya existen en el catálogo. El CRUD completo queda funcional.
 
 ## GRUPO 6 — Perfil de usuario (cuenta propia)
 
-- [ ] Crear endpoint `GET /auth/me` si no está funcionando completamente (verificar que retorna datos frescos de BD, no solo del JWT)
-- [ ] Crear endpoint `PUT /auth/perfil` → editar datos propios (nombres, apellidos, teléfono, iniciales) sin requerir permiso de admin
-- [ ] Crear endpoint `PUT /auth/cambiar-password` → cambio de contraseña propio con validación de contraseña actual
-- [ ] Validar que el cambio de contraseña propio no puede ser usado para cambiar la contraseña de otro usuario
-- [ ] Al editar perfil propio, devolver un nuevo token con los datos actualizados (iniciales, nombre) para que el frontend lo refresque
+- [x] Crear endpoint `GET /auth/me` si no está funcionando completamente (verificar que retorna datos frescos de BD, no solo del JWT)
+- [x] Crear endpoint `PUT /auth/perfil` → editar datos propios (nombres, apellidos, teléfono, iniciales) sin requerir permiso de admin
+- [x] Crear endpoint `PUT /auth/cambiar-password` → cambio de contraseña propio con validación de contraseña actual
+- [x] Validar que el cambio de contraseña propio no puede ser usado para cambiar la contraseña de otro usuario
+- [x] Al editar perfil propio, devolver un nuevo token con los datos actualizados (iniciales, nombre) para que el frontend lo refresque
 
 ---
 
@@ -264,7 +264,7 @@ Actualmente todos los listados devuelven todos los registros. Cuando la data cre
 | Repositorios | ✅ CRUD funcional, validaciones y seed listos |
 | Despliegues | ✅ CRUD funcional con endpoints paginados, snapshot con últimos 5 y tasa de éxito, search global, seed de ejemplo |
 | Screenshots | 🔴 Pendiente |
-| Perfil propio | 🟡 `/auth/me` existe, edición pendiente |
+| Perfil propio | ✅ Operativo |
 | Paginación / filtros | 🔴 Pendiente |
 | Notificaciones / alertas | 🟡 Snapshot con alertas reales de credenciales y ambientes; proyectos pendiente |
 | Refresh token | 🔴 Pendiente |

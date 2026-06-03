@@ -33,7 +33,16 @@ public class AuthController : ControllerBase
 
     [Authorize]
     [HttpPost("me")]
-    public async Task<ActionResult<AuthUserDto>> Me()
+    public async Task<ActionResult<AuthUserDto>> MePost()
+    {
+        var userId = GetUserId();
+        var data = await _authService.GetCurrentUserAsync(userId);
+        return Ok(data);
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<ActionResult<AuthUserDto>> MeGet()
     {
         var userId = GetUserId();
         var data = await _authService.GetCurrentUserAsync(userId);
@@ -42,11 +51,29 @@ public class AuthController : ControllerBase
 
     [Authorize]
     [HttpPost("change-password")]
-    public async Task<ActionResult<ApiResponse<object>>> ChangePassword([FromBody] ChangePasswordDto dto)
+    public async Task<ActionResult<ApiResponse<object>>> ChangePasswordPost([FromBody] ChangePasswordDto dto)
     {
         var userId = GetUserId();
         await _authService.ChangePasswordAsync(userId, dto);
         return Ok(new ApiResponse<object> { Success = true, Message = "Contraseña actualizada exitosamente" });
+    }
+
+    [Authorize]
+    [HttpPut("cambiar-password")]
+    public async Task<ActionResult<ApiResponse<object>>> CambiarPasswordPut([FromBody] ChangePasswordDto dto)
+    {
+        var userId = GetUserId();
+        await _authService.ChangePasswordAsync(userId, dto);
+        return Ok(new ApiResponse<object> { Success = true, Message = "Contraseña actualizada exitosamente" });
+    }
+
+    [Authorize]
+    [HttpPut("perfil")]
+    public async Task<ActionResult<ApiResponse<AuthResponseDto>>> UpdatePerfil([FromBody] UpdatePerfilDto dto)
+    {
+        var userId = GetUserId();
+        var data = await _authService.UpdatePerfilAsync(userId, dto);
+        return Ok(new ApiResponse<AuthResponseDto> { Success = true, Data = data, Message = "Perfil actualizado exitosamente" });
     }
 
     private Guid GetUserId()
