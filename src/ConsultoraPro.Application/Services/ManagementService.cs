@@ -18,6 +18,7 @@ public class ManagementService : IManagementService
     private readonly IAmbienteRepository _ambienteRepository;
     private readonly IDespliegueRepository _despliegueRepository;
     private readonly IRepositorioRepository _repositorioRepository;
+    private readonly IAlertaService _alertaService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IMapper _mapper;
 
@@ -29,6 +30,7 @@ public class ManagementService : IManagementService
         IAmbienteRepository ambienteRepository,
         IDespliegueRepository despliegueRepository,
         IRepositorioRepository repositorioRepository,
+        IAlertaService alertaService,
         UserManager<ApplicationUser> userManager,
         IMapper mapper)
     {
@@ -39,6 +41,7 @@ public class ManagementService : IManagementService
         _ambienteRepository = ambienteRepository;
         _despliegueRepository = despliegueRepository;
         _repositorioRepository = repositorioRepository;
+        _alertaService = alertaService;
         _userManager = userManager;
         _mapper = mapper;
     }
@@ -80,36 +83,18 @@ public class ManagementService : IManagementService
         var ambientesOffline = ambientes.Count(a => a.Estado == EstadoAmbiente.Offline);
         var ambientesConfigurando = ambientes.Count(a => a.Estado == EstadoAmbiente.Configurando);
 
+        var activeAlerts = await _alertaService.GetAlertasActivasAsync();
         var alerts = new List<AlertMessageDto>
         {
             new() { Tone = "info", Text = $"Última actualización: {now:dd/MM/yyyy HH:mm} UTC" }
         };
 
-        if (credencialesPorVencer.Count > 0)
+        foreach (var alert in activeAlerts)
         {
             alerts.Add(new AlertMessageDto
             {
-                Tone = "warn",
-                Text = $"{credencialesPorVencer.Count} credencial(es) vencen en menos de 7 días"
-            });
-        }
-
-        if (ambientesAlerta > 0)
-        {
-            alerts.Add(new AlertMessageDto
-            {
-                Tone = "warn",
-                Text = $"{ambientesAlerta} ambiente(s) requieren atención operativa"
-            });
-        }
-
-        var proyectosPorVencer = proyectos.Count(p => p.Estado == EstadoProyecto.PorVencer || (p.Estado != EstadoProyecto.Completado && p.FechaFin <= now.AddDays(14)));
-        if (proyectosPorVencer > 0)
-        {
-            alerts.Add(new AlertMessageDto
-            {
-                Tone = "warn",
-                Text = $"{proyectosPorVencer} proyecto(s) próximos a vencer o con retraso"
+                Tone = alert.EsCritica || alert.Tone == "red" || alert.Tone == "amber" ? "warn" : "info",
+                Text = alert.Mensaje
             });
         }
 

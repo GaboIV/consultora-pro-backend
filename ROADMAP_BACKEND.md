@@ -170,13 +170,13 @@ Actualmente todos los listados devuelven todos los registros. Cuando la data cre
 
 ## GRUPO 9 — Notificaciones y alertas del sistema
 
-- [ ] Crear servicio `IAlertaService` que calcule alertas activas del sistema:
+- [x] Crear servicio `IAlertaService` que calcule alertas activas del sistema:
   - Credenciales que vencen en menos de 7 días
   - Proyectos cuya fecha fin es en menos de 14 días y no están completados
   - Ambientes en estado `Alerta`
 - [x] Exponer alertas en el snapshot de management (ya hay estructura, conectar con datos reales)
-- [ ] Crear endpoint `GET /alertas` para que el frontend pueda hacer polling independiente
-- [ ] Evaluar implementación de SignalR hub para notificaciones en tiempo real (fase futura)
+- [x] Crear endpoint `GET /alertas` para que el frontend pueda hacer polling independiente
+- [x] Evaluar implementación de SignalR hub para notificaciones en tiempo real (fase futura: evaluado y programado para v2, v1 usa polling)
 
 ---
 
@@ -266,7 +266,7 @@ Actualmente todos los listados devuelven todos los registros. Cuando la data cre
 | Screenshots | ✅ Operativo |
 | Perfil propio | ✅ Operativo |
 | Paginación / filtros | 🔴 Pendiente |
-| Notificaciones / alertas | 🟡 Snapshot con alertas reales de credenciales y ambientes; proyectos pendiente |
+| Notificaciones / alertas | ✅ Operativo (Servicio, endpoint y snapshot integrados con alertas reales de credenciales, proyectos y ambientes) |
 | Refresh token | 🔴 Pendiente |
 | Reportes / exportación | 🔴 Pendiente |
 | Logs estructurados | 🔴 Pendiente |
