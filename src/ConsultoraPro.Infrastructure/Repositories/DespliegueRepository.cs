@@ -43,14 +43,23 @@ public class DespliegueRepository : IDespliegueRepository
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<Despliegue>> GetRecentAsync(int count)
+    public async Task<IEnumerable<Despliegue>> GetRecentAsync(int count, DateTime? date = null)
     {
-        return await _context.Despliegues
+        var query = _context.Despliegues
             .AsNoTracking()
             .Include(d => d.Proyecto).ThenInclude(p => p.Cliente)
             .Include(d => d.Ambiente)
             .Include(d => d.EjecutadoPor)
-            .Where(d => d.Activo)
+            .Where(d => d.Activo);
+
+        if (date.HasValue)
+        {
+            var startOfMonth = new DateTime(date.Value.Year, date.Value.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var endOfMonth = startOfMonth.AddMonths(1).AddTicks(-1);
+            query = query.Where(d => d.FechaHora >= startOfMonth && d.FechaHora <= endOfMonth);
+        }
+
+        return await query
             .OrderByDescending(d => d.FechaHora)
             .Take(count)
             .ToListAsync();
@@ -86,14 +95,15 @@ public class DespliegueRepository : IDespliegueRepository
         return await query.CountAsync();
     }
 
-    public async Task<(int total, int exitosos)> GetMonthlyStatsAsync()
+    public async Task<(int total, int exitosos)> GetMonthlyStatsAsync(DateTime? date = null)
     {
-        var now = DateTime.UtcNow;
-        var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var targetDate = date ?? DateTime.UtcNow;
+        var startOfMonth = new DateTime(targetDate.Year, targetDate.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var endOfMonth = startOfMonth.AddMonths(1).AddTicks(-1);
 
         var query = _context.Despliegues
             .AsNoTracking()
-            .Where(d => d.Activo && d.FechaHora >= startOfMonth);
+            .Where(d => d.Activo && d.FechaHora >= startOfMonth && d.FechaHora <= endOfMonth);
 
         var total = await query.CountAsync();
         var exitosos = await query.Where(d => d.Estado == EstadoDespliegue.Exitoso).CountAsync();

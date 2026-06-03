@@ -6,10 +6,10 @@ public interface IDespliegueRepository
 {
     Task<IEnumerable<Despliegue>> GetAllAsync(int page = 1, int pageSize = 50);
     Task<IEnumerable<Despliegue>> GetByProjectAsync(Guid proyectoId, int page = 1, int pageSize = 50);
-    Task<IEnumerable<Despliegue>> GetRecentAsync(int count);
+    Task<IEnumerable<Despliegue>> GetRecentAsync(int count, DateTime? date = null);
     Task<Despliegue?> GetByIdAsync(Guid id);
     Task<Despliegue> CreateAsync(Despliegue despliegue);
     Task UpdateAsync(Despliegue despliegue);
     Task<int> GetTotalCountAsync(Guid? proyectoId = null);
-    Task<(int total, int exitosos)> GetMonthlyStatsAsync();
+    Task<(int total, int exitosos)> GetMonthlyStatsAsync(DateTime? date = null);
 }

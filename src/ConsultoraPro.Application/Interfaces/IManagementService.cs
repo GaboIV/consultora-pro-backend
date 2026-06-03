@@ -4,5 +4,5 @@ namespace ConsultoraPro.Application.Interfaces;
 
 public interface IManagementService
 {
-    Task<ManagementSnapshotDto> GetSnapshotAsync();
+    Task<ManagementSnapshotDto> GetSnapshotAsync(string? period = null);
 }

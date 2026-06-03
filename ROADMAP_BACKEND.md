@@ -75,7 +75,7 @@ Los permisos ya existen en el catálogo. El CRUD completo queda funcional.
   - `PUT /ambientes/{id}/estado` → cambiar estado sin editar todo (requiere `ambientes.editar`)
   - `DELETE /ambientes/{id}` → soft delete (requiere `ambientes.editar`)
 - [H] Agregar validaciones FluentValidation
-- [H] Incluir resumen de ambientes (total, online, con alerta) en el snapshot de management
+- [x] Incluir resumen de ambientes (total, online, con alerta) en el snapshot de management
 - [H] Agregar seed de ambientes de ejemplo asociados a los proyectos existentes
 
 ---
@@ -96,7 +96,7 @@ Los permisos ya existen en el catálogo. El CRUD completo queda funcional.
   - `PUT /repositorios/{id}` → editar (requiere `proyectos.editar`)
   - `DELETE /repositorios/{id}` → eliminar (requiere `proyectos.editar`)
 - [H] Agregar validaciones FluentValidation (URL válida, proveedor válido)
-- [P] Incluir repositorios en el snapshot de management agrupados por proyecto: el ManagementService aún no incluye datos reales de repositorios en el snapshot; requiere integrar IRepositorioRepository en ManagementService y poblar InfrastructureOverview.repositories.
+- [x] Incluir repositorios en el snapshot de management agrupados por proyecto: el ManagementService aún no incluye datos reales de repositorios en el snapshot; requiere integrar IRepositorioRepository en ManagementService y poblar InfrastructureOverview.repositories.
 - [H] Agregar seed de repositorios de ejemplo
 
 ---
@@ -119,8 +119,8 @@ Los permisos ya existen en el catálogo. El CRUD completo queda funcional.
   - `POST /despliegues` → registrar despliegue (requiere `despliegues.ejecutar`)
   - `PUT /despliegues/{id}/estado` → actualizar estado de un despliegue en curso (requiere `despliegues.ejecutar`)
 - [H] El campo `EjecutadoPorId` se toma del claim `userId` del JWT, nunca del body
-- [H] Calcular tasa de éxito del mes y exponerla en el snapshot de management
-- [H] Agregar los últimos 5 despliegues en el snapshot de management para el dashboard
+- [x] Calcular tasa de éxito del mes y exponerla en el snapshot de management
+- [x] Agregar los últimos 5 despliegues en el snapshot de management para el dashboard
 - [H] Agregar seed de despliegues de ejemplo
 - [H] Agregar `SearchDesplieguesAsync` en `SearchService` para permitir búsqueda global de despliegues (icono `rocket`, navega a `/despliegues`)
 
@@ -174,7 +174,7 @@ Actualmente todos los listados devuelven todos los registros. Cuando la data cre
   - Credenciales que vencen en menos de 7 días
   - Proyectos cuya fecha fin es en menos de 14 días y no están completados
   - Ambientes en estado `Alerta`
-- [ ] Exponer alertas en el snapshot de management (ya hay estructura, conectar con datos reales)
+- [x] Exponer alertas en el snapshot de management (ya hay estructura, conectar con datos reales)
 - [ ] Crear endpoint `GET /alertas` para que el frontend pueda hacer polling independiente
 - [ ] Evaluar implementación de SignalR hub para notificaciones en tiempo real (fase futura)
 

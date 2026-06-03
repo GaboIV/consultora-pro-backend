@@ -17,6 +17,7 @@ public class ManagementService : IManagementService
     private readonly ICredencialRepository _credencialRepository;
     private readonly IAmbienteRepository _ambienteRepository;
     private readonly IDespliegueRepository _despliegueRepository;
+    private readonly IRepositorioRepository _repositorioRepository;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IMapper _mapper;
 
@@ -27,6 +28,7 @@ public class ManagementService : IManagementService
         ICredencialRepository credencialRepository,
         IAmbienteRepository ambienteRepository,
         IDespliegueRepository despliegueRepository,
+        IRepositorioRepository repositorioRepository,
         UserManager<ApplicationUser> userManager,
         IMapper mapper)
     {
@@ -36,20 +38,29 @@ public class ManagementService : IManagementService
         _credencialRepository = credencialRepository;
         _ambienteRepository = ambienteRepository;
         _despliegueRepository = despliegueRepository;
+        _repositorioRepository = repositorioRepository;
         _userManager = userManager;
         _mapper = mapper;
     }
 
-    public async Task<ManagementSnapshotDto> GetSnapshotAsync()
+    public async Task<ManagementSnapshotDto> GetSnapshotAsync(string? period = null)
     {
+        var now = DateTime.UtcNow;
+        var selectedDate = now;
+        if (!string.IsNullOrEmpty(period) && DateTime.TryParseExact(period, "yyyy-MM", null, System.Globalization.DateTimeStyles.AssumeUniversal, out var parsedDate))
+        {
+            selectedDate = new DateTime(parsedDate.Year, parsedDate.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        }
+
         var clientes = await _clienteRepository.GetAllAsync();
         var proyectos = await _proyectoRepository.GetAllAsync();
         var tiposSolucion = await _tipoSolucionRepository.GetAllAsync();
         var users = await _userManager.Users.ToListAsync();
         var credencialesPorVencer = (await _credencialRepository.GetExpiringWithinAsync(7)).ToList();
         var ambientes = (await _ambienteRepository.GetAllAsync()).ToList();
-        var despliegues = (await _despliegueRepository.GetRecentAsync(5)).ToList();
-        var (totalDesplieguesMes, exitososDesplieguesMes) = await _despliegueRepository.GetMonthlyStatsAsync();
+        var repositorios = (await _repositorioRepository.GetAllAsync()).ToList();
+        var despliegues = (await _despliegueRepository.GetRecentAsync(5, selectedDate)).ToList();
+        var (totalDesplieguesMes, exitososDesplieguesMes) = await _despliegueRepository.GetMonthlyStatsAsync(selectedDate);
 
         var clients = _mapper.Map<List<ManagementClientDto>>(clientes);
         var projects = _mapper.Map<List<ManagementProjectDto>>(proyectos);
@@ -60,10 +71,10 @@ public class ManagementService : IManagementService
             Nombre = t.Nombre
         }).ToList();
 
-        var now = DateTime.UtcNow;
         var totalProyectos = projects.Count;
-        var activos = clients.Count;
-        var completados = projects.Count(p => p.StatusTone == "green");
+        var activos = clientes.Count(c => c.Activo);
+        var completados = projects.Count(p => p.StatusValue == "Completado");
+        var proyectosEnCurso = projects.Count(p => p.StatusValue != "Completado");
         var ambientesOnline = ambientes.Count(a => a.Estado == EstadoAmbiente.Online);
         var ambientesAlerta = ambientes.Count(a => a.Estado == EstadoAmbiente.Alerta);
         var ambientesOffline = ambientes.Count(a => a.Estado == EstadoAmbiente.Offline);
@@ -92,16 +103,45 @@ public class ManagementService : IManagementService
             });
         }
 
+        var proyectosPorVencer = proyectos.Count(p => p.Estado == EstadoProyecto.PorVencer || (p.Estado != EstadoProyecto.Completado && p.FechaFin <= now.AddDays(14)));
+        if (proyectosPorVencer > 0)
+        {
+            alerts.Add(new AlertMessageDto
+            {
+                Tone = "warn",
+                Text = $"{proyectosPorVencer} proyecto(s) próximos a vencer o con retraso"
+            });
+        }
+
+        var spotlightProyectos = proyectos
+            .Where(p => p.Estado != EstadoProyecto.Completado)
+            .OrderBy(p => p.FechaFin)
+            .Take(5)
+            .ToList();
+
+        if (spotlightProyectos.Count < 3)
+        {
+            var extra = proyectos
+                .Where(p => p.Estado == EstadoProyecto.Completado)
+                .OrderByDescending(p => p.FechaFin)
+                .Take(5 - spotlightProyectos.Count);
+            spotlightProyectos.AddRange(extra);
+        }
+
+        var spotlightDtos = _mapper.Map<List<ManagementProjectDto>>(spotlightProyectos);
+
         var snapshot = new ManagementSnapshotDto
         {
             GeneratedAt = now.ToString("yyyy-MM-ddTHH:mm:sszzz"),
-            PeriodLabel = $"{now:MMMM yyyy}",
+            PeriodLabel = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(
+                selectedDate.ToString("MMMM yyyy", new System.Globalization.CultureInfo("es-ES"))
+            ),
             Executive = new ExecutiveOverviewDto
             {
                 Metrics = new List<MetricDto>
                 {
                     new() { Label = "Clientes activos", Value = activos.ToString(), Detail = $"Gestionando {totalProyectos} proyectos", Tone = "blue" },
-                    new() { Label = "Proyectos en curso", Value = projects.Count(p => p.StatusTone is "amber" or "blue").ToString(), Detail = completados > 0 ? $"{completados} completados" : "0 completados", Tone = "green" },
+                    new() { Label = "Proyectos en curso", Value = proyectosEnCurso.ToString(), Detail = completados > 0 ? $"{completados} completados" : "0 completados", Tone = "green" },
                     new() { Label = "Ambientes activos", Value = ambientes.Count.ToString(), Detail = $"{ambientesOnline} online · {ambientesAlerta} alerta · {ambientesOffline} offline", Tone = ambientesAlerta > 0 ? "amber" : "teal", DetailTone = ambientesAlerta > 0 ? "warn" : "up" },
                     new() { Label = "Progreso promedio", Value = projects.Any() ? $"{(int)projects.Average(p => p.Progress)}%" : "0%", Detail = "General de todos los proyectos", Tone = "amber" },
                     new()
@@ -113,7 +153,7 @@ public class ManagementService : IManagementService
                     }
                 },
                 Alerts = alerts,
-                SpotlightProjects = projects.OrderByDescending(p => p.Progress).Take(3).ToList(),
+                SpotlightProjects = spotlightDtos,
                 Gantt = new List<GanttItemDto>(),
                 Milestones = new List<AlertMessageDto>
                 {
@@ -147,6 +187,7 @@ public class ManagementService : IManagementService
                         Items = group.Select(ToEnvironmentItemDto).ToList()
                     })
                     .ToList(),
+                Repositories = repositorios.Select(ToRepositoryHealthDto).ToList(),
                 Credentials = credencialesPorVencer.Select(ToCredentialAlertDto).ToList(),
                 Deployments = despliegues.Select(ToDeploymentDto).ToList()
             },
@@ -268,4 +309,49 @@ public class ManagementService : IManagementService
         TipoAmbiente.QA => "purple",
         _ => "gray"
     };
+
+    private static RepositoryHealthDto ToRepositoryHealthDto(Repositorio r)
+    {
+        return new RepositoryHealthDto
+        {
+            Name = r.Nombre,
+            Provider = MapProviderLabel(r.Proveedor),
+            Branch = r.RamaPrincipal,
+            Stack = MapStackFromRepository(r),
+            Status = r.EstadoPipeline.ToString(),
+            Tone = MapPipelineStatusTone(r.EstadoPipeline)
+        };
+    }
+
+    private static string MapProviderLabel(ProveedorRepositorio proveedor) => proveedor switch
+    {
+        ProveedorRepositorio.GitHub => "GitHub",
+        ProveedorRepositorio.GitLab => "GitLab",
+        ProveedorRepositorio.AzureDevOps => "Azure DevOps",
+        ProveedorRepositorio.Bitbucket => "Bitbucket",
+        _ => proveedor.ToString()
+    };
+
+    private static string MapPipelineStatusTone(EstadoPipeline estado) => estado switch
+    {
+        EstadoPipeline.Passing => "green",
+        EstadoPipeline.Failed => "red",
+        EstadoPipeline.EnEjecucion => "amber",
+        _ => "gray"
+    };
+
+    private static string MapStackFromRepository(Repositorio r)
+    {
+        if (r.Nombre.Contains("-worker"))
+            return ".NET 8 (Worker)";
+        if (r.Nombre.Contains("backend") || r.Nombre.Contains("api"))
+            return ".NET 8";
+        if (r.Nombre.Contains("frontend") || r.Nombre.Contains("web"))
+            return "Angular 21";
+
+        if (r.Proyecto?.TipoSolucion?.Nombre == "Host2Host")
+            return ".NET 8";
+
+        return ".NET 8 · Angular";
+    }
 }

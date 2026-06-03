@@ -19,9 +19,9 @@ public class ManagementController : ControllerBase
 
     [HttpGet("snapshot")]
     [Authorize]
-    public async Task<ActionResult<ApiResponse<ManagementSnapshotDto>>> GetSnapshot()
+    public async Task<ActionResult<ApiResponse<ManagementSnapshotDto>>> GetSnapshot([FromQuery] string? period = null)
     {
-        var data = await _managementService.GetSnapshotAsync();
+        var data = await _managementService.GetSnapshotAsync(period);
         return Ok(new ApiResponse<ManagementSnapshotDto> { Success = true, Data = data });
     }
 }
