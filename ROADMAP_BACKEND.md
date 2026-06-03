@@ -155,16 +155,16 @@ Los permisos ya existen en el catálogo. El CRUD completo queda funcional.
 
 Actualmente todos los listados devuelven todos los registros. Cuando la data crezca, esto será un problema.
 
-- [ ] Implementar paginación genérica `PagedResult<T>` con campos: `data`, `totalCount`, `page`, `pageSize`, `totalPages`
-- [ ] Aplicar paginación en `GET /usuarios` (pageSize default: 20)
-- [ ] Aplicar paginación en `GET /clientes` (pageSize default: 20)
-- [ ] Aplicar paginación en `GET /proyectos` (pageSize default: 20)
-- [ ] Aplicar paginación en `GET /despliegues` (pageSize default: 50)
-- [ ] Aplicar paginación en `GET /credenciales` (pageSize default: 20)
-- [ ] Implementar filtro por estado en `GET /proyectos?estado=EnCurso`
-- [ ] Implementar filtro por cliente en `GET /proyectos?clienteId=xxx`
-- [ ] Implementar filtro por rol en `GET /usuarios?rol=LT`
-- [ ] Implementar búsqueda por nombre en `GET /clientes?search=Repsol`
+- [x] Implementar paginación genérica `PagedResult<T>` con campos: `data`, `totalCount`, `page`, `pageSize`, `totalPages`
+- [x] Aplicar paginación en `GET /usuarios` (pageSize default: 20)
+- [x] Aplicar paginación en `GET /clientes` (pageSize default: 20)
+- [x] Aplicar paginación en `GET /proyectos` (pageSize default: 20)
+- [x] Aplicar paginación en `GET /despliegues` (pageSize default: 50)
+- [x] Aplicar paginación en `GET /credenciales` (pageSize default: 20)
+- [x] Implementar filtro por estado en `GET /proyectos?estado=EnCurso`
+- [x] Implementar filtro por cliente en `GET /proyectos?clienteId=xxx`
+- [x] Implementar filtro por rol en `GET /usuarios?rol=LT`
+- [x] Implementar búsqueda por nombre en `GET /clientes?search=Repsol`
 
 ---
 
