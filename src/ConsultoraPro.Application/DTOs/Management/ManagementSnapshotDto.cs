@@ -1,4 +1,5 @@
 using ConsultoraPro.Application.DTOs.Proyectos;
+using ConsultoraPro.Application.DTOs.Screenshots;
 
 namespace ConsultoraPro.Application.DTOs.Management;
 
@@ -78,6 +79,7 @@ public class ManagementProjectDto
     public string StatusTone { get; set; } = "blue";
     public int TeamSize { get; set; }
     public List<ProyectoMiembroDto> Miembros { get; set; } = new();
+    public List<ScreenshotDto> Screenshots { get; set; } = new();
 }
 
 public class UsuarioSnapshotDto

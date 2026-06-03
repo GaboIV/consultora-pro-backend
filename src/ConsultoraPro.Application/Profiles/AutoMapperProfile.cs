@@ -2,6 +2,7 @@ using AutoMapper;
 using ConsultoraPro.Application.DTOs.Clientes;
 using ConsultoraPro.Application.DTOs.Management;
 using ConsultoraPro.Application.DTOs.Proyectos;
+using ConsultoraPro.Application.DTOs.Screenshots;
 using ConsultoraPro.Domain.Enums;
 using ConsultoraPro.Domain.Models;
 
@@ -65,6 +66,9 @@ public class AutoMapperProfile : Profile
             .ForMember(dest => dest.StatusTone, opt => opt.MapFrom(src => MapStatusTone(src.Estado)))
             .ForMember(dest => dest.TeamSize, opt => opt.MapFrom(src => src.ProyectoMiembros.Count))
             .ForMember(dest => dest.Miembros, opt => opt.MapFrom(src => src.ProyectoMiembros));
+
+        CreateMap<Screenshot, ScreenshotDto>()
+            .ForMember(dest => dest.SubidoPorNombre, opt => opt.MapFrom(src => src.SubidoPor != null ? $"{src.SubidoPor.Nombres} {src.SubidoPor.Apellidos}" : "Usuario desconocido"));
     }
 
     private static LeadDto MapLeadFromMiembros(ICollection<ProyectoMiembro> miembros)

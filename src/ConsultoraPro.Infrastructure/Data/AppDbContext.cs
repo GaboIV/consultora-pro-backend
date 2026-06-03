@@ -24,6 +24,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<AmbienteTestUser> AmbienteTestUsers => Set<AmbienteTestUser>();
     public DbSet<AmbienteCloudResource> AmbienteCloudResources => Set<AmbienteCloudResource>();
     public DbSet<AzureSubscriptionTenantMapping> AzureSubscriptionTenantMappings => Set<AzureSubscriptionTenantMapping>();
+    public DbSet<Screenshot> Screenshots => Set<Screenshot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -287,6 +288,26 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
                   .HasForeignKey(a => a.UsuarioId)
                   .OnDelete(DeleteBehavior.Restrict);
         });
+
+        modelBuilder.Entity<Screenshot>(entity =>
+        {
+            entity.HasKey(s => s.Id);
+            entity.Property(s => s.Nombre).IsRequired().HasMaxLength(160);
+            entity.Property(s => s.Version).IsRequired().HasMaxLength(60);
+            entity.Property(s => s.Url).IsRequired().HasMaxLength(500);
+            entity.Property(s => s.Descripcion).HasMaxLength(500);
+            entity.Property(s => s.FechaSubida).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(s => s.Activo).HasDefaultValue(true);
+            entity.HasIndex(s => new { s.ProyectoId, s.Activo });
+            entity.HasOne(s => s.Proyecto)
+                  .WithMany(p => p.Screenshots)
+                  .HasForeignKey(s => s.ProyectoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(s => s.SubidoPor)
+                  .WithMany()
+                  .HasForeignKey(s => s.SubidoPorId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
     }
 
     public override int SaveChanges()
@@ -334,6 +355,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
 
                 if (entry.Entity is AzureSubscriptionTenantMapping mapping && mapping.CreatedAt == default)
                     mapping.CreatedAt = now;
+
+                if (entry.Entity is Screenshot screenshot && screenshot.FechaSubida == default)
+                    screenshot.FechaSubida = now;
             }
 
             if (entry.State == EntityState.Modified)

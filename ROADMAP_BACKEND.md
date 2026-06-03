@@ -138,16 +138,16 @@ Los permisos ya existen en el catálogo. El CRUD completo queda funcional.
 
 ## GRUPO 7 — Screenshots de proyectos
 
-- [ ] Crear entidad `Screenshot` en Domain: Id, ProyectoId, Nombre, Version, Url (blob), Descripcion, SubidoPorId, FechaSubida
-- [ ] Crear migración para tabla `Screenshots`
-- [ ] Configurar Azure Blob Storage o almacenamiento local para desarrollo (carpeta `/uploads`)
-- [ ] Crear `IStorageService` / `StorageService` para abstraer el upload de archivos
-- [ ] Crear `ScreenshotsController` con endpoints:
+- [x] Crear entidad `Screenshot` en Domain: Id, ProyectoId, Nombre, Version, Url (blob), Descripcion, SubidoPorId, FechaSubida
+- [x] Crear migración para tabla `Screenshots`
+- [x] Configurar Azure Blob Storage o almacenamiento local para desarrollo (carpeta `/uploads`)
+- [x] Crear `IStorageService` / `StorageService` para abstraer el upload de archivos
+- [x] Crear `ScreenshotsController` con endpoints:
   - `GET /screenshots/proyecto/{proyectoId}` → lista de screenshots del proyecto
   - `POST /screenshots` → subir imagen (multipart/form-data, max 5MB, PNG/JPG)
   - `DELETE /screenshots/{id}` → eliminar screenshot
-- [ ] Validar tipo de archivo y tamaño en el endpoint de upload
-- [ ] Incluir screenshots recientes por proyecto en el snapshot de management
+- [x] Validar tipo de archivo y tamaño en el endpoint de upload
+- [x] Incluir screenshots recientes por proyecto en el snapshot de management
 
 ---
 
@@ -263,7 +263,7 @@ Actualmente todos los listados devuelven todos los registros. Cuando la data cre
 | Ambientes | ✅ CRUD funcional, snapshot y seed listos |
 | Repositorios | ✅ CRUD funcional, validaciones y seed listos |
 | Despliegues | ✅ CRUD funcional con endpoints paginados, snapshot con últimos 5 y tasa de éxito, search global, seed de ejemplo |
-| Screenshots | 🔴 Pendiente |
+| Screenshots | ✅ Operativo |
 | Perfil propio | ✅ Operativo |
 | Paginación / filtros | 🔴 Pendiente |
 | Notificaciones / alertas | 🟡 Snapshot con alertas reales de credenciales y ambientes; proyectos pendiente |

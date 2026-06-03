@@ -20,6 +20,7 @@ public class Proyecto
     public ICollection<Ambiente> Ambientes { get; set; } = new List<Ambiente>();
     public ICollection<Repositorio> Repositorios { get; set; } = new List<Repositorio>();
     public ICollection<Despliegue> Despliegues { get; set; } = new List<Despliegue>();
+    public ICollection<Screenshot> Screenshots { get; set; } = new List<Screenshot>();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
