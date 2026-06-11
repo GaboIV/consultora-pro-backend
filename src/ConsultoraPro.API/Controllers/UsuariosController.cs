@@ -135,8 +135,8 @@ public class UsuariosController : ControllerBase
             FechaAlta = DateTime.UtcNow
         };
 
-        var password = string.IsNullOrWhiteSpace(dto.Password) 
-            ? dto.Correo.Split('@')[0] 
+        var password = string.IsNullOrWhiteSpace(dto.Password)
+            ? BuildDefaultPassword(dto.Correo)
             : dto.Password;
 
         var createResult = await _userManager.CreateAsync(user, password);
@@ -328,6 +328,12 @@ public class UsuariosController : ControllerBase
         if (string.IsNullOrWhiteSpace(correo)) errors.Add("El correo es obligatorio.");
         if (!correo.Contains('@', StringComparison.Ordinal)) errors.Add("El correo no tiene un formato válido.");
         return errors;
+    }
+
+    private static string BuildDefaultPassword(string correo)
+    {
+        var prefix = correo.Split('@')[0];
+        return prefix.Length < 8 ? prefix.PadRight(8, '0') : prefix;
     }
 
     private static string BuildInitials(string nombres, string apellidos, string? iniciales)

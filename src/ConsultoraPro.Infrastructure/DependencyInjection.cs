@@ -24,7 +24,7 @@ public static class DependencyInjection
 
         services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
         {
-            options.Password.RequireDigit = true;
+            options.Password.RequireDigit = false;
             options.Password.RequiredLength = 8;
             options.Password.RequireNonAlphanumeric = false;
             options.Password.RequireUppercase = false;

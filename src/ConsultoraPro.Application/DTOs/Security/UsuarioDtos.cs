@@ -30,7 +30,7 @@ public class CreateUsuarioDto
     public string? Iniciales { get; set; }
     public string Puesto { get; set; } = string.Empty;
     public Guid RolId { get; set; }
-    public string Password { get; set; } = string.Empty;
+    public string? Password { get; set; }
 }
 
 public class UpdateUsuarioDto
