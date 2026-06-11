@@ -7,5 +7,9 @@ public enum TipoCredencial
     APIKey,
     ServiceAccount,
     CertificadoSSL,
+    VPN,
+    RDP,
+    FTP,
+    Servidor,
     Otro
 }

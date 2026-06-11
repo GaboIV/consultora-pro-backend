@@ -8,6 +8,11 @@ public class CredencialListDto
     public string Nombre { get; set; } = string.Empty;
     public TipoCredencial Tipo { get; set; }
     public string Servidor { get; set; } = string.Empty;
+    public string? Host { get; set; }
+    public int? Puerto { get; set; }
+    public string? Usuario { get; set; }
+    public string? Url { get; set; }
+    public string? Notas { get; set; }
     public Guid ProyectoId { get; set; }
     public string ProyectoNombre { get; set; } = string.Empty;
     public Guid? AmbienteId { get; set; }
@@ -30,6 +35,11 @@ public class CreateCredencialDto
     public string Nombre { get; set; } = string.Empty;
     public TipoCredencial Tipo { get; set; }
     public string Servidor { get; set; } = string.Empty;
+    public string? Host { get; set; }
+    public int? Puerto { get; set; }
+    public string? Usuario { get; set; }
+    public string? Url { get; set; }
+    public string? Notas { get; set; }
     public Guid ProyectoId { get; set; }
     public Guid? AmbienteId { get; set; }
     public string Valor { get; set; } = string.Empty;
@@ -41,6 +51,11 @@ public class UpdateCredencialDto
     public string Nombre { get; set; } = string.Empty;
     public TipoCredencial Tipo { get; set; }
     public string Servidor { get; set; } = string.Empty;
+    public string? Host { get; set; }
+    public int? Puerto { get; set; }
+    public string? Usuario { get; set; }
+    public string? Url { get; set; }
+    public string? Notas { get; set; }
     public Guid ProyectoId { get; set; }
     public Guid? AmbienteId { get; set; }
     public DateTime FechaVencimiento { get; set; }

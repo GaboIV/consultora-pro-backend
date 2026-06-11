@@ -56,6 +56,11 @@ public class CredencialService : ICredencialService
             Nombre = dto.Nombre.Trim(),
             Tipo = dto.Tipo,
             Servidor = dto.Servidor.Trim(),
+            Host = Normalize(dto.Host),
+            Puerto = dto.Puerto,
+            Usuario = Normalize(dto.Usuario),
+            Url = Normalize(dto.Url),
+            Notas = Normalize(dto.Notas),
             ProyectoId = dto.ProyectoId,
             AmbienteId = dto.AmbienteId,
             ValorCifrado = _encryptionService.Encrypt(dto.Valor),
@@ -80,6 +85,11 @@ public class CredencialService : ICredencialService
         credencial.Nombre = dto.Nombre.Trim();
         credencial.Tipo = dto.Tipo;
         credencial.Servidor = dto.Servidor.Trim();
+        credencial.Host = Normalize(dto.Host);
+        credencial.Puerto = dto.Puerto;
+        credencial.Usuario = Normalize(dto.Usuario);
+        credencial.Url = Normalize(dto.Url);
+        credencial.Notas = Normalize(dto.Notas);
         credencial.ProyectoId = dto.ProyectoId;
         credencial.AmbienteId = dto.AmbienteId;
         credencial.FechaVencimiento = DateTime.SpecifyKind(dto.FechaVencimiento, DateTimeKind.Utc);
@@ -185,6 +195,11 @@ public class CredencialService : ICredencialService
             Nombre = credencial.Nombre,
             Tipo = credencial.Tipo,
             Servidor = credencial.Servidor,
+            Host = credencial.Host,
+            Puerto = credencial.Puerto,
+            Usuario = credencial.Usuario,
+            Url = credencial.Url,
+            Notas = credencial.Notas,
             ProyectoId = credencial.ProyectoId,
             ProyectoNombre = credencial.Proyecto?.Nombre ?? string.Empty,
             AmbienteId = credencial.AmbienteId,
@@ -210,6 +225,11 @@ public class CredencialService : ICredencialService
         dto.Nombre = list.Nombre;
         dto.Tipo = list.Tipo;
         dto.Servidor = list.Servidor;
+        dto.Host = list.Host;
+        dto.Puerto = list.Puerto;
+        dto.Usuario = list.Usuario;
+        dto.Url = list.Url;
+        dto.Notas = list.Notas;
         dto.ProyectoId = list.ProyectoId;
         dto.ProyectoNombre = list.ProyectoNombre;
         dto.AmbienteId = list.AmbienteId;
@@ -220,6 +240,12 @@ public class CredencialService : ICredencialService
         dto.Activo = list.Activo;
         dto.FechaCreacion = list.FechaCreacion;
         return dto;
+    }
+
+    private static string? Normalize(string? value)
+    {
+        var trimmed = value?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed;
     }
 
     private static string MapExpirationState(int days) => days switch

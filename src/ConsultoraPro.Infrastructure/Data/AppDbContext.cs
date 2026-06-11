@@ -197,6 +197,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             entity.Property(c => c.Nombre).IsRequired().HasMaxLength(160);
             entity.Property(c => c.Tipo).HasConversion<string>().HasMaxLength(40);
             entity.Property(c => c.Servidor).IsRequired().HasMaxLength(220);
+            entity.Property(c => c.Host).HasMaxLength(200);
+            entity.Property(c => c.Usuario).HasMaxLength(160);
+            entity.Property(c => c.Url).HasMaxLength(500);
+            entity.Property(c => c.Notas).HasMaxLength(1000);
             entity.Property(c => c.ValorCifrado).IsRequired().HasMaxLength(7000);
             entity.Property(c => c.FechaCreacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.Property(c => c.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
