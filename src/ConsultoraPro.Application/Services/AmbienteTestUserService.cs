@@ -99,7 +99,7 @@ public class AmbienteTestUserService : IAmbienteTestUserService
             AmbienteId = entity.AmbienteId,
             RolAplicacion = entity.RolAplicacion,
             Correo = entity.Correo,
-            PasswordCifrado = entity.PasswordCifrado,
+            PasswordCifrado = _encryptionService.Decrypt(entity.PasswordCifrado),
             Notas = entity.Notas
         };
     }
