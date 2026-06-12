@@ -8,8 +8,5 @@ public class UpdateAmbienteEstadoValidator : AbstractValidator<UpdateAmbienteEst
     public UpdateAmbienteEstadoValidator()
     {
         RuleFor(x => x.Estado).IsInEnum();
-        RuleFor(x => x.UptimePorcentaje)
-            .InclusiveBetween(0, 100)
-            .When(x => x.UptimePorcentaje.HasValue);
     }
 }

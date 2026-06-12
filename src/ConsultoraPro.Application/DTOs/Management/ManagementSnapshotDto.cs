@@ -140,11 +140,10 @@ public class EnvironmentItemDto
     public string ProjectId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
-    public string Url { get; set; } = string.Empty;
-    public string Stack { get; set; } = string.Empty;
+    public string? Url { get; set; }
+    public string? Stack { get; set; }
     public string State { get; set; } = string.Empty;
     public string StateTone { get; set; } = "gray";
-    public string? Availability { get; set; }
 }
 
 public class DeploymentDto

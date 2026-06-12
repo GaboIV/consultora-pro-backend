@@ -127,11 +127,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             entity.HasKey(a => a.Id);
             entity.Property(a => a.Nombre).IsRequired().HasMaxLength(160);
             entity.Property(a => a.Tipo).HasConversion<string>().HasMaxLength(30);
-            entity.Property(a => a.Url).IsRequired().HasMaxLength(300);
+            entity.Property(a => a.Url).HasMaxLength(300);
             entity.Property(a => a.HealthCheckUrl).HasMaxLength(300);
-            entity.Property(a => a.Tecnologia).IsRequired().HasMaxLength(120);
+            entity.Property(a => a.Tecnologia).HasMaxLength(120);
             entity.Property(a => a.Estado).HasConversion<string>().HasMaxLength(30);
-            entity.Property(a => a.UptimePorcentaje).HasPrecision(5, 2);
             entity.Property(a => a.Activo).HasDefaultValue(true);
             entity.Property(a => a.FechaCreacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.HasIndex(a => new { a.ProyectoId, a.Activo });

@@ -193,8 +193,7 @@ public class ManagementService : IManagementService
             Url = ambiente.Url,
             Stack = ambiente.Tecnologia,
             State = MapEnvironmentStateLabel(ambiente.Estado),
-            StateTone = MapEnvironmentStateTone(ambiente.Estado),
-            Availability = $"{ambiente.UptimePorcentaje:0.##}%"
+            StateTone = MapEnvironmentStateTone(ambiente.Estado)
         };
     }
 
@@ -220,10 +219,9 @@ public class ManagementService : IManagementService
 
     private static string MapEnvironmentTypeLabel(TipoAmbiente tipo) => tipo switch
     {
-        TipoAmbiente.Produccion => "Producción",
-        TipoAmbiente.Staging => "Staging",
         TipoAmbiente.Desarrollo => "Desarrollo",
-        TipoAmbiente.QA => "QA",
+        TipoAmbiente.Calidad => "Calidad",
+        TipoAmbiente.Produccion => "Producción",
         _ => tipo.ToString()
     };
 
@@ -288,10 +286,9 @@ public class ManagementService : IManagementService
 
     private static string MapEnvironmentTypeTone(TipoAmbiente tipo) => tipo switch
     {
-        TipoAmbiente.Produccion => "red",
-        TipoAmbiente.Staging => "amber",
         TipoAmbiente.Desarrollo => "blue",
-        TipoAmbiente.QA => "purple",
+        TipoAmbiente.Calidad => "purple",
+        TipoAmbiente.Produccion => "red",
         _ => "gray"
     };
 

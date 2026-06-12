@@ -244,7 +244,6 @@ public static class DataSeeder
                 ProyectoId = proyecto.Id,
                 Tecnologia = StackForProject(proyecto),
                 Estado = proyecto.Estado == EstadoProyecto.Completado ? EstadoAmbiente.Online : EstadoAmbiente.Online,
-                UptimePorcentaje = 99.72m,
                 Activo = true,
                 FechaCreacion = DateTime.UtcNow
             });
@@ -252,13 +251,12 @@ public static class DataSeeder
             ambientes.Add(new Ambiente
             {
                 Id = Guid.NewGuid(),
-                Nombre = "Staging",
-                Tipo = TipoAmbiente.Staging,
-                Url = $"https://stg-{Slug(proyecto.Cliente.Nombre)}-{Slug(proyecto.Nombre)}.consultorapro.local",
+                Nombre = "Calidad",
+                Tipo = TipoAmbiente.Calidad,
+                Url = $"https://qa-{Slug(proyecto.Cliente.Nombre)}-{Slug(proyecto.Nombre)}.consultorapro.local",
                 ProyectoId = proyecto.Id,
                 Tecnologia = StackForProject(proyecto),
                 Estado = proyecto.Estado == EstadoProyecto.EnCurso ? EstadoAmbiente.Alerta : EstadoAmbiente.Online,
-                UptimePorcentaje = proyecto.Estado == EstadoProyecto.EnCurso ? 94.35m : 98.2m,
                 Activo = true,
                 FechaCreacion = DateTime.UtcNow
             });
@@ -272,7 +270,6 @@ public static class DataSeeder
                 ProyectoId = proyecto.Id,
                 Tecnologia = "Docker Compose · MySQL",
                 Estado = proyecto.Estado == EstadoProyecto.Planificacion ? EstadoAmbiente.Configurando : EstadoAmbiente.Online,
-                UptimePorcentaje = proyecto.Estado == EstadoProyecto.Planificacion ? 87.5m : 97.1m,
                 Activo = true,
                 FechaCreacion = DateTime.UtcNow
             });
@@ -364,9 +361,9 @@ public static class DataSeeder
         {
             var ambientes = proyecto.Ambientes.Where(a => a.Activo).ToList();
             var prod = ambientes.FirstOrDefault(a => a.Tipo == TipoAmbiente.Produccion);
-            var staging = ambientes.FirstOrDefault(a => a.Tipo == TipoAmbiente.Staging);
+            var calidad = ambientes.FirstOrDefault(a => a.Tipo == TipoAmbiente.Calidad);
 
-            var destinos = new[] { prod, staging }.Where(a => a is not null).Cast<Ambiente>().ToList();
+            var destinos = new[] { prod, calidad }.Where(a => a is not null).Cast<Ambiente>().ToList();
             if (destinos.Count == 0) continue;
 
             var user = users[rng.Next(users.Count)];

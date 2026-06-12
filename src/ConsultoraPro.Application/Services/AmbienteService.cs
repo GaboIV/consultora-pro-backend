@@ -37,12 +37,11 @@ public class AmbienteService : IAmbienteService
             Id = Guid.NewGuid(),
             Nombre = dto.Nombre.Trim(),
             Tipo = dto.Tipo,
-            Url = dto.Url.Trim(),
+            Url = dto.Url?.Trim(),
             HealthCheckUrl = dto.HealthCheckUrl?.Trim(),
             ProyectoId = dto.ProyectoId,
-            Tecnologia = dto.Tecnologia.Trim(),
+            Tecnologia = dto.Tecnologia?.Trim(),
             Estado = dto.Estado,
-            UptimePorcentaje = dto.UptimePorcentaje,
             Activo = true,
             FechaCreacion = DateTime.UtcNow
         };
@@ -59,12 +58,11 @@ public class AmbienteService : IAmbienteService
 
         ambiente.Nombre = dto.Nombre.Trim();
         ambiente.Tipo = dto.Tipo;
-        ambiente.Url = dto.Url.Trim();
+        ambiente.Url = dto.Url?.Trim();
         ambiente.HealthCheckUrl = dto.HealthCheckUrl?.Trim();
         ambiente.ProyectoId = dto.ProyectoId;
-        ambiente.Tecnologia = dto.Tecnologia.Trim();
+        ambiente.Tecnologia = dto.Tecnologia?.Trim();
         ambiente.Estado = dto.Estado;
-        ambiente.UptimePorcentaje = dto.UptimePorcentaje;
 
         await _repository.UpdateAsync(ambiente);
     }
@@ -73,10 +71,6 @@ public class AmbienteService : IAmbienteService
     {
         var ambiente = await GetActiveEntityAsync(id);
         ambiente.Estado = dto.Estado;
-
-        if (dto.UptimePorcentaje.HasValue)
-            ambiente.UptimePorcentaje = dto.UptimePorcentaje.Value;
-
         await _repository.UpdateAsync(ambiente);
     }
 
@@ -117,7 +111,6 @@ public class AmbienteService : IAmbienteService
             ClienteNombre = ambiente.Proyecto?.Cliente?.Nombre ?? string.Empty,
             Tecnologia = ambiente.Tecnologia,
             Estado = ambiente.Estado,
-            UptimePorcentaje = ambiente.UptimePorcentaje,
             Activo = ambiente.Activo,
             FechaCreacion = ambiente.FechaCreacion
         };

@@ -121,21 +121,38 @@ public class ProyectoService : IProyectoService
         proyecto.TotalMiembros = dto.Miembros.Count;
         proyecto.UpdatedAt = DateTime.UtcNow;
 
-        // Clear and update members
-        proyecto.ProyectoMiembros.Clear();
+        // Build lookup of existing members for diff
+        var existingByUser = proyecto.ProyectoMiembros
+            .ToDictionary(m => m.UsuarioId);
+
+        // Remove members not present in the new list
+        var toRemove = proyecto.ProyectoMiembros
+            .Where(m => !dto.Miembros.Any(nm => nm.UsuarioId == m.UsuarioId))
+            .ToList();
+        foreach (var m in toRemove)
+            proyecto.ProyectoMiembros.Remove(m);
+
+        // Add or update members
         foreach (var mDto in dto.Miembros)
         {
-            var user = await _userManager.FindByIdAsync(mDto.UsuarioId.ToString());
-            if (user == null)
-                throw new KeyNotFoundException($"Usuario con ID {mDto.UsuarioId} no encontrado");
-
-            proyecto.ProyectoMiembros.Add(new ProyectoMiembro
+            if (existingByUser.TryGetValue(mDto.UsuarioId, out var existingMember))
             {
-                Id = Guid.NewGuid(),
-                UsuarioId = user.Id,
-                Rol = mDto.Rol,
-                ProyectoId = proyecto.Id
-            });
+                existingMember.Rol = mDto.Rol;
+            }
+            else
+            {
+                var user = await _userManager.FindByIdAsync(mDto.UsuarioId.ToString());
+                if (user == null)
+                    throw new KeyNotFoundException($"Usuario con ID {mDto.UsuarioId} no encontrado");
+
+                proyecto.ProyectoMiembros.Add(new ProyectoMiembro
+                {
+                    Id = Guid.NewGuid(),
+                    UsuarioId = user.Id,
+                    Rol = mDto.Rol,
+                    ProyectoId = proyecto.Id
+                });
+            }
         }
 
         await _repository.UpdateAsync(proyecto);
