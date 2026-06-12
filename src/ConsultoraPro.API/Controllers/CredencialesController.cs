@@ -59,6 +59,35 @@ public class CredencialesController : ControllerBase
         });
     }
 
+    [HttpPost("{id}/copiado")]
+    [Authorize(Policy = "credenciales.revelar")]
+    [EndpointDescription("Registra en la auditoría que el usuario copió un dato de la credencial al portapapeles.")]
+    public async Task<ActionResult<ApiResponse<object>>> RegistrarCopiado(Guid id, [FromBody] RegistrarCopiadoDto dto)
+    {
+        await _credencialService.RegistrarCopiadoAsync(
+            id,
+            GetCurrentUserId(),
+            HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
+            Request.Headers.UserAgent.ToString(),
+            dto.Campo);
+
+        return Ok(new ApiResponse<object> { Success = true, Message = "Copiado auditado" });
+    }
+
+    [HttpPost("importar")]
+    [Authorize(Policy = "credenciales.crear")]
+    [EndpointDescription("Importa un lote de credenciales validando fila por fila; devuelve los errores por fila sin abortar el resto.")]
+    public async Task<ActionResult<ApiResponse<ImportResultDto>>> Importar([FromBody] ImportCredencialesDto dto)
+    {
+        var data = await _credencialService.ImportAsync(dto, GetCurrentUserId());
+        return Ok(new ApiResponse<ImportResultDto>
+        {
+            Success = true,
+            Data = data,
+            Message = $"{data.Importadas} de {data.Total} credenciales importadas"
+        });
+    }
+
     [HttpPost]
     [Authorize(Policy = "credenciales.crear")]
     public async Task<ActionResult<ApiResponse<CredencialListDto>>> Create([FromBody] CreateCredencialDto dto)

@@ -12,5 +12,7 @@ public interface ICredencialService
     Task UpdateValorAsync(Guid id, UpdateCredencialValorDto dto);
     Task DeleteAsync(Guid id);
     Task<CredencialRevealDto> RevealAsync(Guid id, Guid userId, string ip, string userAgent);
+    Task RegistrarCopiadoAsync(Guid id, Guid userId, string ip, string userAgent, string? campo);
+    Task<ImportResultDto> ImportAsync(ImportCredencialesDto dto, Guid userId);
     Task<IEnumerable<AuditoriaCredencialDto>> GetAuditAsync(Guid credencialId);
 }

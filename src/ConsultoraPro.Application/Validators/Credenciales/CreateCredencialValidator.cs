@@ -15,8 +15,14 @@ public class CreateCredencialValidator : AbstractValidator<CreateCredencialDto>
         RuleFor(x => x.Usuario).MaximumLength(160);
         RuleFor(x => x.Url).MaximumLength(500);
         RuleFor(x => x.Notas).MaximumLength(1000);
+        RuleFor(x => x.CamposExtra)
+            .Must(d => CredencialExtraRules.FitsAsJson(d, CredencialExtraRules.MaxCamposExtraJson))
+            .WithMessage("Los campos específicos exceden el tamaño máximo permitido");
         RuleFor(x => x.ProyectoId).NotEmpty();
         RuleFor(x => x.Valor).NotEmpty().MaximumLength(5000);
+        RuleFor(x => x.SecretosExtra)
+            .Must(d => CredencialExtraRules.FitsAsJson(d, CredencialExtraRules.MaxSecretosExtraJson))
+            .WithMessage("Los secretos adicionales exceden el tamaño máximo permitido");
         RuleFor(x => x.FechaVencimiento).NotEmpty();
     }
 }

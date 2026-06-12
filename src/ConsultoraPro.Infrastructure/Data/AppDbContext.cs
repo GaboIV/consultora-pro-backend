@@ -201,7 +201,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             entity.Property(c => c.Usuario).HasMaxLength(160);
             entity.Property(c => c.Url).HasMaxLength(500);
             entity.Property(c => c.Notas).HasMaxLength(1000);
+            entity.Property(c => c.CamposExtra).HasMaxLength(4000);
             entity.Property(c => c.ValorCifrado).IsRequired().HasMaxLength(7000);
+            entity.Property(c => c.SecretosExtraCifrado).HasColumnType("text");
             entity.Property(c => c.FechaCreacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.Property(c => c.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.Property(c => c.Activo).HasDefaultValue(true);
@@ -280,6 +282,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
         {
             entity.HasKey(a => a.Id);
             entity.Property(a => a.FechaRevelacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(a => a.Accion).IsRequired().HasMaxLength(20).HasDefaultValue("Lectura");
+            entity.Property(a => a.Detalle).HasMaxLength(120);
             entity.Property(a => a.Ip).HasMaxLength(80);
             entity.Property(a => a.UserAgent).HasMaxLength(500);
             entity.HasIndex(a => new { a.CredencialId, a.FechaRevelacion });

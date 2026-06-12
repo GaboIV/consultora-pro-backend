@@ -8,5 +8,8 @@ public class UpdateCredencialValorValidator : AbstractValidator<UpdateCredencial
     public UpdateCredencialValorValidator()
     {
         RuleFor(x => x.Valor).NotEmpty().MaximumLength(5000);
+        RuleFor(x => x.SecretosExtra)
+            .Must(d => CredencialExtraRules.FitsAsJson(d, CredencialExtraRules.MaxSecretosExtraJson))
+            .WithMessage("Los secretos adicionales exceden el tamaño máximo permitido");
     }
 }

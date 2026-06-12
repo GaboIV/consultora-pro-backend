@@ -9,6 +9,7 @@ public enum TipoCredencial
     CertificadoSSL,
     VPN,
     RDP,
+    Tunel,
     FTP,
     Servidor,
     Otro

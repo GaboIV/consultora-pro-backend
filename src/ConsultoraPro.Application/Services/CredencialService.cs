@@ -1,8 +1,10 @@
+using System.Text.Json;
 using ConsultoraPro.Application.DTOs.Credenciales;
 using ConsultoraPro.Application.DTOs.Common;
 using ConsultoraPro.Application.Interfaces;
 using ConsultoraPro.Domain.Interfaces;
 using ConsultoraPro.Domain.Models;
+using FluentValidation;
 
 namespace ConsultoraPro.Application.Services;
 
@@ -12,17 +14,20 @@ public class CredencialService : ICredencialService
     private readonly IProyectoRepository _proyectoRepository;
     private readonly IAmbienteRepository _ambienteRepository;
     private readonly IEncryptionService _encryptionService;
+    private readonly IValidator<CreateCredencialDto> _createValidator;
 
     public CredencialService(
         ICredencialRepository repository,
         IProyectoRepository proyectoRepository,
         IAmbienteRepository ambienteRepository,
-        IEncryptionService encryptionService)
+        IEncryptionService encryptionService,
+        IValidator<CreateCredencialDto> createValidator)
     {
         _repository = repository;
         _proyectoRepository = proyectoRepository;
         _ambienteRepository = ambienteRepository;
         _encryptionService = encryptionService;
+        _createValidator = createValidator;
     }
 
     public async Task<PagedResultDto<CredencialListDto>> GetAllAsync(int page = 1, int pageSize = 20, Guid? proyectoId = null)
@@ -61,9 +66,11 @@ public class CredencialService : ICredencialService
             Usuario = Normalize(dto.Usuario),
             Url = Normalize(dto.Url),
             Notas = Normalize(dto.Notas),
+            CamposExtra = SerializeCamposExtra(dto.CamposExtra),
             ProyectoId = dto.ProyectoId,
             AmbienteId = dto.AmbienteId,
             ValorCifrado = _encryptionService.Encrypt(dto.Valor),
+            SecretosExtraCifrado = EncryptSecretosExtra(dto.SecretosExtra),
             FechaVencimiento = DateTime.SpecifyKind(dto.FechaVencimiento, DateTimeKind.Utc),
             CreadoPor = userId,
             FechaCreacion = DateTime.UtcNow,
@@ -90,6 +97,7 @@ public class CredencialService : ICredencialService
         credencial.Usuario = Normalize(dto.Usuario);
         credencial.Url = Normalize(dto.Url);
         credencial.Notas = Normalize(dto.Notas);
+        credencial.CamposExtra = SerializeCamposExtra(dto.CamposExtra);
         credencial.ProyectoId = dto.ProyectoId;
         credencial.AmbienteId = dto.AmbienteId;
         credencial.FechaVencimiento = DateTime.SpecifyKind(dto.FechaVencimiento, DateTimeKind.Utc);
@@ -102,6 +110,8 @@ public class CredencialService : ICredencialService
     {
         var credencial = await GetActiveEntityAsync(id);
         credencial.ValorCifrado = _encryptionService.Encrypt(dto.Valor);
+        if (dto.SecretosExtra is not null)
+            credencial.SecretosExtraCifrado = EncryptSecretosExtra(dto.SecretosExtra);
         credencial.UpdatedAt = DateTime.UtcNow;
         await _repository.UpdateAsync(credencial);
     }
@@ -124,6 +134,7 @@ public class CredencialService : ICredencialService
             Id = Guid.NewGuid(),
             CredencialId = credencial.Id,
             UsuarioId = userId,
+            Accion = "Lectura",
             FechaRevelacion = revealedAt,
             Ip = ip,
             UserAgent = userAgent
@@ -134,8 +145,63 @@ public class CredencialService : ICredencialService
             Id = credencial.Id,
             Nombre = credencial.Nombre,
             Valor = _encryptionService.Decrypt(credencial.ValorCifrado),
+            SecretosExtra = DecryptSecretosExtra(credencial.SecretosExtraCifrado),
             ReveladoEn = revealedAt
         };
+    }
+
+    public async Task RegistrarCopiadoAsync(Guid id, Guid userId, string ip, string userAgent, string? campo)
+    {
+        var credencial = await GetActiveEntityAsync(id);
+
+        await _repository.AddAuditAsync(new AuditoriaCredencial
+        {
+            Id = Guid.NewGuid(),
+            CredencialId = credencial.Id,
+            UsuarioId = userId,
+            Accion = "Copiado",
+            Detalle = Truncate(Normalize(campo), 120),
+            FechaRevelacion = DateTime.UtcNow,
+            Ip = ip,
+            UserAgent = userAgent
+        });
+    }
+
+    public async Task<ImportResultDto> ImportAsync(ImportCredencialesDto dto, Guid userId)
+    {
+        var result = new ImportResultDto { Total = dto.Filas.Count };
+
+        foreach (var fila in dto.Filas)
+        {
+            var validation = await _createValidator.ValidateAsync(fila);
+            if (!validation.IsValid)
+            {
+                result.Errores.Add(new ImportRowErrorDto
+                {
+                    Fila = fila.Fila,
+                    Nombre = fila.Nombre,
+                    Error = string.Join(" · ", validation.Errors.Select(e => e.ErrorMessage).Distinct())
+                });
+                continue;
+            }
+
+            try
+            {
+                await CreateAsync(fila, userId);
+                result.Importadas++;
+            }
+            catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException)
+            {
+                result.Errores.Add(new ImportRowErrorDto
+                {
+                    Fila = fila.Fila,
+                    Nombre = fila.Nombre,
+                    Error = ex.Message
+                });
+            }
+        }
+
+        return result;
     }
 
     public async Task<IEnumerable<AuditoriaCredencialDto>> GetAuditAsync(Guid credencialId)
@@ -151,6 +217,8 @@ public class CredencialService : ICredencialService
             CredencialId = a.CredencialId,
             UsuarioId = a.UsuarioId,
             UsuarioNombre = a.Usuario is null ? "Usuario no disponible" : $"{a.Usuario.Nombres} {a.Usuario.Apellidos}".Trim(),
+            Accion = a.Accion,
+            Detalle = a.Detalle,
             FechaRevelacion = a.FechaRevelacion,
             Ip = a.Ip,
             UserAgent = a.UserAgent
@@ -200,10 +268,12 @@ public class CredencialService : ICredencialService
             Usuario = credencial.Usuario,
             Url = credencial.Url,
             Notas = credencial.Notas,
+            CamposExtra = DeserializeCamposExtra(credencial.CamposExtra),
             ProyectoId = credencial.ProyectoId,
             ProyectoNombre = credencial.Proyecto?.Nombre ?? string.Empty,
             AmbienteId = credencial.AmbienteId,
             AmbienteNombre = credencial.Ambiente?.Nombre,
+            AmbienteTipo = credencial.Ambiente?.Tipo.ToString(),
             FechaVencimiento = credencial.FechaVencimiento,
             DiasParaVencer = dias,
             EstadoVencimiento = MapExpirationState(dias),
@@ -230,10 +300,12 @@ public class CredencialService : ICredencialService
         dto.Usuario = list.Usuario;
         dto.Url = list.Url;
         dto.Notas = list.Notas;
+        dto.CamposExtra = list.CamposExtra;
         dto.ProyectoId = list.ProyectoId;
         dto.ProyectoNombre = list.ProyectoNombre;
         dto.AmbienteId = list.AmbienteId;
         dto.AmbienteNombre = list.AmbienteNombre;
+        dto.AmbienteTipo = list.AmbienteTipo;
         dto.FechaVencimiento = list.FechaVencimiento;
         dto.DiasParaVencer = list.DiasParaVencer;
         dto.EstadoVencimiento = list.EstadoVencimiento;
@@ -246,6 +318,57 @@ public class CredencialService : ICredencialService
     {
         var trimmed = value?.Trim();
         return string.IsNullOrEmpty(trimmed) ? null : trimmed;
+    }
+
+    private static string? Truncate(string? value, int maxLength) =>
+        value is { Length: > 0 } && value.Length > maxLength ? value[..maxLength] : value;
+
+    private static string? SerializeCamposExtra(Dictionary<string, string>? campos)
+    {
+        var limpio = campos?
+            .Where(kv => !string.IsNullOrWhiteSpace(kv.Key) && !string.IsNullOrWhiteSpace(kv.Value))
+            .ToDictionary(kv => kv.Key.Trim(), kv => kv.Value.Trim());
+
+        return limpio is { Count: > 0 } ? JsonSerializer.Serialize(limpio) : null;
+    }
+
+    private static Dictionary<string, string>? DeserializeCamposExtra(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private string? EncryptSecretosExtra(Dictionary<string, string>? secretos)
+    {
+        var limpio = secretos?
+            .Where(kv => !string.IsNullOrWhiteSpace(kv.Key) && !string.IsNullOrEmpty(kv.Value))
+            .ToDictionary(kv => kv.Key.Trim(), kv => kv.Value);
+
+        return limpio is { Count: > 0 } ? _encryptionService.Encrypt(JsonSerializer.Serialize(limpio)) : null;
+    }
+
+    private Dictionary<string, string>? DecryptSecretosExtra(string? cifrado)
+    {
+        if (string.IsNullOrWhiteSpace(cifrado))
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(_encryptionService.Decrypt(cifrado));
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static string MapExpirationState(int days) => days switch
