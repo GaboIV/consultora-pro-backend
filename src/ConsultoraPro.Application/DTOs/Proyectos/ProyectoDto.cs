@@ -1,4 +1,5 @@
 using ConsultoraPro.Domain.Enums;
+using ConsultoraPro.Application.DTOs.Screenshots;
 
 namespace ConsultoraPro.Application.DTOs.Proyectos;
 
@@ -16,7 +17,8 @@ public class ProyectoDto
     public DateTime FechaInicio { get; set; }
     public DateTime FechaFin { get; set; }
     public int TotalMiembros { get; set; }
-    public List<DesarrolladorDto> Desarrolladores { get; set; } = new();
+    public List<ProyectoMiembroDto> Miembros { get; set; } = new();
+    public List<ScreenshotDto> Screenshots { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

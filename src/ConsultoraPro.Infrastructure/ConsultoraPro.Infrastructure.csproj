@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ConsultoraPro.Application\ConsultoraPro.Application.csproj" />
     <ProjectReference Include="..\ConsultoraPro.Domain\ConsultoraPro.Domain.csproj" />
   </ItemGroup>
 

@@ -1,14 +1,25 @@
 using ConsultoraPro.Domain.Enums;
 using ConsultoraPro.Domain.Models;
+using ConsultoraPro.Domain.Security;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace ConsultoraPro.Infrastructure.Data.Seed;
 
 public static class DataSeeder
 {
-    public static async Task SeedAsync(AppDbContext context)
+    public static async Task SeedAsync(
+        AppDbContext context, 
+        UserManager<ApplicationUser> userManager,
+        RoleManager<ApplicationRole> roleManager)
     {
-        if (await context.Clientes.AnyAsync()) return;
+        if (await context.Clientes.AnyAsync())
+        {
+            await SeedAmbientesAsync(context);
+            await SeedRepositoriosAsync(context);
+            await SeedDesplieguesAsync(context);
+            return;
+        }
 
         var portalProveedores = Guid.NewGuid();
         var factElectronica = Guid.NewGuid();
@@ -28,15 +39,6 @@ public static class DataSeeder
         var repsolId = Guid.NewGuid();
         var telefonicaId = Guid.NewGuid();
         var bbvaId = Guid.NewGuid();
-        var carlosId = Guid.NewGuid();
-        var jorgeId = Guid.NewGuid();
-        var sofiaId = Guid.NewGuid();
-        var anaId = Guid.NewGuid();
-        var mariaId = Guid.NewGuid();
-        var miguelId = Guid.NewGuid();
-        var andresId = Guid.NewGuid();
-        var lauraId = Guid.NewGuid();
-        var rodrigoId = Guid.NewGuid();
 
         var clientes = new List<Cliente>
         {
@@ -74,20 +76,52 @@ public static class DataSeeder
 
         context.Clientes.AddRange(clientes);
 
-        var members = new List<Member>
+        // Seed Users instead of Members
+        var devUsers = new List<(string Email, string Nombres, string Apellidos, string Puesto, string Role)>
         {
-            new() { Id = carlosId, Nombres = "Carlos", Apellidos = "Ruiz", Correo = "carlos.ruiz@consultorapro.com", Telefono = "+51999000101", Iniciales = "CR", Puesto = "Developer" },
-            new() { Id = jorgeId, Nombres = "Jorge", Apellidos = "Méndez", Correo = "jorge.mendez@consultorapro.com", Telefono = "+51999000102", Iniciales = "JM", Puesto = "Developer" },
-            new() { Id = sofiaId, Nombres = "Sofía", Apellidos = "Luna", Correo = "sofia.luna@consultorapro.com", Telefono = "+51999000103", Iniciales = "SL", Puesto = "Developer" },
-            new() { Id = anaId, Nombres = "Ana", Apellidos = "García", Correo = "ana.garcia@consultorapro.com", Telefono = "+51999000104", Iniciales = "AG", Puesto = "Lead Technical" },
-            new() { Id = mariaId, Nombres = "María", Apellidos = "Vega", Correo = "maria.vega@consultorapro.com", Telefono = "+51999000105", Iniciales = "MV", Puesto = "Lead Technical" },
-            new() { Id = miguelId, Nombres = "Miguel", Apellidos = "Torres", Correo = "miguel.torres@consultorapro.com", Telefono = "+51999000106", Iniciales = "MT", Puesto = "Lead Technical" },
-            new() { Id = andresId, Nombres = "Andrés", Apellidos = "Paredes", Correo = "andres.paredes@consultorapro.com", Telefono = "+51999000107", Iniciales = "AP", Puesto = "Lead Technical" },
-            new() { Id = lauraId, Nombres = "Laura", Apellidos = "Martínez", Correo = "laura.martinez@consultorapro.com", Telefono = "+51999000108", Iniciales = "LM", Puesto = "Lead Technical" },
-            new() { Id = rodrigoId, Nombres = "Rodrigo", Apellidos = "Castillo", Correo = "rodrigo.castillo@consultorapro.com", Telefono = "+51999000109", Iniciales = "RC", Puesto = "Arquitecto" }
+            ("carlos.ruiz@consultorapro.com", "Carlos", "Ruiz", "Developer", PermissionCatalog.Dev),
+            ("jorge.mendez@consultorapro.com", "Jorge", "Méndez", "Developer", PermissionCatalog.Dev),
+            ("sofia.luna@consultorapro.com", "Sofía", "Luna", "Developer", PermissionCatalog.Dev),
+            ("ana.garcia@consultorapro.com", "Ana", "García", "Lead Technical", PermissionCatalog.Dev),
+            ("maria.vega@consultorapro.com", "María", "Vega", "Lead Technical", PermissionCatalog.Dev),
+            ("miguel.torres@consultorapro.com", "Miguel", "Torres", "Lead Technical", PermissionCatalog.Dev),
+            ("andres.paredes@consultorapro.com", "Andrés", "Paredes", "Lead Technical", PermissionCatalog.Dev),
+            ("laura.martinez@consultorapro.com", "Laura", "Martínez", "Lead Technical", PermissionCatalog.Dev),
+            ("rodrigo.castillo@consultorapro.com", "Rodrigo", "Castillo", "Arquitecto", PermissionCatalog.Arquitecto)
         };
 
-        context.Members.AddRange(members);
+        var userMap = new Dictionary<string, Guid>();
+
+        foreach (var u in devUsers)
+        {
+            var user = await userManager.FindByEmailAsync(u.Email);
+            if (user == null)
+            {
+                user = new ApplicationUser
+                {
+                    Id = Guid.NewGuid(),
+                    UserName = u.Email,
+                    Email = u.Email,
+                    Nombres = u.Nombres,
+                    Apellidos = u.Apellidos,
+                    Telefono = "+51999000000",
+                    Iniciales = $"{u.Nombres[0]}{u.Apellidos[0]}".ToUpper(),
+                    Puesto = u.Puesto,
+                    Activo = true,
+                    EmailConfirmed = true,
+                    FechaAlta = DateTime.UtcNow
+                };
+
+                // Use the prefix as password as per user request
+                var password = u.Email.Split('@')[0];
+                var result = await userManager.CreateAsync(user, password);
+                if (result.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(user, u.Role);
+                }
+            }
+            userMap[u.Email] = user.Id;
+        }
 
         var proyectos = new List<Proyecto>
         {
@@ -103,11 +137,11 @@ public static class DataSeeder
                 FechaInicio = new DateTime(2024, 6, 1, 0, 0, 0, DateTimeKind.Utc),
                 FechaFin = new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc),
                 TotalMiembros = 3,
-                Desarrolladores = new List<Desarrollador>
+                ProyectoMiembros = new List<ProyectoMiembro>
                 {
-                    new() { Id = Guid.NewGuid(), MemberId = carlosId, Nombre = "Carlos Ruiz", Rol = RolDesarrollador.Principal },
-                    new() { Id = Guid.NewGuid(), MemberId = jorgeId, Nombre = "Jorge Méndez", Rol = RolDesarrollador.Apoyo },
-                    new() { Id = Guid.NewGuid(), MemberId = sofiaId, Nombre = "Sofía Luna", Rol = RolDesarrollador.Apoyo }
+                    new() { Id = Guid.NewGuid(), UsuarioId = userMap["carlos.ruiz@consultorapro.com"], Rol = RolDesarrollador.Principal },
+                    new() { Id = Guid.NewGuid(), UsuarioId = userMap["jorge.mendez@consultorapro.com"], Rol = RolDesarrollador.Apoyo },
+                    new() { Id = Guid.NewGuid(), UsuarioId = userMap["sofia.luna@consultorapro.com"], Rol = RolDesarrollador.Apoyo }
                 },
                 CreatedAt = new DateTime(2024, 6, 1, 0, 0, 0, DateTimeKind.Utc),
                 UpdatedAt = new DateTime(2024, 6, 1, 0, 0, 0, DateTimeKind.Utc)
@@ -124,11 +158,11 @@ public static class DataSeeder
                 FechaInicio = new DateTime(2024, 3, 15, 0, 0, 0, DateTimeKind.Utc),
                 FechaFin = new DateTime(2024, 12, 15, 0, 0, 0, DateTimeKind.Utc),
                 TotalMiembros = 3,
-                Desarrolladores = new List<Desarrollador>
+                ProyectoMiembros = new List<ProyectoMiembro>
                 {
-                    new() { Id = Guid.NewGuid(), MemberId = anaId, Nombre = "Ana García", Rol = RolDesarrollador.Principal },
-                    new() { Id = Guid.NewGuid(), MemberId = mariaId, Nombre = "María Vega", Rol = RolDesarrollador.Principal },
-                    new() { Id = Guid.NewGuid(), MemberId = carlosId, Nombre = "Carlos Ruiz", Rol = RolDesarrollador.Apoyo }
+                    new() { Id = Guid.NewGuid(), UsuarioId = userMap["ana.garcia@consultorapro.com"], Rol = RolDesarrollador.Principal },
+                    new() { Id = Guid.NewGuid(), UsuarioId = userMap["maria.vega@consultorapro.com"], Rol = RolDesarrollador.Principal },
+                    new() { Id = Guid.NewGuid(), UsuarioId = userMap["carlos.ruiz@consultorapro.com"], Rol = RolDesarrollador.Apoyo }
                 },
                 CreatedAt = new DateTime(2024, 3, 15, 0, 0, 0, DateTimeKind.Utc),
                 UpdatedAt = new DateTime(2024, 3, 15, 0, 0, 0, DateTimeKind.Utc)
@@ -145,10 +179,10 @@ public static class DataSeeder
                 FechaInicio = new DateTime(2024, 9, 1, 0, 0, 0, DateTimeKind.Utc),
                 FechaFin = new DateTime(2025, 9, 1, 0, 0, 0, DateTimeKind.Utc),
                 TotalMiembros = 2,
-                Desarrolladores = new List<Desarrollador>
+                ProyectoMiembros = new List<ProyectoMiembro>
                 {
-                    new() { Id = Guid.NewGuid(), MemberId = miguelId, Nombre = "Miguel Torres", Rol = RolDesarrollador.Principal },
-                    new() { Id = Guid.NewGuid(), MemberId = andresId, Nombre = "Andrés Paredes", Rol = RolDesarrollador.Apoyo }
+                    new() { Id = Guid.NewGuid(), UsuarioId = userMap["miguel.torres@consultorapro.com"], Rol = RolDesarrollador.Principal },
+                    new() { Id = Guid.NewGuid(), UsuarioId = userMap["andres.paredes@consultorapro.com"], Rol = RolDesarrollador.Apoyo }
                 },
                 CreatedAt = new DateTime(2024, 9, 1, 0, 0, 0, DateTimeKind.Utc),
                 UpdatedAt = new DateTime(2024, 9, 1, 0, 0, 0, DateTimeKind.Utc)
@@ -165,10 +199,10 @@ public static class DataSeeder
                 FechaInicio = new DateTime(2023, 11, 1, 0, 0, 0, DateTimeKind.Utc),
                 FechaFin = new DateTime(2024, 8, 1, 0, 0, 0, DateTimeKind.Utc),
                 TotalMiembros = 2,
-                Desarrolladores = new List<Desarrollador>
+                ProyectoMiembros = new List<ProyectoMiembro>
                 {
-                    new() { Id = Guid.NewGuid(), MemberId = lauraId, Nombre = "Laura Martínez", Rol = RolDesarrollador.Principal },
-                    new() { Id = Guid.NewGuid(), MemberId = rodrigoId, Nombre = "Rodrigo Castillo", Rol = RolDesarrollador.Apoyo }
+                    new() { Id = Guid.NewGuid(), UsuarioId = userMap["laura.martinez@consultorapro.com"], Rol = RolDesarrollador.Principal },
+                    new() { Id = Guid.NewGuid(), UsuarioId = userMap["rodrigo.castillo@consultorapro.com"], Rol = RolDesarrollador.Apoyo }
                 },
                 CreatedAt = new DateTime(2023, 11, 1, 0, 0, 0, DateTimeKind.Utc),
                 UpdatedAt = new DateTime(2023, 11, 1, 0, 0, 0, DateTimeKind.Utc)
@@ -177,5 +211,212 @@ public static class DataSeeder
 
         context.Proyectos.AddRange(proyectos);
         await context.SaveChangesAsync();
+        await SeedAmbientesAsync(context);
+        await SeedRepositoriosAsync(context);
+        await SeedDesplieguesAsync(context);
+    }
+
+    private static async Task SeedAmbientesAsync(AppDbContext context)
+    {
+        if (await context.Ambientes.AnyAsync())
+            return;
+
+        var proyectos = await context.Proyectos
+            .Include(p => p.Cliente)
+            .Include(p => p.TipoSolucion)
+            .OrderBy(p => p.Cliente.Nombre)
+            .ThenBy(p => p.Nombre)
+            .ToListAsync();
+
+        if (proyectos.Count == 0)
+            return;
+
+        var ambientes = new List<Ambiente>();
+
+        foreach (var proyecto in proyectos.Take(4))
+        {
+            ambientes.Add(new Ambiente
+            {
+                Id = Guid.NewGuid(),
+                Nombre = "Producción",
+                Tipo = TipoAmbiente.Produccion,
+                Url = $"https://{Slug(proyecto.Cliente.Nombre)}-{Slug(proyecto.Nombre)}.consultorapro.local",
+                ProyectoId = proyecto.Id,
+                Tecnologia = StackForProject(proyecto),
+                Estado = proyecto.Estado == EstadoProyecto.Completado ? EstadoAmbiente.Online : EstadoAmbiente.Online,
+                Activo = true,
+                FechaCreacion = DateTime.UtcNow
+            });
+
+            ambientes.Add(new Ambiente
+            {
+                Id = Guid.NewGuid(),
+                Nombre = "Calidad",
+                Tipo = TipoAmbiente.Calidad,
+                Url = $"https://qa-{Slug(proyecto.Cliente.Nombre)}-{Slug(proyecto.Nombre)}.consultorapro.local",
+                ProyectoId = proyecto.Id,
+                Tecnologia = StackForProject(proyecto),
+                Estado = proyecto.Estado == EstadoProyecto.EnCurso ? EstadoAmbiente.Alerta : EstadoAmbiente.Online,
+                Activo = true,
+                FechaCreacion = DateTime.UtcNow
+            });
+
+            ambientes.Add(new Ambiente
+            {
+                Id = Guid.NewGuid(),
+                Nombre = "Desarrollo",
+                Tipo = TipoAmbiente.Desarrollo,
+                Url = $"https://dev-{Slug(proyecto.Cliente.Nombre)}-{Slug(proyecto.Nombre)}.consultorapro.local",
+                ProyectoId = proyecto.Id,
+                Tecnologia = "Docker Compose · MySQL",
+                Estado = proyecto.Estado == EstadoProyecto.Planificacion ? EstadoAmbiente.Configurando : EstadoAmbiente.Online,
+                Activo = true,
+                FechaCreacion = DateTime.UtcNow
+            });
+        }
+
+        context.Ambientes.AddRange(ambientes);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedRepositoriosAsync(AppDbContext context)
+    {
+        if (await context.Repositorios.AnyAsync())
+            return;
+
+        var proyectos = await context.Proyectos
+            .Include(p => p.Cliente)
+            .Include(p => p.TipoSolucion)
+            .OrderBy(p => p.Cliente.Nombre)
+            .ThenBy(p => p.Nombre)
+            .ToListAsync();
+
+        if (proyectos.Count == 0)
+            return;
+
+        var repositorios = new List<Repositorio>();
+
+        foreach (var proyecto in proyectos.Take(4))
+        {
+            repositorios.Add(new Repositorio
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"{Slug(proyecto.Cliente.Nombre)}-{Slug(proyecto.Nombre)}",
+                ProyectoId = proyecto.Id,
+                Proveedor = ProveedorRepositorio.GitHub,
+                RamaPrincipal = "main",
+                Url = $"https://github.com/consultorapro/{Slug(proyecto.Cliente.Nombre)}-{Slug(proyecto.Nombre)}",
+                EstadoPipeline = proyecto.Estado == EstadoProyecto.Completado ? EstadoPipeline.Passing : EstadoPipeline.EnEjecucion,
+                Activo = true,
+                FechaCreacion = DateTime.UtcNow
+            });
+
+            if (proyecto.Estado != EstadoProyecto.Planificacion)
+            {
+                repositorios.Add(new Repositorio
+                {
+                    Id = Guid.NewGuid(),
+                    Nombre = $"{Slug(proyecto.Cliente.Nombre)}-{Slug(proyecto.Nombre)}-worker",
+                    ProyectoId = proyecto.Id,
+                    Proveedor = ProveedorRepositorio.GitHub,
+                    RamaPrincipal = "develop",
+                    Url = $"https://github.com/consultorapro/{Slug(proyecto.Cliente.Nombre)}-{Slug(proyecto.Nombre)}-worker",
+                    EstadoPipeline = proyecto.Estado == EstadoProyecto.Completado ? EstadoPipeline.Passing : EstadoPipeline.Failed,
+                    Activo = true,
+                    FechaCreacion = DateTime.UtcNow
+                });
+            }
+        }
+
+        context.Repositorios.AddRange(repositorios);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedDesplieguesAsync(AppDbContext context)
+    {
+        if (await context.Despliegues.AnyAsync())
+            return;
+
+        var proyectos = await context.Proyectos
+            .Include(p => p.Cliente)
+            .Include(p => p.Ambientes)
+            .OrderBy(p => p.Cliente.Nombre)
+            .ThenBy(p => p.Nombre)
+            .ToListAsync();
+
+        if (proyectos.Count == 0)
+            return;
+
+        var users = await context.Users
+            .OrderBy(u => u.Nombres)
+            .ToListAsync();
+
+        if (users.Count == 0)
+            return;
+
+        var rng = new Random(42);
+        var despliegues = new List<Despliegue>();
+
+        foreach (var proyecto in proyectos.Take(3))
+        {
+            var ambientes = proyecto.Ambientes.Where(a => a.Activo).ToList();
+            var prod = ambientes.FirstOrDefault(a => a.Tipo == TipoAmbiente.Produccion);
+            var calidad = ambientes.FirstOrDefault(a => a.Tipo == TipoAmbiente.Calidad);
+
+            var destinos = new[] { prod, calidad }.Where(a => a is not null).Cast<Ambiente>().ToList();
+            if (destinos.Count == 0) continue;
+
+            var user = users[rng.Next(users.Count)];
+            var baseDate = DateTime.UtcNow.AddDays(-rng.Next(1, 45));
+
+            for (var i = 0; i < rng.Next(3, 7); i++)
+            {
+                var destino = destinos[rng.Next(destinos.Count)];
+                var fecha = baseDate.AddDays(i * rng.Next(2, 6));
+                var esExitoso = rng.NextDouble() > 0.2;
+
+                despliegues.Add(new Despliegue
+                {
+                    Id = Guid.NewGuid(),
+                    ProyectoId = proyecto.Id,
+                    AmbienteId = destino.Id,
+                    Version = $"2.{rng.Next(0, 9)}.{rng.Next(0, 20)}",
+                    EjecutadoPorId = user.Id,
+                    FechaHora = fecha,
+                    Estado = esExitoso ? EstadoDespliegue.Exitoso : EstadoDespliegue.Fallido,
+                    DuracionSegundos = rng.Next(30, 1800),
+                    Notas = esExitoso ? "Despliegue automático completado." : "Fallo en validaciones post-deploy.",
+                    Activo = true
+                });
+            }
+        }
+
+        context.Despliegues.AddRange(despliegues);
+        await context.SaveChangesAsync();
+    }
+
+    private static string StackForProject(Proyecto proyecto)
+    {
+        return proyecto.TipoSolucion?.Nombre switch
+        {
+            "Host2Host" => ".NET 8 · Worker Service · MySQL",
+            "Facturación Electrónica" => ".NET 8 · Angular · SQL Server",
+            "Guías de Remisión" => ".NET 8 · Angular · Azure",
+            _ => ".NET 8 · Angular · MySQL"
+        };
+    }
+
+    private static string Slug(string value)
+    {
+        return value
+            .ToLowerInvariant()
+            .Replace("á", "a")
+            .Replace("é", "e")
+            .Replace("í", "i")
+            .Replace("ó", "o")
+            .Replace("ú", "u")
+            .Replace("ñ", "n")
+            .Replace(" ", "-")
+            .Replace(".", string.Empty);
     }
 }

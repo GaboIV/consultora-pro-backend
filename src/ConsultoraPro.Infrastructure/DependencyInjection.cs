@@ -1,7 +1,10 @@
+using ConsultoraPro.Application.Interfaces;
 using ConsultoraPro.Domain.Interfaces;
+using ConsultoraPro.Domain.Models;
 using ConsultoraPro.Infrastructure.Data;
 using ConsultoraPro.Infrastructure.Data.Seed;
 using ConsultoraPro.Infrastructure.Repositories;
+using ConsultoraPro.Infrastructure.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -19,11 +22,14 @@ public static class DependencyInjection
                 new MySqlServerVersion(new Version(8, 0, 0))
             ));
 
-        services.AddIdentity<IdentityUser, IdentityRole>(options =>
+        services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
         {
-            options.Password.RequireDigit = true;
-            options.Password.RequiredLength = 6;
+            options.Password.RequireDigit = false;
+            options.Password.RequiredLength = 8;
             options.Password.RequireNonAlphanumeric = false;
+            options.Password.RequireUppercase = false;
+            options.Password.RequireLowercase = false;
+            options.User.RequireUniqueEmail = true;
         })
         .AddEntityFrameworkStores<AppDbContext>()
         .AddDefaultTokenProviders();
@@ -31,8 +37,17 @@ public static class DependencyInjection
         services.AddScoped<IClienteRepository, ClienteRepository>();
         services.AddScoped<IProyectoRepository, ProyectoRepository>();
         services.AddScoped<ITipoSolucionRepository, TipoSolucionRepository>();
-        services.AddScoped<IDesarrolladorRepository, DesarrolladorRepository>();
-        services.AddScoped<IMemberRepository, MemberRepository>();
+        services.AddScoped<ICredencialRepository, CredencialRepository>();
+        services.AddScoped<IAmbienteRepository, AmbienteRepository>();
+        services.AddScoped<IRepositorioRepository, RepositorioRepository>();
+        services.AddScoped<IDespliegueRepository, DespliegueRepository>();
+        services.AddScoped<IEncryptionService, EncryptionService>();
+        services.AddScoped<IAmbienteComponenteRepository, AmbienteComponenteRepository>();
+        services.AddScoped<IAmbienteTestUserRepository, AmbienteTestUserRepository>();
+        services.AddScoped<IAmbienteCloudResourceRepository, AmbienteCloudResourceRepository>();
+        services.AddScoped<IAzureSubscriptionTenantMappingRepository, AzureSubscriptionTenantMappingRepository>();
+        services.AddScoped<IScreenshotRepository, ScreenshotRepository>();
+        services.AddScoped<IStorageService, Storage.LocalStorageService>();
 
         return services;
     }
@@ -41,7 +56,13 @@ public static class DependencyInjection
     {
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var userManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<ApplicationUser>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.RoleManager<ApplicationRole>>();
         await context.Database.MigrateAsync();
-        await DataSeeder.SeedAsync(context);
+        await SecuritySeeder.SeedPermisosAsync(context);
+        await SecuritySeeder.SeedRolesAsync(roleManager);
+        await SecuritySeeder.SeedRolPermisosAsync(context, roleManager);
+        await SecuritySeeder.SeedDefaultUserAsync(userManager, roleManager);
+        await DataSeeder.SeedAsync(context, userManager, roleManager);
     }
 }

@@ -48,4 +48,37 @@ public class ClienteRepository : IClienteRepository
         _context.Clientes.Remove(cliente);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<IEnumerable<Cliente>> GetPagedAsync(int page, int pageSize, string? search = null)
+    {
+        var query = _context.Clientes
+            .Where(c => c.Activo);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchLower = search.ToLower();
+            query = query.Where(c => c.Nombre.ToLower().Contains(searchLower));
+        }
+
+        return await query
+            .OrderByDescending(c => c.FechaAlta)
+            .Include(c => c.Proyectos)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<int> GetTotalCountAsync(string? search = null)
+    {
+        var query = _context.Clientes
+            .Where(c => c.Activo);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchLower = search.ToLower();
+            query = query.Where(c => c.Nombre.ToLower().Contains(searchLower));
+        }
+
+        return await query.CountAsync();
+    }
 }

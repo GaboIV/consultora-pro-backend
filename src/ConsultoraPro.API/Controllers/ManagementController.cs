@@ -1,6 +1,7 @@
 using ConsultoraPro.Application.DTOs.Common;
 using ConsultoraPro.Application.DTOs.Management;
 using ConsultoraPro.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ConsultoraPro.API.Controllers;
@@ -17,9 +18,10 @@ public class ManagementController : ControllerBase
     }
 
     [HttpGet("snapshot")]
-    public async Task<ActionResult<ApiResponse<ManagementSnapshotDto>>> GetSnapshot()
+    [Authorize]
+    public async Task<ActionResult<ApiResponse<ManagementSnapshotDto>>> GetSnapshot([FromQuery] string? period = null)
     {
-        var data = await _managementService.GetSnapshotAsync();
+        var data = await _managementService.GetSnapshotAsync(period);
         return Ok(new ApiResponse<ManagementSnapshotDto> { Success = true, Data = data });
     }
 }

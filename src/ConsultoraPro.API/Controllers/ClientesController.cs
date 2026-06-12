@@ -1,6 +1,7 @@
 using ConsultoraPro.Application.DTOs.Clientes;
 using ConsultoraPro.Application.DTOs.Common;
 using ConsultoraPro.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ConsultoraPro.API.Controllers;
@@ -17,13 +18,18 @@ public class ClientesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<ApiResponse<IEnumerable<ClienteDto>>>> GetAll()
+    [Authorize(Policy = "clientes.ver")]
+    public async Task<ActionResult<ApiResponse<PagedResultDto<ClienteDto>>>> GetAll(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null)
     {
-        var data = await _clienteService.GetAllAsync();
-        return Ok(new ApiResponse<IEnumerable<ClienteDto>> { Success = true, Data = data });
+        var data = await _clienteService.GetAllAsync(page, pageSize, search);
+        return Ok(new ApiResponse<PagedResultDto<ClienteDto>> { Success = true, Data = data });
     }
 
     [HttpGet("{id}")]
+    [Authorize(Policy = "clientes.ver")]
     public async Task<ActionResult<ApiResponse<ClienteDto>>> GetById(Guid id)
     {
         var data = await _clienteService.GetByIdAsync(id);
@@ -33,6 +39,7 @@ public class ClientesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "clientes.crear")]
     public async Task<ActionResult<ApiResponse<ClienteDto>>> Create([FromBody] CreateClienteDto dto)
     {
         var data = await _clienteService.CreateAsync(dto);
@@ -40,6 +47,7 @@ public class ClientesController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Policy = "clientes.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Update(Guid id, [FromBody] UpdateClienteDto dto)
     {
         await _clienteService.UpdateAsync(id, dto);
@@ -47,6 +55,7 @@ public class ClientesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Policy = "clientes.eliminar")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(Guid id)
     {
         await _clienteService.DeleteAsync(id);

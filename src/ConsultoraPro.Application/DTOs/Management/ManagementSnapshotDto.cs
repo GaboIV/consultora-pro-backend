@@ -1,5 +1,5 @@
-using ConsultoraPro.Application.DTOs.Members;
 using ConsultoraPro.Application.DTOs.Proyectos;
+using ConsultoraPro.Application.DTOs.Screenshots;
 
 namespace ConsultoraPro.Application.DTOs.Management;
 
@@ -11,7 +11,7 @@ public class ManagementSnapshotDto
     public List<ManagementClientDto> Clients { get; set; } = new();
     public List<ManagementProjectDto> Projects { get; set; } = new();
     public List<TipoSolucionDto> TiposSolucion { get; set; } = new();
-    public List<MemberDto> Members { get; set; } = new();
+    public List<UsuarioSnapshotDto> Usuarios { get; set; } = new();
     public InfrastructureOverviewDto Infrastructure { get; set; } = new();
     public TeamOverviewDto Team { get; set; } = new();
 }
@@ -78,7 +78,19 @@ public class ManagementProjectDto
     public string StatusValue { get; set; } = string.Empty;
     public string StatusTone { get; set; } = "blue";
     public int TeamSize { get; set; }
-    public List<DesarrolladorDto> Desarrolladores { get; set; } = new();
+    public List<ProyectoMiembroDto> Miembros { get; set; } = new();
+    public List<ScreenshotDto> Screenshots { get; set; } = new();
+}
+
+public class UsuarioSnapshotDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Nombres { get; set; } = string.Empty;
+    public string Apellidos { get; set; } = string.Empty;
+    public string Correo { get; set; } = string.Empty;
+    public string Telefono { get; set; } = string.Empty;
+    public string Iniciales { get; set; } = string.Empty;
+    public string Puesto { get; set; } = string.Empty;
 }
 
 public class LeadDto
@@ -99,26 +111,39 @@ public class GanttItemDto
 
 public class InfrastructureOverviewDto
 {
+    public EnvironmentSummaryDto EnvironmentSummary { get; set; } = new();
     public List<EnvironmentGroupDto> EnvironmentGroups { get; set; } = new();
     public List<DeploymentDto> Deployments { get; set; } = new();
     public List<RepositoryHealthDto> Repositories { get; set; } = new();
     public List<CredentialDto> Credentials { get; set; } = new();
 }
 
+public class EnvironmentSummaryDto
+{
+    public int Total { get; set; }
+    public int Online { get; set; }
+    public int Alertas { get; set; }
+    public int Offline { get; set; }
+    public int Configurando { get; set; }
+}
+
 public class EnvironmentGroupDto
 {
+    public string ProjectId { get; set; } = string.Empty;
     public string ProjectName { get; set; } = string.Empty;
     public List<EnvironmentItemDto> Items { get; set; } = new();
 }
 
 public class EnvironmentItemDto
 {
+    public string Id { get; set; } = string.Empty;
+    public string ProjectId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public string Url { get; set; } = string.Empty;
-    public string Stack { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public string? Url { get; set; }
+    public string? Stack { get; set; }
     public string State { get; set; } = string.Empty;
     public string StateTone { get; set; } = "gray";
-    public string? Availability { get; set; }
 }
 
 public class DeploymentDto
