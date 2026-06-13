@@ -1,0 +1,28 @@
+# Build artifacts
+**/bin/
+**/obj/
+**/out/
+
+# Git / IDE
+.git/
+.gitignore
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Secretos / config local
+appsettings.*.local.json
+.env
+*.pem
+*.key
+
+# Docs y tests (no necesarios para la imagen)
+*.md
+tests/
+logs/
+*.log
+
+# CI
+.github/

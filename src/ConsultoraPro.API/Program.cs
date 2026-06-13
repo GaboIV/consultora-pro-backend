@@ -14,6 +14,7 @@ using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -127,7 +128,24 @@ builder.Services.AddAuthorization(options =>
 });
 builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
+// Forwarded Headers: detras del Nginx del contenedor frontend y del Nginx del host,
+// el backend recibe trafico HTTP. Estas cabeceras (X-Forwarded-For / -Proto) permiten
+// que la app conozca la IP real del cliente y que el esquema sea https.
+// Se limpian KnownNetworks/KnownProxies porque el backend NO se expone: solo es
+// alcanzable a traves de la red interna de Docker (proxy de confianza), cuya IP no es
+// fija. Sin esto, el middleware ignoraria las cabeceras de un proxy "desconocido".
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var app = builder.Build();
+
+// Debe ir PRIMERO en el pipeline, antes de CORS/Auth, para que el resto del middleware
+// vea ya el esquema (https) y la IP del cliente corregidos.
+app.UseForwardedHeaders();
 
 if (app.Environment.IsDevelopment())
 {
