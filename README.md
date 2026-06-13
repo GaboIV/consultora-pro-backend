@@ -36,7 +36,7 @@ ConsultoraPro.Backend/
 
 ### Capas
 
-- **Domain** — `Cliente`, `Proyecto`, `EstadoProyecto`, `EtapaProyecto`, `IClienteRepository`, `IProyectoRepository`
+- **Domain** — `Cliente`, `Proyecto`, `Ambiente`, `EstadoProyecto`, `EtapaProyecto`, `TipoAmbiente`, `EstadoAmbiente`, repositorios de dominio
 - **Application** — `ClienteDto`, `ProyectoDto`, `CreateClienteDto`, `UpdateClienteDto`, `CreateProyectoDto`, `UpdateProyectoDto`, `ApiResponse<T>`, DTOs de Auth, validadores FluentValidation, perfil AutoMapper, servicios de aplicación, DependencyInjection
 - **Infrastructure** — `AppDbContext` (hereda de `IdentityDbContext`), repositorios con EF Core, migración inicial, `DataSeeder` con 3 clientes + 4 proyectos, DependencyInjection
 - **API** — `ClientesController`, `ProyectosController`, `AuthController`, `GlobalExceptionHandler`, `AuthService` (JWT), `Program.cs` con CORS, Swagger, JWT config, FluentValidation, AutoMapper
@@ -87,6 +87,17 @@ Si tu MySQL usa otro user/password, edítalo ahí.
 | PUT | `/api/proyectos/{id}` | Editar proyecto |
 | DELETE | `/api/proyectos/{id}` | Eliminar proyecto |
 
+### Ambientes
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/api/ambientes` | Lista ambientes activos, con filtro opcional `proyectoId` |
+| GET | `/api/ambientes/{id}` | Detalle del ambiente |
+| GET | `/api/ambientes/proyecto/{proyectoId}` | Ambientes de un proyecto |
+| POST | `/api/ambientes` | Crear ambiente |
+| PUT | `/api/ambientes/{id}` | Editar ambiente |
+| PUT | `/api/ambientes/{id}/estado` | Cambiar estado y uptime opcional |
+| DELETE | `/api/ambientes/{id}` | Soft delete (Activo = false) |
+
 ### Auth
 | Método | Ruta | Descripción |
 |---|---|---|
@@ -119,7 +130,8 @@ Swagger disponible en `https://localhost:7001/swagger`.
 Al iniciar por primera vez, la BD se puebla automáticamente con:
 
 **Clientes:** Repsol (azul), Telefónica (púrpura), BBVA (verde)  
-**Proyectos:** Plataforma Digital Upstream, App Mi Movistar, Banca Digital Empresas, CRM Comercial Repsol
+**Proyectos:** Plataforma Digital Upstream, App Mi Movistar, Banca Digital Empresas, CRM Comercial Repsol  
+**Ambientes:** Producción, Staging y Desarrollo asociados a los proyectos de ejemplo
 
 ---
 

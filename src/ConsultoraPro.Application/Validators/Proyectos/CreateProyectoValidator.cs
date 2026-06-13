@@ -7,12 +7,24 @@ public class CreateProyectoValidator : AbstractValidator<CreateProyectoDto>
 {
     public CreateProyectoValidator()
     {
-        RuleFor(x => x.Nombre).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.ClienteId).NotEmpty();
-        RuleFor(x => x.Progreso).InclusiveBetween(0, 100);
-        RuleFor(x => x.FechaFin).GreaterThanOrEqualTo(x => x.FechaInicio);
-        RuleFor(x => x.TechLead).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.TechLeadIniciales).MaximumLength(2);
-        RuleFor(x => x.TotalMiembros).GreaterThanOrEqualTo(0);
+        RuleFor(p => p.Nombre).NotEmpty().MaximumLength(200);
+        RuleFor(p => p.ClienteId).NotEmpty();
+        RuleFor(p => p.TipoSolucionId).NotEmpty();
+        RuleFor(p => p.Etapa).IsInEnum();
+        RuleFor(p => p.Estado).IsInEnum();
+        RuleFor(p => p.Progreso).InclusiveBetween(0, 100);
+        RuleFor(p => p.FechaInicio).NotEmpty();
+        RuleFor(p => p.FechaFin).NotEmpty().GreaterThanOrEqualTo(p => p.FechaInicio)
+            .WithMessage("La fecha de fin debe ser mayor o igual a la fecha de inicio.");
+        
+        RuleFor(p => p.Miembros)
+            .Must(miembros => miembros == null || miembros.Select(m => m.UsuarioId).Distinct().Count() == miembros.Count)
+            .WithMessage("No se pueden asignar duplicados de un mismo usuario al proyecto.");
+
+        RuleForEach(p => p.Miembros).ChildRules(miembro =>
+        {
+            miembro.RuleFor(m => m.UsuarioId).NotEmpty();
+            miembro.RuleFor(m => m.Rol).IsInEnum();
+        });
     }
 }

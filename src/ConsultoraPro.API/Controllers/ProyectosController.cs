@@ -1,6 +1,8 @@
 using ConsultoraPro.Application.DTOs.Common;
 using ConsultoraPro.Application.DTOs.Proyectos;
 using ConsultoraPro.Application.Interfaces;
+using ConsultoraPro.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ConsultoraPro.API.Controllers;
@@ -17,13 +19,25 @@ public class ProyectosController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<ApiResponse<IEnumerable<ProyectoDto>>>> GetAll()
+    [Authorize(Policy = "proyectos.ver")]
+    public async Task<ActionResult<ApiResponse<PagedResultDto<ProyectoDto>>>> GetAll(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? estado = null,
+        [FromQuery] Guid? clienteId = null)
     {
-        var data = await _proyectoService.GetAllAsync();
-        return Ok(new ApiResponse<IEnumerable<ProyectoDto>> { Success = true, Data = data });
+        EstadoProyecto? estadoEnum = null;
+        if (!string.IsNullOrWhiteSpace(estado) && Enum.TryParse<EstadoProyecto>(estado, true, out var parsedEstado))
+        {
+            estadoEnum = parsedEstado;
+        }
+
+        var data = await _proyectoService.GetAllAsync(page, pageSize, estadoEnum, clienteId);
+        return Ok(new ApiResponse<PagedResultDto<ProyectoDto>> { Success = true, Data = data });
     }
 
     [HttpGet("{id}")]
+    [Authorize(Policy = "proyectos.ver")]
     public async Task<ActionResult<ApiResponse<ProyectoDto>>> GetById(Guid id)
     {
         var data = await _proyectoService.GetByIdAsync(id);
@@ -33,6 +47,7 @@ public class ProyectosController : ControllerBase
     }
 
     [HttpGet("cliente/{clienteId}")]
+    [Authorize(Policy = "proyectos.ver")]
     public async Task<ActionResult<ApiResponse<IEnumerable<ProyectoDto>>>> GetByClienteId(Guid clienteId)
     {
         var data = await _proyectoService.GetByClienteIdAsync(clienteId);
@@ -40,6 +55,7 @@ public class ProyectosController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "proyectos.crear")]
     public async Task<ActionResult<ApiResponse<ProyectoDto>>> Create([FromBody] CreateProyectoDto dto)
     {
         var data = await _proyectoService.CreateAsync(dto);
@@ -47,6 +63,7 @@ public class ProyectosController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Policy = "proyectos.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Update(Guid id, [FromBody] UpdateProyectoDto dto)
     {
         await _proyectoService.UpdateAsync(id, dto);
@@ -54,6 +71,7 @@ public class ProyectosController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Policy = "proyectos.eliminar")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(Guid id)
     {
         await _proyectoService.DeleteAsync(id);

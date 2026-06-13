@@ -10,6 +10,18 @@ public static class DependencyInjection
     {
         services.AddScoped<IClienteService, ClienteService>();
         services.AddScoped<IProyectoService, ProyectoService>();
+        services.AddScoped<IManagementService, ManagementService>();
+        services.AddScoped<IAlertaService, AlertaService>();
+        services.AddScoped<ICredencialService, CredencialService>();
+        services.AddScoped<IAmbienteService, AmbienteService>();
+        services.AddScoped<IRepositorioService, RepositorioService>();
+        services.AddScoped<IDespliegueService, DespliegueService>();
+        services.AddScoped<ISearchService, SearchService>();
+        services.AddScoped<IAmbienteComponenteService, AmbienteComponenteService>();
+        services.AddScoped<IAmbienteTestUserService, AmbienteTestUserService>();
+        services.AddScoped<IAmbienteCloudResourceService, AmbienteCloudResourceService>();
+        services.AddScoped<IAzureSubscriptionTenantMappingService, AzureSubscriptionTenantMappingService>();
+        services.AddScoped<IAzurePortalUrlResolver, AzurePortalUrlResolver>();
         return services;
     }
 }
