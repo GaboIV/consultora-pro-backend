@@ -48,6 +48,9 @@ public static class DependencyInjection
         services.AddScoped<IAzureSubscriptionTenantMappingRepository, AzureSubscriptionTenantMappingRepository>();
         services.AddScoped<IScreenshotRepository, ScreenshotRepository>();
         services.AddScoped<IStorageService, Storage.LocalStorageService>();
+        services.AddScoped<ITableroRepository, TableroRepository>();
+        services.AddScoped<IColumnaKanbanRepository, ColumnaKanbanRepository>();
+        services.AddScoped<ITarjetaRepository, TarjetaRepository>();
 
         return services;
     }
@@ -64,5 +67,6 @@ public static class DependencyInjection
         await SecuritySeeder.SeedRolPermisosAsync(context, roleManager);
         await SecuritySeeder.SeedDefaultUserAsync(userManager, roleManager);
         await DataSeeder.SeedAsync(context, userManager, roleManager);
+        await KanbanSeeder.SeedAsync(context);
     }
 }

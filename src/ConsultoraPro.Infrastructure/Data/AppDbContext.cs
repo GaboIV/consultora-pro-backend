@@ -25,6 +25,17 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<AmbienteCloudResource> AmbienteCloudResources => Set<AmbienteCloudResource>();
     public DbSet<AzureSubscriptionTenantMapping> AzureSubscriptionTenantMappings => Set<AzureSubscriptionTenantMapping>();
     public DbSet<Screenshot> Screenshots => Set<Screenshot>();
+    public DbSet<Tablero> Tableros => Set<Tablero>();
+    public DbSet<TableroMiembro> TableroMiembros => Set<TableroMiembro>();
+    public DbSet<ColumnaKanban> ColumnasKanban => Set<ColumnaKanban>();
+    public DbSet<Tarjeta> Tarjetas => Set<Tarjeta>();
+    public DbSet<TarjetaResponsable> TarjetaResponsables => Set<TarjetaResponsable>();
+    public DbSet<EtiquetaKanban> EtiquetasKanban => Set<EtiquetaKanban>();
+    public DbSet<TarjetaEtiqueta> TarjetaEtiquetas => Set<TarjetaEtiqueta>();
+    public DbSet<ChecklistItem> ChecklistItems => Set<ChecklistItem>();
+    public DbSet<ComentarioTarjeta> ComentariosTarjeta => Set<ComentarioTarjeta>();
+    public DbSet<AdjuntoTarjeta> AdjuntosTarjeta => Set<AdjuntoTarjeta>();
+    public DbSet<ActividadTarjeta> ActividadesTarjeta => Set<ActividadTarjeta>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -114,6 +125,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
         {
             entity.HasKey(p => p.Id);
             entity.Property(p => p.Nombre).IsRequired().HasMaxLength(200);
+            entity.Property(p => p.Clave).HasMaxLength(8).HasDefaultValue(string.Empty);
             entity.Property(p => p.Etapa).HasConversion<string>().HasMaxLength(20);
             entity.Property(p => p.Estado).HasConversion<string>().HasMaxLength(20);
             entity.HasOne(p => p.TipoSolucion)
@@ -315,6 +327,187 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
                   .HasForeignKey(s => s.SubidoPorId)
                   .OnDelete(DeleteBehavior.Restrict);
         });
+
+        ConfigureKanban(modelBuilder);
+    }
+
+    private static void ConfigureKanban(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Tablero>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.Nombre).IsRequired().HasMaxLength(200);
+            entity.Property(t => t.Clave).IsRequired().HasMaxLength(8);
+            entity.Property(t => t.Descripcion).HasMaxLength(500);
+            entity.Property(t => t.ColorClass).HasMaxLength(20).HasDefaultValue("blue");
+            entity.Property(t => t.Activo).HasDefaultValue(true);
+            entity.Property(t => t.FechaCreacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(t => t.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(t => new { t.ProyectoId, t.Clave }).IsUnique();
+            entity.HasIndex(t => new { t.ProyectoId, t.Activo });
+            entity.HasOne(t => t.Proyecto)
+                  .WithMany(p => p.Tableros)
+                  .HasForeignKey(t => t.ProyectoId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasMany(t => t.Columnas)
+                  .WithOne(c => c.Tablero)
+                  .HasForeignKey(c => c.TableroId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(t => t.Etiquetas)
+                  .WithOne(e => e.Tablero)
+                  .HasForeignKey(e => e.TableroId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TableroMiembro>(entity =>
+        {
+            entity.HasKey(m => m.Id);
+            entity.Property(m => m.Rol).HasConversion<string>().HasMaxLength(20);
+            entity.Property(m => m.FechaAsignacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(m => new { m.TableroId, m.UsuarioId }).IsUnique();
+            entity.HasOne(m => m.Tablero)
+                  .WithMany(t => t.Miembros)
+                  .HasForeignKey(m => m.TableroId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(m => m.Usuario)
+                  .WithMany()
+                  .HasForeignKey(m => m.UsuarioId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ColumnaKanban>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Nombre).IsRequired().HasMaxLength(120);
+            entity.Property(c => c.Activo).HasDefaultValue(true);
+            entity.Property(c => c.FechaCreacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(c => new { c.TableroId, c.Activo });
+            entity.HasMany(c => c.Tarjetas)
+                  .WithOne(t => t.Columna)
+                  .HasForeignKey(t => t.ColumnaId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Tarjeta>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.Titulo).IsRequired().HasMaxLength(200);
+            entity.Property(t => t.Codigo).IsRequired().HasMaxLength(40);
+            entity.Property(t => t.Descripcion).HasColumnType("text");
+            entity.Property(t => t.Prioridad).HasConversion<string>().HasMaxLength(20);
+            entity.Property(t => t.Activo).HasDefaultValue(true);
+            entity.Property(t => t.FechaCreacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(t => t.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(t => t.Codigo).IsUnique();
+            entity.HasIndex(t => new { t.TableroId, t.Numero }).IsUnique();
+            entity.HasIndex(t => new { t.ColumnaId, t.Activo });
+            entity.HasOne(t => t.Tablero)
+                  .WithMany()
+                  .HasForeignKey(t => t.TableroId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(t => t.CreadaPor)
+                  .WithMany()
+                  .HasForeignKey(t => t.CreadaPorId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasMany(t => t.Responsables)
+                  .WithOne(r => r.Tarjeta)
+                  .HasForeignKey(r => r.TarjetaId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(t => t.Etiquetas)
+                  .WithOne(e => e.Tarjeta)
+                  .HasForeignKey(e => e.TarjetaId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(t => t.Checklist)
+                  .WithOne(c => c.Tarjeta)
+                  .HasForeignKey(c => c.TarjetaId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(t => t.Comentarios)
+                  .WithOne(c => c.Tarjeta)
+                  .HasForeignKey(c => c.TarjetaId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(t => t.Adjuntos)
+                  .WithOne(a => a.Tarjeta)
+                  .HasForeignKey(a => a.TarjetaId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(t => t.Actividades)
+                  .WithOne(a => a.Tarjeta)
+                  .HasForeignKey(a => a.TarjetaId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TarjetaResponsable>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.FechaAsignacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(r => new { r.TarjetaId, r.UsuarioId }).IsUnique();
+            entity.HasOne(r => r.Usuario)
+                  .WithMany()
+                  .HasForeignKey(r => r.UsuarioId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<EtiquetaKanban>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Nombre).IsRequired().HasMaxLength(80);
+            entity.Property(e => e.ColorClass).HasMaxLength(20).HasDefaultValue("blue");
+            entity.Property(e => e.Activo).HasDefaultValue(true);
+            entity.HasIndex(e => new { e.TableroId, e.Activo });
+            entity.HasMany(e => e.Tarjetas)
+                  .WithOne(te => te.Etiqueta)
+                  .HasForeignKey(te => te.EtiquetaId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TarjetaEtiqueta>(entity =>
+        {
+            entity.HasKey(te => new { te.TarjetaId, te.EtiquetaId });
+        });
+
+        modelBuilder.Entity<ChecklistItem>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Texto).IsRequired().HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<ComentarioTarjeta>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Texto).IsRequired().HasMaxLength(4000);
+            entity.Property(c => c.FechaCreacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(c => new { c.TarjetaId, c.FechaCreacion });
+            entity.HasOne(c => c.Autor)
+                  .WithMany()
+                  .HasForeignKey(c => c.AutorId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AdjuntoTarjeta>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.Nombre).IsRequired().HasMaxLength(260);
+            entity.Property(a => a.Url).IsRequired().HasMaxLength(500);
+            entity.Property(a => a.ContentType).HasMaxLength(120);
+            entity.Property(a => a.FechaSubida).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(a => a.TarjetaId);
+            entity.HasOne(a => a.SubidoPor)
+                  .WithMany()
+                  .HasForeignKey(a => a.SubidoPorId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ActividadTarjeta>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.Tipo).HasConversion<string>().HasMaxLength(30);
+            entity.Property(a => a.Detalle).HasMaxLength(1000);
+            entity.Property(a => a.Fecha).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(a => new { a.TarjetaId, a.Fecha });
+            entity.HasOne(a => a.Usuario)
+                  .WithMany()
+                  .HasForeignKey(a => a.UsuarioId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
     }
 
     public override int SaveChanges()
@@ -365,6 +558,20 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
 
                 if (entry.Entity is Screenshot screenshot && screenshot.FechaSubida == default)
                     screenshot.FechaSubida = now;
+
+                if (entry.Entity is Tablero tableroAdd)
+                {
+                    if (tableroAdd.FechaCreacion == default)
+                        tableroAdd.FechaCreacion = now;
+                    tableroAdd.UpdatedAt = now;
+                }
+
+                if (entry.Entity is Tarjeta tarjetaAdd)
+                {
+                    if (tarjetaAdd.FechaCreacion == default)
+                        tarjetaAdd.FechaCreacion = now;
+                    tarjetaAdd.UpdatedAt = now;
+                }
             }
 
             if (entry.State == EntityState.Modified)
@@ -374,6 +581,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
 
                 if (entry.Entity is Credencial credencial)
                     credencial.UpdatedAt = now;
+
+                if (entry.Entity is Tablero tablero)
+                    tablero.UpdatedAt = now;
+
+                if (entry.Entity is Tarjeta tarjeta)
+                    tarjeta.UpdatedAt = now;
             }
         }
     }
