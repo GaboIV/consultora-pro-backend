@@ -129,6 +129,16 @@ public class TarjetaRepository : ITarjetaRepository
         await _context.SaveChangesAsync();
     }
 
+    public async Task AddChildrenAndSaveAsync(params object[] entidadesNuevas)
+    {
+        // _context.Add fija el estado Added (y propaga a los hijos no rastreados), evitando
+        // que DetectChanges interprete una clave ya asignada como una fila existente.
+        foreach (var entidad in entidadesNuevas)
+            _context.Add(entidad);
+
+        await _context.SaveChangesAsync();
+    }
+
     public async Task AddActividadAsync(ActividadTarjeta actividad)
     {
         _context.ActividadesTarjeta.Add(actividad);

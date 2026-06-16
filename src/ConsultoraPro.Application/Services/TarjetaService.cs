@@ -172,18 +172,23 @@ public class TarjetaService : ITarjetaService
             tarjeta.Responsables.Remove(r);
 
         var actuales = tarjeta.Responsables.Select(r => r.UsuarioId).ToHashSet();
+        var nuevos = new List<object>();
         foreach (var usuario in deseados.Where(u => !actuales.Contains(u)))
         {
             await EnsureUsuarioActivoAsync(usuario);
-            tarjeta.Responsables.Add(new TarjetaResponsable
+            var responsable = new TarjetaResponsable
             {
                 Id = Guid.NewGuid(),
                 TarjetaId = tarjeta.Id,
                 UsuarioId = usuario
-            });
+            };
+            tarjeta.Responsables.Add(responsable);
+            nuevos.Add(responsable);
         }
 
-        await _repository.UpdateAsync(tarjeta);
+        // AddChildrenAndSaveAsync inserta los responsables nuevos y, en el mismo SaveChanges,
+        // aplica las eliminaciones marcadas arriba sobre el grafo rastreado.
+        await _repository.AddChildrenAndSaveAsync(nuevos.ToArray());
         await LogAsync(id, usuarioId, TipoActividadTarjeta.Asignada, "Actualizó los responsables");
 
         var reloaded = await _repository.GetWithResponsablesAsync(id);
@@ -203,17 +208,22 @@ public class TarjetaService : ITarjetaService
             tarjeta.Etiquetas.Remove(e);
 
         var actuales = tarjeta.Etiquetas.Select(e => e.EtiquetaId).ToHashSet();
+        var nuevas = new List<object>();
         foreach (var etiquetaId in deseadas.Where(e => !actuales.Contains(e)))
         {
             await EnsureEtiquetaPerteneceAsync(etiquetaId, tarjeta.TableroId);
-            tarjeta.Etiquetas.Add(new TarjetaEtiqueta
+            var relacion = new TarjetaEtiqueta
             {
                 TarjetaId = tarjeta.Id,
                 EtiquetaId = etiquetaId
-            });
+            };
+            tarjeta.Etiquetas.Add(relacion);
+            nuevas.Add(relacion);
         }
 
-        await _repository.UpdateAsync(tarjeta);
+        // La clave de TarjetaEtiqueta es compuesta (TarjetaId, EtiquetaId) y siempre va asignada,
+        // por lo que también requiere inserción explícita en estado Added.
+        await _repository.AddChildrenAndSaveAsync(nuevas.ToArray());
         await LogAsync(id, usuarioId, TipoActividadTarjeta.EtiquetaAgregada, "Actualizó las etiquetas");
 
         var reloaded = await _repository.GetWithEtiquetasAsync(id);
@@ -240,7 +250,7 @@ public class TarjetaService : ITarjetaService
         };
 
         tarjeta.Checklist.Add(item);
-        await _repository.UpdateAsync(tarjeta);
+        await _repository.AddChildrenAndSaveAsync(item);
         return KanbanMappers.ToDto(item);
     }
 
@@ -277,7 +287,10 @@ public class TarjetaService : ITarjetaService
 
     public async Task<ComentarioDto> AddComentarioAsync(Guid tarjetaId, CreateComentarioDto dto, Guid usuarioId)
     {
-        var tarjeta = await GetActiveTarjetaAsync(tarjetaId);
+        var tarjeta = await _repository.GetWithComentariosAsync(tarjetaId);
+        if (tarjeta is null || !tarjeta.Activo)
+            throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
+
         var autor = await _userManager.FindByIdAsync(usuarioId.ToString())
             ?? throw new KeyNotFoundException("Usuario autor no encontrado");
 
@@ -290,17 +303,19 @@ public class TarjetaService : ITarjetaService
             FechaCreacion = DateTime.UtcNow
         };
 
-        await _repository.AddActividadAsync(new ActividadTarjeta
+        var actividad = new ActividadTarjeta
         {
             Id = Guid.NewGuid(),
             TarjetaId = tarjetaId,
             UsuarioId = usuarioId,
             Tipo = TipoActividadTarjeta.Comentada
-        });
+        };
 
-        // Persistimos el comentario reutilizando el grafo rastreado de la tarjeta.
+        // Insertamos el comentario y la actividad como entidades nuevas (Added). Añadirlas solo
+        // a las colecciones de navegación no basta: EF las trataría como UPDATE por tener clave.
         tarjeta.Comentarios.Add(comentario);
-        await _repository.UpdateAsync(tarjeta);
+        tarjeta.Actividades.Add(actividad);
+        await _repository.AddChildrenAndSaveAsync(comentario, actividad);
 
         return new ComentarioDto
         {
@@ -329,7 +344,10 @@ public class TarjetaService : ITarjetaService
 
     public async Task<AdjuntoDto> AddAdjuntoAsync(Guid tarjetaId, string nombre, string url, string? contentType, long tamanoBytes, Guid usuarioId)
     {
-        var tarjeta = await GetActiveTarjetaAsync(tarjetaId);
+        var tarjeta = await _repository.GetWithAdjuntosAsync(tarjetaId);
+        if (tarjeta is null || !tarjeta.Activo)
+            throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
+
         var usuario = await _userManager.FindByIdAsync(usuarioId.ToString());
 
         var adjunto = new AdjuntoTarjeta
@@ -345,7 +363,7 @@ public class TarjetaService : ITarjetaService
         };
 
         tarjeta.Adjuntos.Add(adjunto);
-        await _repository.UpdateAsync(tarjeta);
+        await _repository.AddChildrenAndSaveAsync(adjunto);
 
         return new AdjuntoDto
         {

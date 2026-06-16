@@ -21,6 +21,16 @@ public interface ITarjetaRepository
 
     Task UpdateAsync(Tarjeta tarjeta);
 
+    /// <summary>
+    /// Marca las entidades hijas indicadas como nuevas (estado Added) y persiste, junto con
+    /// cualquier otro cambio pendiente en la unidad de trabajo (ediciones, eliminaciones).
+    /// Es necesario porque añadir una entidad con su clave (Guid) ya asignada a la colección
+    /// de navegación de una entidad ya rastreada hace que EF la interprete como una
+    /// modificación (UPDATE ... WHERE Id = nuevo) en lugar de una inserción, lo que provoca
+    /// DbUpdateConcurrencyException ("expected to affect 1 row, but actually affected 0").
+    /// </summary>
+    Task AddChildrenAndSaveAsync(params object[] entidadesNuevas);
+
     Task AddActividadAsync(ActividadTarjeta actividad);
     Task<List<ActividadTarjeta>> GetActividadAsync(Guid tarjetaId);
 }
