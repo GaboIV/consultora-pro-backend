@@ -14,4 +14,5 @@ public interface ITableroRepository
     Task<bool> ClaveExistsAsync(Guid proyectoId, string clave, Guid? excludeId = null);
     Task<int> GetMaxOrdenAsync(Guid proyectoId);
     Task<EtiquetaKanban?> GetEtiquetaAsync(Guid etiquetaId);
+    Task AddEtiquetaAndSaveAsync(EtiquetaKanban etiqueta);
 }

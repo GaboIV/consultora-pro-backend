@@ -160,8 +160,9 @@ public class TableroService : ITableroService
 
     public async Task<EtiquetaDto> CreateEtiquetaAsync(Guid tableroId, CreateEtiquetaDto dto)
     {
-        var tablero = await _repository.GetWithEtiquetasAsync(tableroId)
-            ?? throw new KeyNotFoundException($"Tablero con ID {tableroId} no encontrado");
+        var exists = await _repository.GetByIdAsync(tableroId);
+        if (exists is null || !exists.Activo)
+            throw new KeyNotFoundException($"Tablero con ID {tableroId} no encontrado");
 
         var etiqueta = new EtiquetaKanban
         {
@@ -172,8 +173,7 @@ public class TableroService : ITableroService
             Activo = true
         };
 
-        tablero.Etiquetas.Add(etiqueta);
-        await _repository.UpdateAsync(tablero);
+        await _repository.AddEtiquetaAndSaveAsync(etiqueta);
         return KanbanMappers.ToDto(etiqueta);
     }
 

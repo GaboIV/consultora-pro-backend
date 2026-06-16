@@ -114,4 +114,10 @@ public class TableroRepository : ITableroRepository
     {
         return await _context.EtiquetasKanban.FirstOrDefaultAsync(e => e.Id == etiquetaId);
     }
+
+    public async Task AddEtiquetaAndSaveAsync(EtiquetaKanban etiqueta)
+    {
+        _context.EtiquetasKanban.Add(etiqueta);
+        await _context.SaveChangesAsync();
+    }
 }
