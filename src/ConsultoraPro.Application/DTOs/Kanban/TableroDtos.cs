@@ -5,7 +5,9 @@ namespace ConsultoraPro.Application.DTOs.Kanban;
 public class TableroDto
 {
     public Guid Id { get; set; }
-    public Guid ProyectoId { get; set; }
+    public Guid? ProyectoId { get; set; }
+    public string? ProyectoNombre { get; set; }
+    public bool EsPersonal { get; set; }
     public string Nombre { get; set; } = string.Empty;
     public string Clave { get; set; } = string.Empty;
     public string? Descripcion { get; set; }
@@ -21,9 +23,10 @@ public class TableroDto
 public class TableroDetalleDto
 {
     public Guid Id { get; set; }
-    public Guid ProyectoId { get; set; }
-    public string ProyectoNombre { get; set; } = string.Empty;
-    public string ProyectoClave { get; set; } = string.Empty;
+    public Guid? ProyectoId { get; set; }
+    public string? ProyectoNombre { get; set; }
+    public string? ProyectoClave { get; set; }
+    public bool EsPersonal { get; set; }
     public string Nombre { get; set; } = string.Empty;
     public string Clave { get; set; } = string.Empty;
     public string? Descripcion { get; set; }
@@ -36,7 +39,8 @@ public class TableroDetalleDto
 
 public class CreateTableroDto
 {
-    public Guid ProyectoId { get; set; }
+    public Guid? ProyectoId { get; set; }
+    public bool EsPersonal { get; set; }
     public string Nombre { get; set; } = string.Empty;
     public string? Clave { get; set; }
     public string? Descripcion { get; set; }

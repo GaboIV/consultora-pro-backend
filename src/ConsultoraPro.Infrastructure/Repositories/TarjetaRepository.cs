@@ -104,13 +104,17 @@ public class TarjetaRepository : ITarjetaRepository
         var tablero = tableros.FirstOrDefault()
             ?? throw new KeyNotFoundException($"Tablero con ID {tarjeta.TableroId} no encontrado");
 
-        var proyectoClave = await _context.Proyectos
-            .Where(p => p.Id == tablero.ProyectoId)
-            .Select(p => p.Clave)
-            .FirstOrDefaultAsync() ?? string.Empty;
+        string? proyectoClave = null;
+        if (tablero.ProyectoId.HasValue)
+        {
+            proyectoClave = await _context.Proyectos
+                .Where(p => p.Id == tablero.ProyectoId.Value)
+                .Select(p => p.Clave)
+                .FirstOrDefaultAsync();
 
-        if (string.IsNullOrWhiteSpace(proyectoClave))
-            proyectoClave = KanbanCodeHelper.DeriveKey("Proyecto", 3);
+            if (string.IsNullOrWhiteSpace(proyectoClave))
+                proyectoClave = KanbanCodeHelper.DeriveKey("PRO", 3);
+        }
 
         var nuevoNumero = tablero.SecuenciaActual + 1;
         tablero.SecuenciaActual = nuevoNumero;

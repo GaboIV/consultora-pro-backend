@@ -37,12 +37,15 @@ public static class KanbanCodeHelper
     }
 
     /// <summary>
-    /// Formatea el código legible de una tarjeta: "REP-TAR-001". El número crece de forma
-    /// natural si supera 999 (p. ej. "REP-TAR-1000"), sin romper el padding de 3 dígitos.
+    /// Formatea el código legible de una tarjeta.
+    /// Con proyecto: "REP-TAR-001". Sin proyecto (tablero personal): "TAR-001".
+    /// El número crece de forma natural si supera 999 (p. ej. "TAR-1000").
     /// </summary>
-    public static string FormatCodigo(string proyectoClave, string tableroClave, int numero)
+    public static string FormatCodigo(string? proyectoClave, string tableroClave, int numero)
     {
-        return $"{proyectoClave}-{tableroClave}-{numero:D3}";
+        return string.IsNullOrEmpty(proyectoClave)
+            ? $"{tableroClave}-{numero:D3}"
+            : $"{proyectoClave}-{tableroClave}-{numero:D3}";
     }
 
     private static string RemoveDiacritics(string text)

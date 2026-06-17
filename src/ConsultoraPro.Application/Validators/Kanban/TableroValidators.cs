@@ -7,7 +7,10 @@ public class CreateTableroValidator : AbstractValidator<CreateTableroDto>
 {
     public CreateTableroValidator()
     {
-        RuleFor(x => x.ProyectoId).NotEmpty();
+        RuleFor(x => x.ProyectoId)
+            .NotEmpty()
+            .When(x => !x.EsPersonal)
+            .WithMessage("El proyecto es requerido para tableros de proyecto.");
         RuleFor(x => x.Nombre).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Clave)
             .Matches("^[A-Za-z0-9]{2,6}$")

@@ -27,6 +27,14 @@ public class TablerosController : ControllerBase
         return Ok(new ApiResponse<IEnumerable<TableroDto>> { Success = true, Data = data });
     }
 
+    [HttpGet("mis-tableros")]
+    [Authorize(Policy = "kanban.ver")]
+    public async Task<ActionResult<ApiResponse<IEnumerable<TableroDto>>>> GetMisTableros()
+    {
+        var data = await _tableroService.GetByUsuarioAsync(GetUserId());
+        return Ok(new ApiResponse<IEnumerable<TableroDto>> { Success = true, Data = data });
+    }
+
     [HttpGet("{id}")]
     [Authorize(Policy = "kanban.ver")]
     public async Task<ActionResult<ApiResponse<TableroDetalleDto>>> GetById(Guid id)
@@ -42,8 +50,16 @@ public class TablerosController : ControllerBase
     [Authorize(Policy = "kanban.crear")]
     public async Task<ActionResult<ApiResponse<TableroDto>>> Create([FromBody] CreateTableroDto dto)
     {
-        var data = await _tableroService.CreateAsync(dto);
+        var data = await _tableroService.CreateAsync(dto, GetUserId());
         return CreatedAtAction(nameof(GetById), new { id = data.Id }, new ApiResponse<TableroDto> { Success = true, Data = data });
+    }
+
+    private Guid GetUserId()
+    {
+        var claim = User.FindFirstValue("userId") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(claim, out var userId))
+            throw new UnauthorizedAccessException("No se pudo identificar al usuario");
+        return userId;
     }
 
     [HttpPut("{id}")]

@@ -1,6 +1,7 @@
 using ConsultoraPro.Application.DTOs.Kanban;
 using ConsultoraPro.Application.Interfaces;
 using ConsultoraPro.Application.Kanban;
+using ConsultoraPro.Domain.Enums;
 using ConsultoraPro.Domain.Interfaces;
 using ConsultoraPro.Domain.Models;
 using Microsoft.AspNetCore.Identity;
@@ -31,30 +32,79 @@ public class TableroService : ITableroService
         return tableros.Select(KanbanMappers.ToDto);
     }
 
+    public async Task<IEnumerable<TableroDto>> GetByUsuarioAsync(Guid usuarioId)
+    {
+        var tableros = await _repository.GetByUsuarioAsync(usuarioId);
+        return tableros.Select(KanbanMappers.ToDto);
+    }
+
     public async Task<TableroDetalleDto?> GetDetalleAsync(Guid id)
     {
         var tablero = await _repository.GetDetalleAsync(id);
         return tablero is null || !tablero.Activo ? null : KanbanMappers.ToDetalleDto(tablero);
     }
 
-    public async Task<TableroDto> CreateAsync(CreateTableroDto dto)
+    public async Task<TableroDto> CreateAsync(CreateTableroDto dto, Guid creadorId)
     {
-        var proyecto = await _proyectoRepository.GetByIdAsync(dto.ProyectoId)
+        string claveBase;
+        int orden;
+
+        if (dto.EsPersonal || !dto.ProyectoId.HasValue)
+        {
+            // Tablero personal: sin proyecto.
+            claveBase = string.IsNullOrWhiteSpace(dto.Clave)
+                ? KanbanCodeHelper.DeriveKey(dto.Nombre, 3)
+                : dto.Clave.Trim().ToUpperInvariant();
+
+            var clavePersonal = await EnsureUniqueTableroClaveAsync(null, creadorId, claveBase);
+            orden = await _repository.GetMaxOrdenAsync(null, creadorId) + 1;
+
+            var tableroPersonal = new Tablero
+            {
+                Id = Guid.NewGuid(),
+                ProyectoId = null,
+                CreadoPorId = creadorId,
+                Nombre = dto.Nombre.Trim(),
+                Clave = clavePersonal,
+                Descripcion = dto.Descripcion?.Trim(),
+                ColorClass = string.IsNullOrWhiteSpace(dto.ColorClass) ? "blue" : dto.ColorClass.Trim(),
+                Orden = orden,
+                SecuenciaActual = 0,
+                Activo = true
+            };
+
+            AddDefaultColumns(tableroPersonal, dto.CrearColumnasPorDefecto);
+            tableroPersonal.Miembros.Add(new TableroMiembro
+            {
+                Id = Guid.NewGuid(),
+                TableroId = tableroPersonal.Id,
+                UsuarioId = creadorId,
+                Rol = RolTablero.Owner
+            });
+
+            var created = await _repository.CreateAsync(tableroPersonal);
+            var reloaded = await _repository.GetDetalleAsync(created.Id);
+            return KanbanMappers.ToDto(reloaded ?? created);
+        }
+
+        // Tablero de proyecto.
+        var proyecto = await _proyectoRepository.GetByIdAsync(dto.ProyectoId!.Value)
             ?? throw new KeyNotFoundException($"Proyecto con ID {dto.ProyectoId} no encontrado");
 
         await EnsureProyectoClaveAsync(proyecto);
 
-        var claveBase = string.IsNullOrWhiteSpace(dto.Clave)
+        claveBase = string.IsNullOrWhiteSpace(dto.Clave)
             ? KanbanCodeHelper.DeriveKey(dto.Nombre, 3)
             : dto.Clave.Trim().ToUpperInvariant();
 
-        var clave = await EnsureUniqueTableroClaveAsync(dto.ProyectoId, claveBase);
-        var orden = await _repository.GetMaxOrdenAsync(dto.ProyectoId) + 1;
+        var clave = await EnsureUniqueTableroClaveAsync(dto.ProyectoId, creadorId, claveBase);
+        orden = await _repository.GetMaxOrdenAsync(dto.ProyectoId, creadorId) + 1;
 
         var tablero = new Tablero
         {
             Id = Guid.NewGuid(),
             ProyectoId = dto.ProyectoId,
+            CreadoPorId = creadorId,
             Nombre = dto.Nombre.Trim(),
             Clave = clave,
             Descripcion = dto.Descripcion?.Trim(),
@@ -64,23 +114,33 @@ public class TableroService : ITableroService
             Activo = true
         };
 
-        if (dto.CrearColumnasPorDefecto)
+        AddDefaultColumns(tablero, dto.CrearColumnasPorDefecto);
+        tablero.Miembros.Add(new TableroMiembro
         {
-            for (var i = 0; i < ColumnasPorDefecto.Length; i++)
-            {
-                tablero.Columnas.Add(new ColumnaKanban
-                {
-                    Id = Guid.NewGuid(),
-                    Nombre = ColumnasPorDefecto[i],
-                    Orden = (i + 1) * FractionalOrder.Step,
-                    Activo = true
-                });
-            }
-        }
+            Id = Guid.NewGuid(),
+            TableroId = tablero.Id,
+            UsuarioId = creadorId,
+            Rol = RolTablero.Owner
+        });
 
-        var created = await _repository.CreateAsync(tablero);
-        var reloaded = await _repository.GetDetalleAsync(created.Id);
-        return KanbanMappers.ToDto(reloaded ?? created);
+        var createdProyecto = await _repository.CreateAsync(tablero);
+        var reloadedProyecto = await _repository.GetDetalleAsync(createdProyecto.Id);
+        return KanbanMappers.ToDto(reloadedProyecto ?? createdProyecto);
+    }
+
+    private static void AddDefaultColumns(Tablero tablero, bool crearColumnasPorDefecto)
+    {
+        if (!crearColumnasPorDefecto) return;
+        for (var i = 0; i < ColumnasPorDefecto.Length; i++)
+        {
+            tablero.Columnas.Add(new ColumnaKanban
+            {
+                Id = Guid.NewGuid(),
+                Nombre = ColumnasPorDefecto[i],
+                Orden = (i + 1) * FractionalOrder.Step,
+                Activo = true
+            });
+        }
     }
 
     public async Task UpdateAsync(Guid id, UpdateTableroDto dto)
@@ -88,8 +148,8 @@ public class TableroService : ITableroService
         var tablero = await GetActiveTableroAsync(id);
 
         var clave = dto.Clave.Trim().ToUpperInvariant();
-        if (await _repository.ClaveExistsAsync(tablero.ProyectoId, clave, id))
-            throw new InvalidOperationException($"Ya existe un tablero con la clave '{clave}' en este proyecto.");
+        if (await _repository.ClaveExistsAsync(tablero.ProyectoId, tablero.CreadoPorId, clave, id))
+            throw new InvalidOperationException($"Ya existe un tablero con la clave '{clave}'.");
 
         tablero.Nombre = dto.Nombre.Trim();
         tablero.Clave = clave;
@@ -212,11 +272,11 @@ public class TableroService : ITableroService
         return tablero;
     }
 
-    private async Task<string> EnsureUniqueTableroClaveAsync(Guid proyectoId, string claveBase)
+    private async Task<string> EnsureUniqueTableroClaveAsync(Guid? proyectoId, Guid? creadoPorId, string claveBase)
     {
         var clave = claveBase;
         var suffix = 1;
-        while (await _repository.ClaveExistsAsync(proyectoId, clave))
+        while (await _repository.ClaveExistsAsync(proyectoId, creadoPorId, clave))
         {
             clave = $"{claveBase}{suffix}";
             suffix++;

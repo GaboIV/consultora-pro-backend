@@ -3,14 +3,16 @@ namespace ConsultoraPro.Domain.Models;
 public class Tablero
 {
     public Guid Id { get; set; }
-    public Guid ProyectoId { get; set; }
-    public Proyecto Proyecto { get; set; } = null!;
-    public string Nombre { get; set; } = string.Empty;     // "Tareas"
-    public string Clave { get; set; } = string.Empty;      // "TAR" (único dentro del proyecto)
+    public Guid? ProyectoId { get; set; }           // null → tablero personal
+    public Proyecto? Proyecto { get; set; }
+    public Guid? CreadoPorId { get; set; }           // creador (Owner implícito)
+    public ApplicationUser? CreadoPor { get; set; }
+    public string Nombre { get; set; } = string.Empty;
+    public string Clave { get; set; } = string.Empty;
     public string? Descripcion { get; set; }
     public string ColorClass { get; set; } = "blue";
-    public int Orden { get; set; }                          // orden del tablero dentro del proyecto
-    public int SecuenciaActual { get; set; }                // contador para el código de tarjeta
+    public int Orden { get; set; }
+    public int SecuenciaActual { get; set; }
     public bool Activo { get; set; } = true;
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

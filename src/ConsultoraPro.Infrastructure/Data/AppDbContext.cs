@@ -343,12 +343,22 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             entity.Property(t => t.Activo).HasDefaultValue(true);
             entity.Property(t => t.FechaCreacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.Property(t => t.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
-            entity.HasIndex(t => new { t.ProyectoId, t.Clave }).IsUnique();
+            // ProyectoId es nullable: null indica tablero personal (sin proyecto asociado).
+            // El índice único (ProyectoId, Clave) permite NULL en ProyectoId — cada tablero
+            // personal puede tener su propio espacio de claves sin colisionar con proyectos.
+            entity.HasIndex(t => new { t.ProyectoId, t.Clave });
             entity.HasIndex(t => new { t.ProyectoId, t.Activo });
+            entity.HasIndex(t => new { t.CreadoPorId, t.Activo });
             entity.HasOne(t => t.Proyecto)
                   .WithMany(p => p.Tableros)
                   .HasForeignKey(t => t.ProyectoId)
+                  .IsRequired(false)
                   .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(t => t.CreadoPor)
+                  .WithMany()
+                  .HasForeignKey(t => t.CreadoPorId)
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.SetNull);
             entity.HasMany(t => t.Columnas)
                   .WithOne(c => c.Tablero)
                   .HasForeignKey(c => c.TableroId)

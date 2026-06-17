@@ -155,6 +155,8 @@ public static class KanbanMappers
         {
             Id = t.Id,
             ProyectoId = t.ProyectoId,
+            ProyectoNombre = t.Proyecto?.Nombre,
+            EsPersonal = !t.ProyectoId.HasValue,
             Nombre = t.Nombre,
             Clave = t.Clave,
             Descripcion = t.Descripcion,
@@ -174,8 +176,9 @@ public static class KanbanMappers
         {
             Id = t.Id,
             ProyectoId = t.ProyectoId,
-            ProyectoNombre = t.Proyecto?.Nombre ?? string.Empty,
-            ProyectoClave = t.Proyecto?.Clave ?? string.Empty,
+            ProyectoNombre = t.Proyecto?.Nombre,
+            ProyectoClave = t.Proyecto?.Clave,
+            EsPersonal = !t.ProyectoId.HasValue,
             Nombre = t.Nombre,
             Clave = t.Clave,
             Descripcion = t.Descripcion,

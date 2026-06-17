@@ -28,6 +28,21 @@ public class TableroRepository : ITableroRepository
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<Tablero>> GetByUsuarioAsync(Guid usuarioId)
+    {
+        return await _context.Tableros
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(t => t.Proyecto)
+            .Include(t => t.Columnas.Where(c => c.Activo))
+                .ThenInclude(c => c.Tarjetas.Where(ta => ta.Activo))
+            .Include(t => t.Miembros)
+            .Where(t => t.Activo && t.Miembros.Any(m => m.UsuarioId == usuarioId))
+            .OrderBy(t => t.ProyectoId == null ? 1 : 0)
+            .ThenBy(t => t.Nombre)
+            .ToListAsync();
+    }
+
     public async Task<Tablero?> GetByIdAsync(Guid id)
     {
         return await _context.Tableros
@@ -93,20 +108,26 @@ public class TableroRepository : ITableroRepository
         await _context.SaveChangesAsync();
     }
 
-    public async Task<bool> ClaveExistsAsync(Guid proyectoId, string clave, Guid? excludeId = null)
+    public async Task<bool> ClaveExistsAsync(Guid? proyectoId, Guid? creadoPorId, string clave, Guid? excludeId = null)
     {
+        // Para tableros de proyecto: unicidad dentro del proyecto.
+        // Para tableros personales: unicidad dentro del espacio del creador.
         return await _context.Tableros.AnyAsync(t =>
-            t.ProyectoId == proyectoId &&
             t.Activo &&
             t.Clave == clave &&
-            (excludeId == null || t.Id != excludeId.Value));
+            (excludeId == null || t.Id != excludeId.Value) &&
+            (proyectoId.HasValue
+                ? t.ProyectoId == proyectoId
+                : t.ProyectoId == null && t.CreadoPorId == creadoPorId));
     }
 
-    public async Task<int> GetMaxOrdenAsync(Guid proyectoId)
+    public async Task<int> GetMaxOrdenAsync(Guid? proyectoId, Guid? creadoPorId)
     {
-        var tableros = _context.Tableros.Where(t => t.ProyectoId == proyectoId && t.Activo);
-        return await tableros.AnyAsync()
-            ? await tableros.MaxAsync(t => t.Orden)
+        IQueryable<Tablero> query = proyectoId.HasValue
+            ? _context.Tableros.Where(t => t.ProyectoId == proyectoId && t.Activo)
+            : _context.Tableros.Where(t => t.ProyectoId == null && t.CreadoPorId == creadoPorId && t.Activo);
+        return await query.AnyAsync()
+            ? await query.MaxAsync(t => t.Orden)
             : 0;
     }
 
