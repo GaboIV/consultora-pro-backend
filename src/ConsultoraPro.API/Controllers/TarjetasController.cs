@@ -15,6 +15,7 @@ namespace ConsultoraPro.API.Controllers;
 public class TarjetasController : ControllerBase
 {
     private const long MaxAdjuntoBytes = 10 * 1024 * 1024; // 10 MB
+    private const long MaxImagenBytes = 5 * 1024 * 1024;   // 5 MB
 
     private readonly ITarjetaService _tarjetaService;
     private readonly IStorageService _storageService;
@@ -156,6 +157,29 @@ public class TarjetasController : ControllerBase
             GetUserId());
 
         return Ok(new ApiResponse<AdjuntoDto> { Success = true, Data = data });
+    }
+
+    [HttpPost("{id}/imagenes")]
+    [Authorize(Policy = "kanban.editar")]
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<ApiResponse<ImagenInlineDto>>> AddImagenInline(Guid id, IFormFile file)
+    {
+        if (file is null || file.Length == 0)
+            return BadRequest(new ApiResponse<ImagenInlineDto> { Success = false, Message = "No se proporcionó ningún archivo" });
+
+        if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new ApiResponse<ImagenInlineDto> { Success = false, Message = "Solo se permiten archivos de imagen" });
+
+        if (file.Length > MaxImagenBytes)
+            return BadRequest(new ApiResponse<ImagenInlineDto> { Success = false, Message = "El tamaño máximo permitido es 5 MB" });
+
+        string url;
+        using (var stream = file.OpenReadStream())
+        {
+            url = await _storageService.SaveFileAsync(stream, file.FileName, file.ContentType);
+        }
+
+        return Ok(new ApiResponse<ImagenInlineDto> { Success = true, Data = new ImagenInlineDto { Url = url } });
     }
 
     [HttpDelete("{id}/adjuntos/{adjuntoId}")]
