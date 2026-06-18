@@ -95,7 +95,8 @@ public static class KanbanMappers
             ChecklistCompletados = t.Checklist.Count(c => c.Completado),
             ChecklistTotal = t.Checklist.Count,
             TotalComentarios = t.Comentarios.Count,
-            TotalAdjuntos = t.Adjuntos.Count
+            TotalAdjuntos = t.Adjuntos.Count,
+            Descripcion = t.Descripcion
         };
     }
 

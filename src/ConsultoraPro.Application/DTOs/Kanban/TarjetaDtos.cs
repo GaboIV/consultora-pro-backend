@@ -27,11 +27,11 @@ public class TarjetaDto
     public int ChecklistTotal { get; set; }
     public int TotalComentarios { get; set; }
     public int TotalAdjuntos { get; set; }
+    public string? Descripcion { get; set; }
 }
 
 public class TarjetaDetalleDto : TarjetaDto
 {
-    public string? Descripcion { get; set; }
     public DateTime? FechaInicio { get; set; }
     public DateTime FechaCreacion { get; set; }
     public DateTime UpdatedAt { get; set; }
