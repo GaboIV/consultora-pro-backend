@@ -32,6 +32,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<TarjetaResponsable> TarjetaResponsables => Set<TarjetaResponsable>();
     public DbSet<EtiquetaKanban> EtiquetasKanban => Set<EtiquetaKanban>();
     public DbSet<TarjetaEtiqueta> TarjetaEtiquetas => Set<TarjetaEtiqueta>();
+    public DbSet<Checklist> Checklists => Set<Checklist>();
     public DbSet<ChecklistItem> ChecklistItems => Set<ChecklistItem>();
     public DbSet<ComentarioTarjeta> ComentariosTarjeta => Set<ComentarioTarjeta>();
     public DbSet<AdjuntoTarjeta> AdjuntosTarjeta => Set<AdjuntoTarjeta>();
@@ -427,7 +428,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
                   .WithOne(e => e.Tarjeta)
                   .HasForeignKey(e => e.TarjetaId)
                   .OnDelete(DeleteBehavior.Cascade);
-            entity.HasMany(t => t.Checklist)
+            entity.HasMany(t => t.Checklists)
                   .WithOne(c => c.Tarjeta)
                   .HasForeignKey(c => c.TarjetaId)
                   .OnDelete(DeleteBehavior.Cascade);
@@ -474,10 +475,22 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             entity.HasKey(te => new { te.TarjetaId, te.EtiquetaId });
         });
 
+        modelBuilder.Entity<Checklist>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Nombre).IsRequired().HasMaxLength(120);
+            entity.HasIndex(c => c.TarjetaId);
+            entity.HasMany(c => c.Items)
+                  .WithOne(i => i.Checklist)
+                  .HasForeignKey(i => i.ChecklistId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<ChecklistItem>(entity =>
         {
             entity.HasKey(c => c.Id);
             entity.Property(c => c.Texto).IsRequired().HasMaxLength(500);
+            entity.HasIndex(c => c.ChecklistId);
         });
 
         modelBuilder.Entity<ComentarioTarjeta>(entity =>

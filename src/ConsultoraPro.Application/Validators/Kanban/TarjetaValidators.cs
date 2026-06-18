@@ -38,6 +38,22 @@ public class CreateComentarioValidator : AbstractValidator<CreateComentarioDto>
     }
 }
 
+public class CreateChecklistValidator : AbstractValidator<CreateChecklistDto>
+{
+    public CreateChecklistValidator()
+    {
+        RuleFor(x => x.Nombre).NotEmpty().MaximumLength(120);
+    }
+}
+
+public class UpdateChecklistValidator : AbstractValidator<UpdateChecklistDto>
+{
+    public UpdateChecklistValidator()
+    {
+        RuleFor(x => x.Nombre).NotEmpty().MaximumLength(120);
+    }
+}
+
 public class CreateChecklistItemValidator : AbstractValidator<CreateChecklistItemDto>
 {
     public CreateChecklistItemValidator()

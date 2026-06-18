@@ -244,34 +244,81 @@ public class TarjetaService : ITarjetaService
             .ToList();
     }
 
-    public async Task<ChecklistItemDto> AddChecklistItemAsync(Guid tarjetaId, CreateChecklistItemDto dto)
+    public async Task<ChecklistDto> AddChecklistAsync(Guid tarjetaId, CreateChecklistDto dto)
     {
         var tarjeta = await _repository.GetWithChecklistAsync(tarjetaId);
         if (tarjeta is null || !tarjeta.Activo)
             throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
 
-        var maxOrden = tarjeta.Checklist.Count == 0 ? 0d : tarjeta.Checklist.Max(c => c.Orden);
-        var item = new ChecklistItem
+        var maxOrden = tarjeta.Checklists.Count == 0 ? 0d : tarjeta.Checklists.Max(c => c.Orden);
+        var checklist = new Checklist
         {
             Id = Guid.NewGuid(),
             TarjetaId = tarjetaId,
+            Nombre = dto.Nombre.Trim(),
+            Orden = maxOrden + FractionalOrder.Step
+        };
+
+        tarjeta.Checklists.Add(checklist);
+        await _repository.AddChildrenAndSaveAsync(checklist);
+        return KanbanMappers.ToDto(checklist);
+    }
+
+    public async Task<ChecklistDto> UpdateChecklistAsync(Guid tarjetaId, Guid checklistId, UpdateChecklistDto dto)
+    {
+        var tarjeta = await _repository.GetWithChecklistAsync(tarjetaId);
+        if (tarjeta is null || !tarjeta.Activo)
+            throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
+
+        var checklist = GetChecklistOrThrow(tarjeta, checklistId);
+        checklist.Nombre = dto.Nombre.Trim();
+
+        await _repository.UpdateAsync(tarjeta);
+        return KanbanMappers.ToDto(checklist);
+    }
+
+    public async Task DeleteChecklistAsync(Guid tarjetaId, Guid checklistId)
+    {
+        var tarjeta = await _repository.GetWithChecklistAsync(tarjetaId);
+        if (tarjeta is null || !tarjeta.Activo)
+            throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
+
+        var checklist = GetChecklistOrThrow(tarjeta, checklistId);
+        tarjeta.Checklists.Remove(checklist);
+        await _repository.UpdateAsync(tarjeta);
+    }
+
+    public async Task<ChecklistItemDto> AddChecklistItemAsync(Guid tarjetaId, Guid checklistId, CreateChecklistItemDto dto)
+    {
+        var tarjeta = await _repository.GetWithChecklistAsync(tarjetaId);
+        if (tarjeta is null || !tarjeta.Activo)
+            throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
+
+        var checklist = GetChecklistOrThrow(tarjeta, checklistId);
+
+        var maxOrden = checklist.Items.Count == 0 ? 0d : checklist.Items.Max(c => c.Orden);
+        var item = new ChecklistItem
+        {
+            Id = Guid.NewGuid(),
+            ChecklistId = checklist.Id,
             Texto = dto.Texto.Trim(),
             Completado = false,
             Orden = maxOrden + FractionalOrder.Step
         };
 
-        tarjeta.Checklist.Add(item);
+        checklist.Items.Add(item);
         await _repository.AddChildrenAndSaveAsync(item);
         return KanbanMappers.ToDto(item);
     }
 
-    public async Task<ChecklistItemDto> UpdateChecklistItemAsync(Guid tarjetaId, Guid itemId, UpdateChecklistItemDto dto)
+    public async Task<ChecklistItemDto> UpdateChecklistItemAsync(Guid tarjetaId, Guid checklistId, Guid itemId, UpdateChecklistItemDto dto)
     {
         var tarjeta = await _repository.GetWithChecklistAsync(tarjetaId);
         if (tarjeta is null || !tarjeta.Activo)
             throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
 
-        var item = tarjeta.Checklist.FirstOrDefault(c => c.Id == itemId)
+        var checklist = GetChecklistOrThrow(tarjeta, checklistId);
+        var item = checklist.Items.FirstOrDefault(c => c.Id == itemId)
             ?? throw new KeyNotFoundException($"Ítem de checklist con ID {itemId} no encontrado");
 
         if (dto.Texto is not null)
@@ -283,18 +330,23 @@ public class TarjetaService : ITarjetaService
         return KanbanMappers.ToDto(item);
     }
 
-    public async Task DeleteChecklistItemAsync(Guid tarjetaId, Guid itemId)
+    public async Task DeleteChecklistItemAsync(Guid tarjetaId, Guid checklistId, Guid itemId)
     {
         var tarjeta = await _repository.GetWithChecklistAsync(tarjetaId);
         if (tarjeta is null || !tarjeta.Activo)
             throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
 
-        var item = tarjeta.Checklist.FirstOrDefault(c => c.Id == itemId)
+        var checklist = GetChecklistOrThrow(tarjeta, checklistId);
+        var item = checklist.Items.FirstOrDefault(c => c.Id == itemId)
             ?? throw new KeyNotFoundException($"Ítem de checklist con ID {itemId} no encontrado");
 
-        tarjeta.Checklist.Remove(item);
+        checklist.Items.Remove(item);
         await _repository.UpdateAsync(tarjeta);
     }
+
+    private static Checklist GetChecklistOrThrow(Tarjeta tarjeta, Guid checklistId)
+        => tarjeta.Checklists.FirstOrDefault(c => c.Id == checklistId)
+            ?? throw new KeyNotFoundException($"Checklist con ID {checklistId} no encontrado");
 
     public async Task<ComentarioDto> AddComentarioAsync(Guid tarjetaId, CreateComentarioDto dto, Guid usuarioId)
     {

@@ -13,9 +13,13 @@ public interface ITarjetaService
     Task<IEnumerable<ResponsableDto>> AsignarResponsablesAsync(Guid id, AsignarResponsablesDto dto, Guid usuarioId);
     Task<IEnumerable<EtiquetaDto>> AsignarEtiquetasAsync(Guid id, AsignarEtiquetasDto dto, Guid usuarioId);
 
-    Task<ChecklistItemDto> AddChecklistItemAsync(Guid tarjetaId, CreateChecklistItemDto dto);
-    Task<ChecklistItemDto> UpdateChecklistItemAsync(Guid tarjetaId, Guid itemId, UpdateChecklistItemDto dto);
-    Task DeleteChecklistItemAsync(Guid tarjetaId, Guid itemId);
+    Task<ChecklistDto> AddChecklistAsync(Guid tarjetaId, CreateChecklistDto dto);
+    Task<ChecklistDto> UpdateChecklistAsync(Guid tarjetaId, Guid checklistId, UpdateChecklistDto dto);
+    Task DeleteChecklistAsync(Guid tarjetaId, Guid checklistId);
+
+    Task<ChecklistItemDto> AddChecklistItemAsync(Guid tarjetaId, Guid checklistId, CreateChecklistItemDto dto);
+    Task<ChecklistItemDto> UpdateChecklistItemAsync(Guid tarjetaId, Guid checklistId, Guid itemId, UpdateChecklistItemDto dto);
+    Task DeleteChecklistItemAsync(Guid tarjetaId, Guid checklistId, Guid itemId);
 
     Task<ComentarioDto> AddComentarioAsync(Guid tarjetaId, CreateComentarioDto dto, Guid usuarioId);
     Task<ComentarioDto> UpdateComentarioAsync(Guid tarjetaId, Guid comentarioId, UpdateComentarioDto dto, Guid usuarioId);

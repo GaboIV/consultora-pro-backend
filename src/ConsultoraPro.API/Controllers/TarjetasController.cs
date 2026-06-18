@@ -85,29 +85,55 @@ public class TarjetasController : ControllerBase
         return Ok(new ApiResponse<object> { Success = true, Message = "Tarjeta archivada." });
     }
 
-    // ---- Checklist ----
+    // ---- Checklists ----
 
-    [HttpPost("{id}/checklist")]
+    [HttpPost("{id}/checklists")]
     [Authorize(Policy = "kanban.editar")]
-    public async Task<ActionResult<ApiResponse<ChecklistItemDto>>> AddChecklist(Guid id, [FromBody] CreateChecklistItemDto dto)
+    public async Task<ActionResult<ApiResponse<ChecklistDto>>> AddChecklist(Guid id, [FromBody] CreateChecklistDto dto)
     {
-        var data = await _tarjetaService.AddChecklistItemAsync(id, dto);
+        var data = await _tarjetaService.AddChecklistAsync(id, dto);
+        return Ok(new ApiResponse<ChecklistDto> { Success = true, Data = data });
+    }
+
+    [HttpPut("{id}/checklists/{checklistId}")]
+    [Authorize(Policy = "kanban.editar")]
+    public async Task<ActionResult<ApiResponse<ChecklistDto>>> UpdateChecklist(Guid id, Guid checklistId, [FromBody] UpdateChecklistDto dto)
+    {
+        var data = await _tarjetaService.UpdateChecklistAsync(id, checklistId, dto);
+        return Ok(new ApiResponse<ChecklistDto> { Success = true, Data = data });
+    }
+
+    [HttpDelete("{id}/checklists/{checklistId}")]
+    [Authorize(Policy = "kanban.editar")]
+    public async Task<ActionResult<ApiResponse<object>>> DeleteChecklist(Guid id, Guid checklistId)
+    {
+        await _tarjetaService.DeleteChecklistAsync(id, checklistId);
+        return Ok(new ApiResponse<object> { Success = true, Message = "Checklist eliminado." });
+    }
+
+    // ---- Ítems de checklist ----
+
+    [HttpPost("{id}/checklists/{checklistId}/items")]
+    [Authorize(Policy = "kanban.editar")]
+    public async Task<ActionResult<ApiResponse<ChecklistItemDto>>> AddChecklistItem(Guid id, Guid checklistId, [FromBody] CreateChecklistItemDto dto)
+    {
+        var data = await _tarjetaService.AddChecklistItemAsync(id, checklistId, dto);
         return Ok(new ApiResponse<ChecklistItemDto> { Success = true, Data = data });
     }
 
-    [HttpPut("{id}/checklist/{itemId}")]
+    [HttpPut("{id}/checklists/{checklistId}/items/{itemId}")]
     [Authorize(Policy = "kanban.editar")]
-    public async Task<ActionResult<ApiResponse<ChecklistItemDto>>> UpdateChecklist(Guid id, Guid itemId, [FromBody] UpdateChecklistItemDto dto)
+    public async Task<ActionResult<ApiResponse<ChecklistItemDto>>> UpdateChecklistItem(Guid id, Guid checklistId, Guid itemId, [FromBody] UpdateChecklistItemDto dto)
     {
-        var data = await _tarjetaService.UpdateChecklistItemAsync(id, itemId, dto);
+        var data = await _tarjetaService.UpdateChecklistItemAsync(id, checklistId, itemId, dto);
         return Ok(new ApiResponse<ChecklistItemDto> { Success = true, Data = data });
     }
 
-    [HttpDelete("{id}/checklist/{itemId}")]
+    [HttpDelete("{id}/checklists/{checklistId}/items/{itemId}")]
     [Authorize(Policy = "kanban.editar")]
-    public async Task<ActionResult<ApiResponse<object>>> DeleteChecklist(Guid id, Guid itemId)
+    public async Task<ActionResult<ApiResponse<object>>> DeleteChecklistItem(Guid id, Guid checklistId, Guid itemId)
     {
-        await _tarjetaService.DeleteChecklistItemAsync(id, itemId);
+        await _tarjetaService.DeleteChecklistItemAsync(id, checklistId, itemId);
         return Ok(new ApiResponse<object> { Success = true, Message = "Ítem eliminado." });
     }
 

@@ -36,7 +36,8 @@ public class TarjetaRepository : ITarjetaRepository
                 .ThenInclude(r => r.Usuario)
             .Include(t => t.Etiquetas)
                 .ThenInclude(te => te.Etiqueta)
-            .Include(t => t.Checklist)
+            .Include(t => t.Checklists)
+                .ThenInclude(c => c.Items)
             .Include(t => t.Comentarios)
                 .ThenInclude(c => c.Autor)
             .Include(t => t.Adjuntos)
@@ -63,7 +64,8 @@ public class TarjetaRepository : ITarjetaRepository
     public async Task<Tarjeta?> GetWithChecklistAsync(Guid id)
     {
         return await _context.Tarjetas
-            .Include(t => t.Checklist)
+            .Include(t => t.Checklists)
+                .ThenInclude(c => c.Items)
             .FirstOrDefaultAsync(t => t.Id == id);
     }
 

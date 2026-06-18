@@ -26,7 +26,7 @@ public class Tarjeta
 
     public ICollection<TarjetaResponsable> Responsables { get; set; } = new List<TarjetaResponsable>();
     public ICollection<TarjetaEtiqueta> Etiquetas { get; set; } = new List<TarjetaEtiqueta>();
-    public ICollection<ChecklistItem> Checklist { get; set; } = new List<ChecklistItem>();
+    public ICollection<Checklist> Checklists { get; set; } = new List<Checklist>();
     public ICollection<ComentarioTarjeta> Comentarios { get; set; } = new List<ComentarioTarjeta>();
     public ICollection<AdjuntoTarjeta> Adjuntos { get; set; } = new List<AdjuntoTarjeta>();
     public ICollection<ActividadTarjeta> Actividades { get; set; } = new List<ActividadTarjeta>();

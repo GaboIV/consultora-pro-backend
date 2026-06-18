@@ -38,9 +38,18 @@ public static class KanbanMappers
     public static ChecklistItemDto ToDto(ChecklistItem c) => new()
     {
         Id = c.Id,
+        ChecklistId = c.ChecklistId,
         Texto = c.Texto,
         Completado = c.Completado,
         Orden = c.Orden
+    };
+
+    public static ChecklistDto ToDto(Checklist c) => new()
+    {
+        Id = c.Id,
+        Nombre = c.Nombre,
+        Orden = c.Orden,
+        Items = c.Items.OrderBy(i => i.Orden).Select(ToDto).ToList()
     };
 
     public static ComentarioDto ToDto(ComentarioTarjeta c) => new()
@@ -92,8 +101,8 @@ public static class KanbanMappers
             Completada = t.Completada,
             Responsables = t.Responsables.Select(ToDto).ToList(),
             Etiquetas = t.Etiquetas.Where(e => e.Etiqueta is not null).Select(e => ToDto(e.Etiqueta)).ToList(),
-            ChecklistCompletados = t.Checklist.Count(c => c.Completado),
-            ChecklistTotal = t.Checklist.Count,
+            ChecklistCompletados = t.Checklists.Sum(cl => cl.Items.Count(i => i.Completado)),
+            ChecklistTotal = t.Checklists.Sum(cl => cl.Items.Count),
             TotalComentarios = t.Comentarios.Count,
             TotalAdjuntos = t.Adjuntos.Count,
             Descripcion = t.Descripcion,
@@ -121,8 +130,8 @@ public static class KanbanMappers
             Completada = t.Completada,
             Responsables = t.Responsables.Select(ToDto).ToList(),
             Etiquetas = t.Etiquetas.Where(e => e.Etiqueta is not null).Select(e => ToDto(e.Etiqueta)).ToList(),
-            ChecklistCompletados = t.Checklist.Count(c => c.Completado),
-            ChecklistTotal = t.Checklist.Count,
+            ChecklistCompletados = t.Checklists.Sum(cl => cl.Items.Count(i => i.Completado)),
+            ChecklistTotal = t.Checklists.Sum(cl => cl.Items.Count),
             TotalComentarios = t.Comentarios.Count,
             TotalAdjuntos = t.Adjuntos.Count,
             Descripcion = t.Descripcion,
@@ -136,7 +145,7 @@ public static class KanbanMappers
             UpdatedAt = t.UpdatedAt,
             CreadaPorId = t.CreadaPorId,
             CreadaPorNombre = t.CreadaPor is null ? null : NombreCompleto(t.CreadaPor),
-            Checklist = t.Checklist.OrderBy(c => c.Orden).Select(ToDto).ToList(),
+            Checklists = t.Checklists.OrderBy(c => c.Orden).Select(ToDto).ToList(),
             Comentarios = t.Comentarios.OrderByDescending(c => c.FechaCreacion).Select(ToDto).ToList(),
             Adjuntos = t.Adjuntos.OrderByDescending(a => a.FechaSubida).Select(ToDto).ToList()
         };

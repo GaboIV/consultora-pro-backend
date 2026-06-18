@@ -38,7 +38,7 @@ public class TarjetaDetalleDto : TarjetaDto
     public DateTime UpdatedAt { get; set; }
     public Guid? CreadaPorId { get; set; }
     public string? CreadaPorNombre { get; set; }
-    public List<ChecklistItemDto> Checklist { get; set; } = new();
+    public List<ChecklistDto> Checklists { get; set; } = new();
     public List<ComentarioDto> Comentarios { get; set; } = new();
     public List<AdjuntoDto> Adjuntos { get; set; } = new();
 }
