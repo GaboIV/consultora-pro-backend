@@ -96,7 +96,12 @@ public static class KanbanMappers
             ChecklistTotal = t.Checklist.Count,
             TotalComentarios = t.Comentarios.Count,
             TotalAdjuntos = t.Adjuntos.Count,
-            Descripcion = t.Descripcion
+            Descripcion = t.Descripcion,
+            PortadaAdjuntoUrl = t.Adjuntos
+                .Where(a => a.ContentType != null && a.ContentType.StartsWith("image/"))
+                .OrderBy(a => a.FechaSubida)
+                .Select(a => a.Url)
+                .FirstOrDefault()
         };
     }
 
@@ -121,6 +126,11 @@ public static class KanbanMappers
             TotalComentarios = t.Comentarios.Count,
             TotalAdjuntos = t.Adjuntos.Count,
             Descripcion = t.Descripcion,
+            PortadaAdjuntoUrl = t.Adjuntos
+                .Where(a => a.ContentType != null && a.ContentType.StartsWith("image/"))
+                .OrderBy(a => a.FechaSubida)
+                .Select(a => a.Url)
+                .FirstOrDefault(),
             FechaInicio = t.FechaInicio,
             FechaCreacion = t.FechaCreacion,
             UpdatedAt = t.UpdatedAt,

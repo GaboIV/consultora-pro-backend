@@ -28,6 +28,7 @@ public class TarjetaDto
     public int TotalComentarios { get; set; }
     public int TotalAdjuntos { get; set; }
     public string? Descripcion { get; set; }
+    public string? PortadaAdjuntoUrl { get; set; }
 }
 
 public class TarjetaDetalleDto : TarjetaDto
