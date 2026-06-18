@@ -121,6 +121,14 @@ public class TarjetasController : ControllerBase
         return Ok(new ApiResponse<ComentarioDto> { Success = true, Data = data });
     }
 
+    [HttpPut("{id}/comentarios/{comentarioId}")]
+    [Authorize(Policy = "kanban.comentar")]
+    public async Task<ActionResult<ApiResponse<ComentarioDto>>> UpdateComentario(Guid id, Guid comentarioId, [FromBody] UpdateComentarioDto dto)
+    {
+        var data = await _tarjetaService.UpdateComentarioAsync(id, comentarioId, dto, GetUserId());
+        return Ok(new ApiResponse<ComentarioDto> { Success = true, Data = data });
+    }
+
     [HttpDelete("{id}/comentarios/{comentarioId}")]
     [Authorize(Policy = "kanban.comentar")]
     public async Task<ActionResult<ApiResponse<object>>> DeleteComentario(Guid id, Guid comentarioId)

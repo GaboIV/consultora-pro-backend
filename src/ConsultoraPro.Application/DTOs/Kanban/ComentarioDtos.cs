@@ -15,3 +15,8 @@ public class CreateComentarioDto
 {
     public string Texto { get; set; } = string.Empty;
 }
+
+public class UpdateComentarioDto
+{
+    public string Texto { get; set; } = string.Empty;
+}

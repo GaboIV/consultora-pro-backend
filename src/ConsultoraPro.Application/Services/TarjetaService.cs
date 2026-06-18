@@ -62,7 +62,18 @@ public class TarjetaService : ITarjetaService
             Activo = true
         };
 
-        foreach (var responsableId in dto.ResponsableIds.Distinct())
+        var responsableIds = dto.ResponsableIds ?? new List<Guid>();
+        if (columna.Tablero.ProyectoId == null)
+        {
+            var list = responsableIds.ToList();
+            if (!list.Contains(usuarioId))
+            {
+                list.Add(usuarioId);
+            }
+            responsableIds = list;
+        }
+
+        foreach (var responsableId in responsableIds.Distinct())
         {
             await EnsureUsuarioActivoAsync(responsableId);
             tarjeta.Responsables.Add(new TarjetaResponsable
@@ -316,6 +327,41 @@ public class TarjetaService : ITarjetaService
         tarjeta.Comentarios.Add(comentario);
         tarjeta.Actividades.Add(actividad);
         await _repository.AddChildrenAndSaveAsync(comentario, actividad);
+
+        return new ComentarioDto
+        {
+            Id = comentario.Id,
+            Texto = comentario.Texto,
+            AutorId = usuarioId,
+            AutorNombre = $"{autor.Nombres} {autor.Apellidos}".Trim(),
+            AutorIniciales = autor.Iniciales,
+            FechaCreacion = comentario.FechaCreacion,
+            EditadoEn = comentario.EditadoEn
+        };
+    }
+
+    public async Task<ComentarioDto> UpdateComentarioAsync(Guid tarjetaId, Guid comentarioId, UpdateComentarioDto dto, Guid usuarioId)
+    {
+        var tarjeta = await _repository.GetWithComentariosAsync(tarjetaId);
+        if (tarjeta is null || !tarjeta.Activo)
+            throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
+
+        var comentario = tarjeta.Comentarios.FirstOrDefault(c => c.Id == comentarioId)
+            ?? throw new KeyNotFoundException($"Comentario con ID {comentarioId} no encontrado");
+
+        if (comentario.AutorId != usuarioId)
+            throw new UnauthorizedAccessException("No tienes permisos para editar este comentario.");
+
+        if (comentario.FechaCreacion.Date != DateTime.UtcNow.Date)
+            throw new InvalidOperationException("Solo se pueden editar comentarios durante el día de su creación.");
+
+        comentario.Texto = dto.Texto.Trim();
+        comentario.EditadoEn = DateTime.UtcNow;
+
+        await _repository.UpdateAsync(tarjeta);
+
+        var autor = await _userManager.FindByIdAsync(usuarioId.ToString())
+            ?? throw new KeyNotFoundException("Usuario autor no encontrado");
 
         return new ComentarioDto
         {

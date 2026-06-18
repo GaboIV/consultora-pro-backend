@@ -45,3 +45,11 @@ public class CreateChecklistItemValidator : AbstractValidator<CreateChecklistIte
         RuleFor(x => x.Texto).NotEmpty().MaximumLength(500);
     }
 }
+
+public class UpdateComentarioValidator : AbstractValidator<UpdateComentarioDto>
+{
+    public UpdateComentarioValidator()
+    {
+        RuleFor(x => x.Texto).NotEmpty().MaximumLength(4000);
+    }
+}

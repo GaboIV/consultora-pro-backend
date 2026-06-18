@@ -18,6 +18,7 @@ public interface ITarjetaService
     Task DeleteChecklistItemAsync(Guid tarjetaId, Guid itemId);
 
     Task<ComentarioDto> AddComentarioAsync(Guid tarjetaId, CreateComentarioDto dto, Guid usuarioId);
+    Task<ComentarioDto> UpdateComentarioAsync(Guid tarjetaId, Guid comentarioId, UpdateComentarioDto dto, Guid usuarioId);
     Task DeleteComentarioAsync(Guid tarjetaId, Guid comentarioId);
 
     Task<AdjuntoDto> AddAdjuntoAsync(Guid tarjetaId, string nombre, string url, string? contentType, long tamanoBytes, Guid usuarioId);
