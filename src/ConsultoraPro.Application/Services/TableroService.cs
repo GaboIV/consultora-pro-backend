@@ -15,15 +15,18 @@ public class TableroService : ITableroService
     private readonly ITableroRepository _repository;
     private readonly IProyectoRepository _proyectoRepository;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IFileUrlResolver _urlResolver;
 
     public TableroService(
         ITableroRepository repository,
         IProyectoRepository proyectoRepository,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        IFileUrlResolver urlResolver)
     {
         _repository = repository;
         _proyectoRepository = proyectoRepository;
         _userManager = userManager;
+        _urlResolver = urlResolver;
     }
 
     public async Task<IEnumerable<TableroDto>> GetByProyectoAsync(Guid proyectoId)
@@ -41,7 +44,18 @@ public class TableroService : ITableroService
     public async Task<TableroDetalleDto?> GetDetalleAsync(Guid id)
     {
         var tablero = await _repository.GetDetalleAsync(id);
-        return tablero is null || !tablero.Activo ? null : KanbanMappers.ToDetalleDto(tablero);
+        if (tablero is null || !tablero.Activo)
+            return null;
+
+        var dto = KanbanMappers.ToDetalleDto(tablero);
+        // Firmar (SAS) las portadas y resolver imágenes inline de las descripciones de cada tarjeta.
+        foreach (var tarjeta in dto.Columnas.SelectMany(c => c.Tarjetas))
+        {
+            tarjeta.PortadaAdjuntoUrl = await _urlResolver.ResolveAsync(tarjeta.PortadaAdjuntoUrl);
+            tarjeta.Descripcion = await _urlResolver.ResolveContentAsync(tarjeta.Descripcion);
+        }
+
+        return dto;
     }
 
     public async Task<TableroDto> CreateAsync(CreateTableroDto dto, Guid creadorId)

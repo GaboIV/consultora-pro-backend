@@ -1,11 +1,14 @@
 using System.IO;
 using System.Security.Claims;
+using ConsultoraPro.Application.Configuration;
 using ConsultoraPro.Application.DTOs.Common;
 using ConsultoraPro.Application.DTOs.Kanban;
 using ConsultoraPro.Application.Interfaces;
+using ConsultoraPro.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace ConsultoraPro.API.Controllers;
 
@@ -14,16 +17,21 @@ namespace ConsultoraPro.API.Controllers;
 [Route("api/[controller]")]
 public class TarjetasController : ControllerBase
 {
-    private const long MaxAdjuntoBytes = 10 * 1024 * 1024; // 10 MB
-    private const long MaxImagenBytes = 5 * 1024 * 1024;   // 5 MB
-
     private readonly ITarjetaService _tarjetaService;
     private readonly IStorageService _storageService;
+    private readonly IFileUrlResolver _urlResolver;
+    private readonly StorageOptions _storage;
 
-    public TarjetasController(ITarjetaService tarjetaService, IStorageService storageService)
+    public TarjetasController(
+        ITarjetaService tarjetaService,
+        IStorageService storageService,
+        IFileUrlResolver urlResolver,
+        IOptions<StorageOptions> storageOptions)
     {
         _tarjetaService = tarjetaService;
         _storageService = storageService;
+        _urlResolver = urlResolver;
+        _storage = storageOptions.Value;
     }
 
     [HttpGet("{id}")]
@@ -173,19 +181,19 @@ public class TarjetasController : ControllerBase
         if (file is null || file.Length == 0)
             return BadRequest(new ApiResponse<AdjuntoDto> { Success = false, Message = "No se proporcionó ningún archivo" });
 
-        if (file.Length > MaxAdjuntoBytes)
-            return BadRequest(new ApiResponse<AdjuntoDto> { Success = false, Message = "El tamaño máximo permitido es de 10MB" });
+        if (file.Length > _storage.Limits.MaxAttachmentBytes)
+            return BadRequest(new ApiResponse<AdjuntoDto> { Success = false, Message = $"El tamaño máximo permitido es de {_storage.Limits.MaxAttachmentBytes / (1024 * 1024)}MB" });
 
-        string url;
+        StoredFile stored;
         using (var stream = file.OpenReadStream())
         {
-            url = await _storageService.SaveFileAsync(stream, file.FileName, file.ContentType);
+            stored = await _storageService.SaveFileAsync(stream, file.FileName, file.ContentType, "adjuntos");
         }
 
         var data = await _tarjetaService.AddAdjuntoAsync(
             id,
             Path.GetFileName(file.FileName),
-            url,
+            stored.Key,
             file.ContentType,
             file.Length,
             GetUserId());
@@ -204,16 +212,19 @@ public class TarjetasController : ControllerBase
         if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
             return BadRequest(new ApiResponse<ImagenInlineDto> { Success = false, Message = "Solo se permiten archivos de imagen" });
 
-        if (file.Length > MaxImagenBytes)
-            return BadRequest(new ApiResponse<ImagenInlineDto> { Success = false, Message = "El tamaño máximo permitido es 5 MB" });
+        if (file.Length > _storage.Limits.MaxImageBytes)
+            return BadRequest(new ApiResponse<ImagenInlineDto> { Success = false, Message = $"El tamaño máximo permitido es {_storage.Limits.MaxImageBytes / (1024 * 1024)} MB" });
 
-        string url;
+        StoredFile stored;
         using (var stream = file.OpenReadStream())
         {
-            url = await _storageService.SaveFileAsync(stream, file.FileName, file.ContentType);
+            stored = await _storageService.SaveFileAsync(stream, file.FileName, file.ContentType, "inline");
         }
 
-        return Ok(new ApiResponse<ImagenInlineDto> { Success = true, Data = new ImagenInlineDto { Url = url } });
+        // El editor persiste el placeholder estable (Key) en la descripción; Url es para previsualizar ya.
+        var placeholder = $"{FileUrlResolver.PlaceholderScheme}{stored.Key}";
+        var previewUrl = await _storageService.GetAccessUrlAsync(stored.Key);
+        return Ok(new ApiResponse<ImagenInlineDto> { Success = true, Data = new ImagenInlineDto { Key = placeholder, Url = previewUrl } });
     }
 
     [HttpDelete("{id}/adjuntos/{adjuntoId}")]

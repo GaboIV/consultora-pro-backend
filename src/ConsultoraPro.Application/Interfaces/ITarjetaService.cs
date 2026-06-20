@@ -25,7 +25,7 @@ public interface ITarjetaService
     Task<ComentarioDto> UpdateComentarioAsync(Guid tarjetaId, Guid comentarioId, UpdateComentarioDto dto, Guid usuarioId);
     Task DeleteComentarioAsync(Guid tarjetaId, Guid comentarioId);
 
-    Task<AdjuntoDto> AddAdjuntoAsync(Guid tarjetaId, string nombre, string url, string? contentType, long tamanoBytes, Guid usuarioId);
+    Task<AdjuntoDto> AddAdjuntoAsync(Guid tarjetaId, string nombre, string storageKey, string? contentType, long tamanoBytes, Guid usuarioId);
     Task DeleteAdjuntoAsync(Guid tarjetaId, Guid adjuntoId);
 
     Task<IEnumerable<ActividadDto>> GetActividadAsync(Guid tarjetaId);

@@ -68,6 +68,8 @@ public class AutoMapperProfile : Profile
             .ForMember(dest => dest.Miembros, opt => opt.MapFrom(src => src.ProyectoMiembros));
 
         CreateMap<Screenshot, ScreenshotDto>()
+            // Url lleva temporalmente la StorageKey; el controller la firma (SAS) antes de responder.
+            .ForMember(dest => dest.Url, opt => opt.MapFrom(src => src.StorageKey))
             .ForMember(dest => dest.SubidoPorNombre, opt => opt.MapFrom(src => src.SubidoPor != null ? $"{src.SubidoPor.Nombres} {src.SubidoPor.Apellidos}" : "Usuario desconocido"));
     }
 

@@ -15,25 +15,40 @@ public class TarjetaService : ITarjetaService
     private readonly ITableroRepository _tableroRepository;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IStorageService _storageService;
+    private readonly IFileUrlResolver _urlResolver;
 
     public TarjetaService(
         ITarjetaRepository repository,
         IColumnaKanbanRepository columnaRepository,
         ITableroRepository tableroRepository,
         UserManager<ApplicationUser> userManager,
-        IStorageService storageService)
+        IStorageService storageService,
+        IFileUrlResolver urlResolver)
     {
         _repository = repository;
         _columnaRepository = columnaRepository;
         _tableroRepository = tableroRepository;
         _userManager = userManager;
         _storageService = storageService;
+        _urlResolver = urlResolver;
     }
 
     public async Task<TarjetaDetalleDto?> GetByIdAsync(Guid id)
     {
         var tarjeta = await _repository.GetDetalleAsync(id);
-        return tarjeta is null || !tarjeta.Activo ? null : KanbanMappers.ToDetalleDto(tarjeta);
+        if (tarjeta is null || !tarjeta.Activo)
+            return null;
+
+        var dto = KanbanMappers.ToDetalleDto(tarjeta);
+        // Las keys de almacenamiento se firman (SAS) en lectura: adjuntos, portada e imágenes inline.
+        dto.Descripcion = await _urlResolver.ResolveContentAsync(dto.Descripcion);
+        dto.PortadaAdjuntoUrl = await _urlResolver.ResolveAsync(dto.PortadaAdjuntoUrl);
+        foreach (var adjunto in dto.Adjuntos)
+            adjunto.Url = await _urlResolver.ResolveAsync(adjunto.Url) ?? adjunto.Url;
+        foreach (var comentario in dto.Comentarios)
+            comentario.Texto = await _urlResolver.ResolveContentAsync(comentario.Texto) ?? comentario.Texto;
+
+        return dto;
     }
 
     public async Task<TarjetaDetalleDto> CreateAsync(CreateTarjetaDto dto, Guid usuarioId)
@@ -53,7 +68,8 @@ public class TarjetaService : ITarjetaService
             ColumnaId = dto.ColumnaId,
             TableroId = columna.TableroId,
             Titulo = dto.Titulo.Trim(),
-            Descripcion = dto.Descripcion?.Trim(),
+            // Normaliza URLs de imágenes inline a placeholders estables antes de persistir.
+            Descripcion = _urlResolver.ToStoragePlaceholders(dto.Descripcion?.Trim()),
             Prioridad = dto.Prioridad,
             FechaLimite = ToUtc(dto.FechaLimite),
             FechaInicio = ToUtc(dto.FechaInicio),
@@ -115,7 +131,7 @@ public class TarjetaService : ITarjetaService
         var antesCompletada = tarjeta.Completada;
 
         tarjeta.Titulo = dto.Titulo.Trim();
-        tarjeta.Descripcion = dto.Descripcion?.Trim();
+        tarjeta.Descripcion = _urlResolver.ToStoragePlaceholders(dto.Descripcion?.Trim());
         tarjeta.Prioridad = dto.Prioridad;
         tarjeta.FechaLimite = ToUtc(dto.FechaLimite);
         tarjeta.FechaInicio = ToUtc(dto.FechaInicio);
@@ -362,7 +378,7 @@ public class TarjetaService : ITarjetaService
             Id = Guid.NewGuid(),
             TarjetaId = tarjetaId,
             AutorId = usuarioId,
-            Texto = dto.Texto.Trim(),
+            Texto = _urlResolver.ToStoragePlaceholders(dto.Texto.Trim()) ?? dto.Texto.Trim(),
             FechaCreacion = DateTime.UtcNow
         };
 
@@ -383,7 +399,7 @@ public class TarjetaService : ITarjetaService
         return new ComentarioDto
         {
             Id = comentario.Id,
-            Texto = comentario.Texto,
+            Texto = await _urlResolver.ResolveContentAsync(comentario.Texto) ?? comentario.Texto,
             AutorId = usuarioId,
             AutorNombre = $"{autor.Nombres} {autor.Apellidos}".Trim(),
             AutorIniciales = autor.Iniciales,
@@ -407,7 +423,7 @@ public class TarjetaService : ITarjetaService
         if (comentario.FechaCreacion.Date != DateTime.UtcNow.Date)
             throw new InvalidOperationException("Solo se pueden editar comentarios durante el día de su creación.");
 
-        comentario.Texto = dto.Texto.Trim();
+        comentario.Texto = _urlResolver.ToStoragePlaceholders(dto.Texto.Trim()) ?? dto.Texto.Trim();
         comentario.EditadoEn = DateTime.UtcNow;
 
         await _repository.UpdateAsync(tarjeta);
@@ -418,7 +434,7 @@ public class TarjetaService : ITarjetaService
         return new ComentarioDto
         {
             Id = comentario.Id,
-            Texto = comentario.Texto,
+            Texto = await _urlResolver.ResolveContentAsync(comentario.Texto) ?? comentario.Texto,
             AutorId = usuarioId,
             AutorNombre = $"{autor.Nombres} {autor.Apellidos}".Trim(),
             AutorIniciales = autor.Iniciales,
@@ -440,7 +456,7 @@ public class TarjetaService : ITarjetaService
         await _repository.UpdateAsync(tarjeta);
     }
 
-    public async Task<AdjuntoDto> AddAdjuntoAsync(Guid tarjetaId, string nombre, string url, string? contentType, long tamanoBytes, Guid usuarioId)
+    public async Task<AdjuntoDto> AddAdjuntoAsync(Guid tarjetaId, string nombre, string storageKey, string? contentType, long tamanoBytes, Guid usuarioId)
     {
         var tarjeta = await _repository.GetWithAdjuntosAsync(tarjetaId);
         if (tarjeta is null || !tarjeta.Activo)
@@ -453,7 +469,7 @@ public class TarjetaService : ITarjetaService
             Id = Guid.NewGuid(),
             TarjetaId = tarjetaId,
             Nombre = nombre.Trim(),
-            Url = url,
+            StorageKey = storageKey,
             ContentType = contentType,
             TamanoBytes = tamanoBytes,
             SubidoPorId = usuarioId,
@@ -467,7 +483,7 @@ public class TarjetaService : ITarjetaService
         {
             Id = adjunto.Id,
             Nombre = adjunto.Nombre,
-            Url = adjunto.Url,
+            Url = await _urlResolver.ResolveAsync(adjunto.StorageKey) ?? adjunto.StorageKey,
             ContentType = adjunto.ContentType,
             TamanoBytes = adjunto.TamanoBytes,
             SubidoPorId = usuarioId,
@@ -485,7 +501,7 @@ public class TarjetaService : ITarjetaService
         var adjunto = tarjeta.Adjuntos.FirstOrDefault(a => a.Id == adjuntoId)
             ?? throw new KeyNotFoundException($"Adjunto con ID {adjuntoId} no encontrado");
 
-        await _storageService.DeleteFileAsync(adjunto.Url);
+        await _storageService.DeleteFileAsync(adjunto.StorageKey);
         tarjeta.Adjuntos.Remove(adjunto);
         await _repository.UpdateAsync(tarjeta);
     }

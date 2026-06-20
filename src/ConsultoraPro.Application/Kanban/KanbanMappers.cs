@@ -63,11 +63,12 @@ public static class KanbanMappers
         EditadoEn = c.EditadoEn
     };
 
+    // Url lleva temporalmente la StorageKey; el servicio la firma (SAS) antes de devolver el DTO.
     public static AdjuntoDto ToDto(AdjuntoTarjeta a) => new()
     {
         Id = a.Id,
         Nombre = a.Nombre,
-        Url = a.Url,
+        Url = a.StorageKey,
         ContentType = a.ContentType,
         TamanoBytes = a.TamanoBytes,
         SubidoPorId = a.SubidoPorId,
@@ -106,10 +107,11 @@ public static class KanbanMappers
             TotalComentarios = t.Comentarios.Count,
             TotalAdjuntos = t.Adjuntos.Count,
             Descripcion = t.Descripcion,
+            // Lleva la StorageKey de la portada; el servicio la firma antes de devolver el DTO.
             PortadaAdjuntoUrl = t.Adjuntos
                 .Where(a => a.ContentType != null && a.ContentType.StartsWith("image/"))
                 .OrderBy(a => a.FechaSubida)
-                .Select(a => a.Url)
+                .Select(a => a.StorageKey)
                 .FirstOrDefault()
         };
     }
@@ -135,10 +137,11 @@ public static class KanbanMappers
             TotalComentarios = t.Comentarios.Count,
             TotalAdjuntos = t.Adjuntos.Count,
             Descripcion = t.Descripcion,
+            // Lleva la StorageKey de la portada; el servicio la firma antes de devolver el DTO.
             PortadaAdjuntoUrl = t.Adjuntos
                 .Where(a => a.ContentType != null && a.ContentType.StartsWith("image/"))
                 .OrderBy(a => a.FechaSubida)
-                .Select(a => a.Url)
+                .Select(a => a.StorageKey)
                 .FirstOrDefault(),
             FechaInicio = t.FechaInicio,
             FechaCreacion = t.FechaCreacion,

@@ -314,7 +314,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             entity.HasKey(s => s.Id);
             entity.Property(s => s.Nombre).IsRequired().HasMaxLength(160);
             entity.Property(s => s.Version).IsRequired().HasMaxLength(60);
-            entity.Property(s => s.Url).IsRequired().HasMaxLength(500);
+            entity.Property(s => s.StorageKey).IsRequired().HasMaxLength(300);
             entity.Property(s => s.Descripcion).HasMaxLength(500);
             entity.Property(s => s.FechaSubida).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.Property(s => s.Activo).HasDefaultValue(true);
@@ -509,7 +509,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
         {
             entity.HasKey(a => a.Id);
             entity.Property(a => a.Nombre).IsRequired().HasMaxLength(260);
-            entity.Property(a => a.Url).IsRequired().HasMaxLength(500);
+            entity.Property(a => a.StorageKey).IsRequired().HasMaxLength(300);
             entity.Property(a => a.ContentType).HasMaxLength(120);
             entity.Property(a => a.FechaSubida).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.HasIndex(a => a.TarjetaId);
