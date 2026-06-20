@@ -22,6 +22,10 @@ public static class DependencyInjection
         services.AddScoped<IAmbienteCloudResourceService, AmbienteCloudResourceService>();
         services.AddScoped<IAzureSubscriptionTenantMappingService, AzureSubscriptionTenantMappingService>();
         services.AddScoped<IAzurePortalUrlResolver, AzurePortalUrlResolver>();
+        services.AddScoped<ITableroService, TableroService>();
+        services.AddScoped<IColumnaService, ColumnaService>();
+        services.AddScoped<ITarjetaService, TarjetaService>();
+        services.AddScoped<IFileUrlResolver, FileUrlResolver>();
         return services;
     }
 }

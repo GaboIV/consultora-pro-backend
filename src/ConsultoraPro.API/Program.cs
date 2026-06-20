@@ -155,16 +155,25 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors();
 
-var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
-if (!Directory.Exists(uploadsDir))
+// Solo el proveedor Local sirve archivos estáticos en /uploads. Con Azure Blob los bytes viven
+// en el contenedor privado y se acceden vía URLs SAS firmadas, por lo que este middleware no aplica.
+var storageOptions = app.Services.GetRequiredService<
+    Microsoft.Extensions.Options.IOptions<ConsultoraPro.Application.Configuration.StorageOptions>>().Value;
+if (string.Equals(storageOptions.Provider, "Local", StringComparison.OrdinalIgnoreCase))
 {
-    Directory.CreateDirectory(uploadsDir);
+    var uploadsDir = string.IsNullOrWhiteSpace(storageOptions.Local.RootPath)
+        ? Path.Combine(Directory.GetCurrentDirectory(), "uploads")
+        : storageOptions.Local.RootPath;
+    if (!Directory.Exists(uploadsDir))
+    {
+        Directory.CreateDirectory(uploadsDir);
+    }
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsDir),
+        RequestPath = "/uploads"
+    });
 }
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsDir),
-    RequestPath = "/uploads"
-});
 
 app.UseMiddleware<GlobalExceptionHandler>();
 app.UseAuthentication();

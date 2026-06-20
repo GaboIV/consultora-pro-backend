@@ -6,6 +6,7 @@ public class Proyecto
 {
     public Guid Id { get; set; }
     public string Nombre { get; set; } = string.Empty;
+    public string Clave { get; set; } = string.Empty;          // "REP" (único, base del código de tarjeta)
     public Guid ClienteId { get; set; }
     public Cliente Cliente { get; set; } = null!;
     public Guid TipoSolucionId { get; set; }
@@ -21,6 +22,7 @@ public class Proyecto
     public ICollection<Repositorio> Repositorios { get; set; } = new List<Repositorio>();
     public ICollection<Despliegue> Despliegues { get; set; } = new List<Despliegue>();
     public ICollection<Screenshot> Screenshots { get; set; } = new List<Screenshot>();
+    public ICollection<Tablero> Tableros { get; set; } = new List<Tablero>();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

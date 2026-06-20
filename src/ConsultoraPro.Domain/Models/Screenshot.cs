@@ -9,7 +9,8 @@ public class Screenshot
     public Proyecto Proyecto { get; set; } = null!;
     public string Nombre { get; set; } = string.Empty;
     public string Version { get; set; } = string.Empty;
-    public string Url { get; set; } = string.Empty;
+    /// <summary>Key relativa en el almacenamiento (ej. "screenshots/{guid}.png"). No es una URL absoluta.</summary>
+    public string StorageKey { get; set; } = string.Empty;
     public string Descripcion { get; set; } = string.Empty;
     public Guid SubidoPorId { get; set; }
     public ApplicationUser SubidoPor { get; set; } = null!;
