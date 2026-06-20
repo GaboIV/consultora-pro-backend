@@ -248,6 +248,41 @@ public class UsuariosController : ControllerBase
         });
     }
 
+    [HttpPut("{id:guid}/desactivar")]
+    [Authorize(Policy = "roles.editar")]
+    public async Task<ActionResult<ApiResponse<object>>> Desactivar(Guid id)
+    {
+        var user = await _userManager.FindByIdAsync(id.ToString());
+        if (user is null)
+            return NotFound(new ApiResponse<object> { Success = false, Message = "Usuario no encontrado" });
+
+        if (user.Activo && await IsArchitectAsync(user) && !await HasAnotherActiveArchitectAsync(user.Id))
+            return Conflict(new ApiResponse<object> { Success = false, Message = "Debe existir al menos un usuario activo con rol Arquitecto" });
+
+        user.Activo = false;
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+            return BadRequest(ToErrorResponse(result, "No se pudo desactivar el usuario"));
+
+        return Ok(new ApiResponse<object> { Success = true, Message = "Usuario desactivado exitosamente" });
+    }
+
+    [HttpPut("{id:guid}/activar")]
+    [Authorize(Policy = "roles.editar")]
+    public async Task<ActionResult<ApiResponse<object>>> Activar(Guid id)
+    {
+        var user = await _userManager.FindByIdAsync(id.ToString());
+        if (user is null)
+            return NotFound(new ApiResponse<object> { Success = false, Message = "Usuario no encontrado" });
+
+        user.Activo = true;
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+            return BadRequest(ToErrorResponse(result, "No se pudo activar el usuario"));
+
+        return Ok(new ApiResponse<object> { Success = true, Message = "Usuario activado exitosamente" });
+    }
+
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = "roles.eliminar")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(Guid id)
@@ -256,15 +291,25 @@ public class UsuariosController : ControllerBase
         if (user is null)
             return NotFound(new ApiResponse<object> { Success = false, Message = "Usuario no encontrado" });
 
-        if (user.Activo && await IsArchitectAsync(user) && !await HasAnotherActiveArchitectAsync(user.Id))
-            return Conflict(new ApiResponse<object> { Success = false, Message = "No se puede eliminar el último usuario activo con rol Arquitecto" });
+        if (await IsArchitectAsync(user) && !await HasAnotherActiveArchitectAsync(user.Id))
+            return Conflict(new ApiResponse<object> { Success = false, Message = "No se puede eliminar el último usuario con rol Arquitecto" });
 
-        user.Activo = false;
-        var result = await _userManager.UpdateAsync(user);
-        if (!result.Succeeded)
-            return BadRequest(ToErrorResponse(result, "No se pudo eliminar el usuario"));
+        try
+        {
+            var result = await _userManager.DeleteAsync(user);
+            if (!result.Succeeded)
+                return BadRequest(ToErrorResponse(result, "No se pudo eliminar el usuario"));
 
-        return Ok(new ApiResponse<object> { Success = true, Message = "Usuario eliminado exitosamente" });
+            return Ok(new ApiResponse<object> { Success = true, Message = "Usuario eliminado definitivamente" });
+        }
+        catch (DbUpdateException)
+        {
+            return Conflict(new ApiResponse<object>
+            {
+                Success = false,
+                Message = "No se puede eliminar el usuario porque tiene actividades o registros asociados en el sistema. Considere desactivarlo."
+            });
+        }
     }
 
     private async Task<UsuarioListDto> MapListDtoAsync(ApplicationUser user)
