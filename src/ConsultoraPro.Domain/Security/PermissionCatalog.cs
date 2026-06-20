@@ -48,7 +48,14 @@ public static class PermissionCatalog
         new(24, "roles.crear", "Crear roles", "Roles", "Permite crear roles y usuarios."),
         new(25, "roles.editar", "Editar roles", "Roles", "Permite modificar roles, usuarios y permisos."),
         new(26, "roles.eliminar", "Eliminar roles", "Roles", "Permite eliminar roles y usuarios."),
-        new(27, "roles.asignar", "Asignar roles", "Roles", "Permite asignar roles a usuarios.")
+        new(27, "roles.asignar", "Asignar roles", "Roles", "Permite asignar roles a usuarios."),
+
+        new(28, "kanban.ver", "Ver kanban", "Kanban", "Permite consultar tableros y tarjetas."),
+        new(29, "kanban.crear", "Crear en kanban", "Kanban", "Permite crear tableros y tarjetas."),
+        new(30, "kanban.editar", "Editar kanban", "Kanban", "Permite editar columnas, tarjetas, mover y asignar."),
+        new(31, "kanban.comentar", "Comentar tarjetas", "Kanban", "Permite comentar en tarjetas."),
+        new(32, "kanban.eliminar", "Eliminar en kanban", "Kanban", "Permite eliminar/archivar tableros y tarjetas."),
+        new(33, "kanban.gestionar", "Gestionar tableros", "Kanban", "Permite administrar miembros y configuración del tablero.")
     ];
 
     public static readonly IReadOnlyDictionary<string, IReadOnlySet<string>> RolePermissions =
@@ -62,7 +69,9 @@ public static class PermissionCatalog
                 "despliegues.ver",
                 "despliegues.historial",
                 "equipo.ver",
-                "roles.ver"
+                "roles.ver",
+                "kanban.ver",
+                "kanban.comentar"
             },
             [Arquitecto] = All.Select(permission => permission.Clave).ToHashSet(StringComparer.OrdinalIgnoreCase),
             [LT] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -78,7 +87,13 @@ public static class PermissionCatalog
                 "despliegues.ver",
                 "despliegues.ejecutar",
                 "despliegues.historial",
-                "equipo.ver"
+                "equipo.ver",
+                "kanban.ver",
+                "kanban.crear",
+                "kanban.editar",
+                "kanban.comentar",
+                "kanban.eliminar",
+                "kanban.gestionar"
             },
             [Dev] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -87,7 +102,11 @@ public static class PermissionCatalog
                 "ambientes.ver",
                 "despliegues.ver",
                 "despliegues.historial",
-                "equipo.ver"
+                "equipo.ver",
+                "kanban.ver",
+                "kanban.crear",
+                "kanban.editar",
+                "kanban.comentar"
             }
         };
 

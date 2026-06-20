@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using AutoMapper;
+using ConsultoraPro.Application.Configuration;
 using ConsultoraPro.Application.DTOs.Common;
 using ConsultoraPro.Application.DTOs.Screenshots;
 using ConsultoraPro.Application.Interfaces;
@@ -14,6 +15,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace ConsultoraPro.API.Controllers;
 
@@ -25,6 +27,8 @@ public class ScreenshotsController : ControllerBase
     private readonly IScreenshotRepository _screenshotRepository;
     private readonly IProyectoRepository _proyectoRepository;
     private readonly IStorageService _storageService;
+    private readonly IFileUrlResolver _urlResolver;
+    private readonly StorageOptions _storage;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IMapper _mapper;
 
@@ -32,12 +36,16 @@ public class ScreenshotsController : ControllerBase
         IScreenshotRepository screenshotRepository,
         IProyectoRepository proyectoRepository,
         IStorageService storageService,
+        IFileUrlResolver urlResolver,
+        IOptions<StorageOptions> storageOptions,
         UserManager<ApplicationUser> userManager,
         IMapper mapper)
     {
         _screenshotRepository = screenshotRepository;
         _proyectoRepository = proyectoRepository;
         _storageService = storageService;
+        _urlResolver = urlResolver;
+        _storage = storageOptions.Value;
         _userManager = userManager;
         _mapper = mapper;
     }
@@ -46,7 +54,10 @@ public class ScreenshotsController : ControllerBase
     public async Task<ActionResult<ApiResponse<IEnumerable<ScreenshotDto>>>> GetByProyecto(Guid proyectoId)
     {
         var screenshots = await _screenshotRepository.GetByProyectoIdAsync(proyectoId);
-        var dtos = _mapper.Map<IEnumerable<ScreenshotDto>>(screenshots);
+        var dtos = _mapper.Map<List<ScreenshotDto>>(screenshots);
+        // Url lleva la StorageKey desde el mapper: se firma (SAS) en lectura.
+        foreach (var dto in dtos)
+            dto.Url = await _urlResolver.ResolveAsync(dto.Url) ?? dto.Url;
         return Ok(new ApiResponse<IEnumerable<ScreenshotDto>> { Success = true, Data = dtos });
     }
 
@@ -64,18 +75,17 @@ public class ScreenshotsController : ControllerBase
             return BadRequest(new ApiResponse<ScreenshotDto> { Success = false, Message = "No se proporcionó ningún archivo" });
         }
 
-        // Validate size (max 5MB)
-        if (file.Length > 5 * 1024 * 1024)
+        // Validate size
+        if (file.Length > _storage.Limits.MaxImageBytes)
         {
-            return BadRequest(new ApiResponse<ScreenshotDto> { Success = false, Message = "El tamaño máximo permitido es de 5MB" });
+            return BadRequest(new ApiResponse<ScreenshotDto> { Success = false, Message = $"El tamaño máximo permitido es de {_storage.Limits.MaxImageBytes / (1024 * 1024)}MB" });
         }
 
         // Validate extension
-        var ext = Path.GetExtension(file.FileName).ToLower();
-        var allowedExtensions = new[] { ".png", ".jpg", ".jpeg" };
-        if (!allowedExtensions.Contains(ext))
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!_storage.Limits.AllowedImageExtensions.Contains(ext))
         {
-            return BadRequest(new ApiResponse<ScreenshotDto> { Success = false, Message = "Solo se permiten imágenes en formato PNG o JPG" });
+            return BadRequest(new ApiResponse<ScreenshotDto> { Success = false, Message = $"Solo se permiten imágenes: {string.Join(", ", _storage.Limits.AllowedImageExtensions)}" });
         }
 
         // Verify project exists
@@ -93,10 +103,10 @@ public class ScreenshotsController : ControllerBase
         }
 
         // Save file
-        string fileUrl;
+        StoredFile stored;
         using (var stream = file.OpenReadStream())
         {
-            fileUrl = await _storageService.SaveFileAsync(stream, file.FileName, file.ContentType);
+            stored = await _storageService.SaveFileAsync(stream, file.FileName, file.ContentType, "screenshots");
         }
 
         // Create database record
@@ -107,7 +117,7 @@ public class ScreenshotsController : ControllerBase
             Nombre = string.IsNullOrWhiteSpace(nombre) ? file.FileName : nombre.Trim(),
             Version = version?.Trim() ?? string.Empty,
             Descripcion = descripcion?.Trim() ?? string.Empty,
-            Url = fileUrl,
+            StorageKey = stored.Key,
             SubidoPorId = userId,
             SubidoPor = user,
             FechaSubida = DateTime.UtcNow,
@@ -116,6 +126,7 @@ public class ScreenshotsController : ControllerBase
 
         var created = await _screenshotRepository.CreateAsync(screenshot);
         var dto = _mapper.Map<ScreenshotDto>(created);
+        dto.Url = await _urlResolver.ResolveAsync(dto.Url) ?? dto.Url;
 
         return Ok(new ApiResponse<ScreenshotDto> { Success = true, Data = dto, Message = "Imagen subida exitosamente" });
     }
@@ -130,7 +141,7 @@ public class ScreenshotsController : ControllerBase
         }
 
         // Delete physical file
-        await _storageService.DeleteFileAsync(screenshot.Url);
+        await _storageService.DeleteFileAsync(screenshot.StorageKey);
 
         // Delete from database
         await _screenshotRepository.DeleteAsync(screenshot);

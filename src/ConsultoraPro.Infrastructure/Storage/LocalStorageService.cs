@@ -1,63 +1,100 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using ConsultoraPro.Application.Configuration;
 using ConsultoraPro.Application.Interfaces;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace ConsultoraPro.Infrastructure.Storage;
 
+/// <summary>
+/// Backend de almacenamiento para desarrollo: persiste en el filesystem bajo una raíz configurable
+/// (p.ej. D:\ConsultoraPro\uploads) y sirve los archivos como estáticos en /uploads. En dev no se
+/// firman las URLs (acceso directo); la firma SAS aplica solo a Azure.
+/// </summary>
 public class LocalStorageService : IStorageService
 {
-    private readonly IConfiguration _configuration;
-    private readonly string _uploadsFolder;
+    private readonly string _rootPath;
     private readonly string _baseUrl;
 
-    public LocalStorageService(IConfiguration configuration)
+    public LocalStorageService(IOptions<StorageOptions> options)
     {
-        _configuration = configuration;
-        _uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
-        _baseUrl = _configuration["Storage:BaseUrl"] ?? "https://localhost:7001";
+        var local = options.Value.Local;
+        _rootPath = string.IsNullOrWhiteSpace(local.RootPath)
+            ? Path.Combine(Directory.GetCurrentDirectory(), "uploads")
+            : local.RootPath;
+        _baseUrl = local.PublicBaseUrl.TrimEnd('/');
     }
 
-    public async Task<string> SaveFileAsync(Stream fileStream, string fileName, string contentType)
+    public async Task<StoredFile> SaveFileAsync(Stream content, string fileName, string contentType, string category)
     {
-        if (!Directory.Exists(_uploadsFolder))
+        var safeCategory = SanitizeCategory(category);
+        var folder = Path.Combine(_rootPath, safeCategory);
+        Directory.CreateDirectory(folder);
+
+        var uniqueName = $"{Guid.NewGuid()}{Path.GetExtension(fileName)}";
+        var filePath = Path.Combine(folder, uniqueName);
+
+        await using (var ws = new FileStream(filePath, FileMode.Create))
         {
-            Directory.CreateDirectory(_uploadsFolder);
+            await content.CopyToAsync(ws);
         }
 
-        var uniqueFileName = $"{Guid.NewGuid()}{Path.GetExtension(fileName)}";
-        var filePath = Path.Combine(_uploadsFolder, uniqueFileName);
-
-        using (var ws = new FileStream(filePath, FileMode.Create))
-        {
-            await fileStream.CopyToAsync(ws);
-        }
-
-        return $"{_baseUrl.TrimEnd('/')}/uploads/{uniqueFileName}";
+        var key = $"{safeCategory}/{uniqueName}";
+        return new StoredFile(key, contentType, new FileInfo(filePath).Length);
     }
 
-    public Task DeleteFileAsync(string fileUrl)
+    public Task<string> GetAccessUrlAsync(string key, TimeSpan? expiry = null)
     {
-        if (string.IsNullOrEmpty(fileUrl))
+        // En local no se firma: la URL pública estática es suficiente para desarrollo.
+        var url = $"{_baseUrl}/uploads/{key.TrimStart('/')}";
+        return Task.FromResult(url);
+    }
+
+    public Task DeleteFileAsync(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
             return Task.CompletedTask;
 
         try
         {
-            var uri = new Uri(fileUrl);
-            var fileName = Path.GetFileName(uri.LocalPath);
-            var filePath = Path.Combine(_uploadsFolder, fileName);
-
-            if (File.Exists(filePath))
-            {
-                File.Delete(filePath);
-            }
+            var filePath = Path.Combine(_rootPath, key.Replace('/', Path.DirectorySeparatorChar));
+            // Defensa contra path traversal: el resultado debe quedar dentro de la raíz.
+            var fullRoot = Path.GetFullPath(_rootPath);
+            var fullTarget = Path.GetFullPath(filePath);
+            if (fullTarget.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase) && File.Exists(fullTarget))
+                File.Delete(fullTarget);
         }
         catch
         {
-            // Fail silently if URL is invalid or file cannot be deleted
+            // No fallar si la key es inválida o el archivo no puede eliminarse.
         }
 
         return Task.CompletedTask;
     }
+
+    public bool TryGetKeyFromUrl(string url, out string key)
+    {
+        key = string.Empty;
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+
+        const string marker = "/uploads/";
+        var idx = url.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (idx < 0)
+            return false;
+
+        var rest = url[(idx + marker.Length)..];
+        var queryAt = rest.IndexOf('?');
+        if (queryAt >= 0)
+            rest = rest[..queryAt];
+
+        key = Uri.UnescapeDataString(rest.Trim('/'));
+        return key.Length > 0;
+    }
+
+    private static string SanitizeCategory(string category) =>
+        string.IsNullOrWhiteSpace(category)
+            ? "misc"
+            : category.Trim('/', '\\').Replace("..", string.Empty);
 }

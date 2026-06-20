@@ -8,3 +8,4 @@ appsettings.*.local.json
 .DS_Store
 Thumbs.db
 *.lscache
+src/ConsultoraPro.API/uploads/

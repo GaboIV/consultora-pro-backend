@@ -1034,6 +1034,7 @@ Objetivo:
 - Tipos de solucion.
 - Miembros de proyecto.
 - Snapshot de management.
+- Kanban (tableros, columnas, tarjetas con codigo legible, drag and drop, checklist, comentarios, adjuntos, actividad).
 - Proteccion por JWT.
 - Proteccion por permisos.
 
@@ -1043,6 +1044,50 @@ Objetivo:
 - Ambientes: CRUD funcional, validaciones, migracion, seed y snapshot operativo listos.
 - Despliegues: permisos definidos, aun sin CRUD real.
 - Infraestructura tecnica: ambientes ya persistidos; despliegues y repositorios siguen pendientes.
+
+## Modulo Kanban
+
+Sistema de gestion de trabajo tipo Trello anidado en cada proyecto. Jerarquia
+`Proyecto -> Tablero(s) -> Columnas -> Tarjetas`. Plan completo en `docs/08-modulo-kanban.md`.
+
+### Entidades (`Domain/Models`)
+
+`Tablero`, `TableroMiembro`, `ColumnaKanban`, `Tarjeta`, `TarjetaResponsable`,
+`EtiquetaKanban`, `TarjetaEtiqueta`, `ChecklistItem`, `ComentarioTarjeta`,
+`AdjuntoTarjeta`, `ActividadTarjeta`. Se anadio el campo `Clave` a `Proyecto`.
+Enums: `RolTablero`, `PrioridadTarjeta`, `TipoActividadTarjeta`.
+
+### Codigo legible de tarjeta
+
+Cada tarjeta recibe un codigo inmutable `{CLAVE_PROYECTO}-{CLAVE_TABLERO}-{NNN}`
+(p. ej. `REP-TAR-001`). Helpers puros en `Application/Kanban` (`KanbanCodeHelper`,
+`FractionalOrder`). La generacion es atomica: `TarjetaRepository.CreateAsync` abre
+una transaccion, bloquea la fila del tablero con `SELECT ... FOR UPDATE`, incrementa
+`SecuenciaActual` y persiste numero + codigo. Indices unicos de respaldo sobre
+`Tarjeta.Codigo` y `(TableroId, Numero)`.
+
+### Orden fraccional (drag and drop)
+
+Columnas y tarjetas usan un `Orden` tipo `double` con tecnica de rango fraccional
+(LexoRank simplificado): al insertar entre A y B, `orden = (A+B)/2`. Evita reescrituras
+masivas en cada movimiento.
+
+### Servicios y endpoints
+
+`TableroService`, `ColumnaService`, `TarjetaService`. Controllers `TablerosController`
+(`/api/tableros`), `ColumnasController` (`/api/columnas`), `TarjetasController`
+(`/api/tarjetas`, incluye subida de adjuntos multipart reutilizando `IStorageService`).
+
+### Permisos
+
+`kanban.ver`, `kanban.crear`, `kanban.editar`, `kanban.comentar`, `kanban.eliminar`,
+`kanban.gestionar` (IDs 28-33). Matriz: Arquitecto todo; LT todo; Dev ver/crear/editar/comentar;
+Gerencia ver/comentar.
+
+### Seed
+
+`KanbanSeeder` rellena `Proyecto.Clave` en bases existentes (derivada del nombre, unica)
+y siembra un tablero demo `Tareas` con 3 columnas y tarjetas de ejemplo.
 
 ## Consideraciones De Produccion
 

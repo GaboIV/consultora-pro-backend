@@ -1,3 +1,4 @@
+using ConsultoraPro.Application.Configuration;
 using ConsultoraPro.Application.Interfaces;
 using ConsultoraPro.Domain.Interfaces;
 using ConsultoraPro.Domain.Models;
@@ -5,6 +6,7 @@ using ConsultoraPro.Infrastructure.Data;
 using ConsultoraPro.Infrastructure.Data.Seed;
 using ConsultoraPro.Infrastructure.Repositories;
 using ConsultoraPro.Infrastructure.Security;
+using ConsultoraPro.Infrastructure.Storage;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -47,7 +49,22 @@ public static class DependencyInjection
         services.AddScoped<IAmbienteCloudResourceRepository, AmbienteCloudResourceRepository>();
         services.AddScoped<IAzureSubscriptionTenantMappingRepository, AzureSubscriptionTenantMappingRepository>();
         services.AddScoped<IScreenshotRepository, ScreenshotRepository>();
-        services.AddScoped<IStorageService, Storage.LocalStorageService>();
+
+        // Almacenamiento de archivos: proveedor seleccionable por configuración.
+        // Local (filesystem) en dev; Azure Blob (contenedor privado + SAS) en QA/Prod.
+        services.AddOptions<StorageOptions>()
+            .Bind(configuration.GetSection(StorageOptions.SectionName))
+            .ValidateOnStart();
+
+        if (string.Equals(configuration[$"{StorageOptions.SectionName}:Provider"], "AzureBlob",
+                StringComparison.OrdinalIgnoreCase))
+            services.AddSingleton<IStorageService, AzureBlobStorageService>();
+        else
+            services.AddScoped<IStorageService, LocalStorageService>();
+
+        services.AddScoped<ITableroRepository, TableroRepository>();
+        services.AddScoped<IColumnaKanbanRepository, ColumnaKanbanRepository>();
+        services.AddScoped<ITarjetaRepository, TarjetaRepository>();
 
         return services;
     }
@@ -64,5 +81,6 @@ public static class DependencyInjection
         await SecuritySeeder.SeedRolPermisosAsync(context, roleManager);
         await SecuritySeeder.SeedDefaultUserAsync(userManager, roleManager);
         await DataSeeder.SeedAsync(context, userManager, roleManager);
+        await KanbanSeeder.SeedAsync(context);
     }
 }
