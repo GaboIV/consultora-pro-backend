@@ -24,11 +24,17 @@ public partial class FileUrlResolver : IFileUrlResolver
 
     public async Task<string?> ResolveContentAsync(string? content)
     {
-        if (string.IsNullOrWhiteSpace(content) || !content.Contains(PlaceholderScheme))
+        if (string.IsNullOrWhiteSpace(content))
             return content;
 
-        var matches = PlaceholderRegex().Matches(content);
-        var result = content;
+        // Convierte URLs legacy (ej. https://localhost:7001/uploads/...) a placeholders cpfile://
+        // antes de resolver, para que datos guardados antes del refactor también funcionen.
+        var normalized = ToStoragePlaceholders(content);
+        if (!normalized!.Contains(PlaceholderScheme))
+            return normalized;
+
+        var matches = PlaceholderRegex().Matches(normalized);
+        var result = normalized;
         foreach (Match match in matches)
         {
             var key = match.Groups[1].Value;
