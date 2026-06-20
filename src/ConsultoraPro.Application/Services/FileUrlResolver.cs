@@ -60,9 +60,33 @@ public partial class FileUrlResolver : IFileUrlResolver
     {
         if (url.StartsWith(PlaceholderScheme))
             return original; // ya es un placeholder
+        // 1) URL del proveedor activo (Azure: /{container}/{key}; Local: /uploads/{key}).
         if (_storage.TryGetKeyFromUrl(url, out var key))
             return original.Replace(url, $"{PlaceholderScheme}{key}");
+        // 2) URL legacy del patrón estático /uploads/{key} (datos guardados con LocalStorageService
+        //    antes del refactor). Se reconoce sea cual sea el proveedor actual, porque la convención
+        //    /uploads/ es estable e independiente del backend de almacenamiento.
+        if (TryGetLegacyUploadsKey(url, out var legacyKey))
+            return original.Replace(url, $"{PlaceholderScheme}{legacyKey}");
         return original;
+    }
+
+    /// <summary>Extrae la key de una URL legacy con el marcador estático /uploads/{key}.</summary>
+    private static bool TryGetLegacyUploadsKey(string url, out string key)
+    {
+        key = string.Empty;
+        const string marker = "/uploads/";
+        var idx = url.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (idx < 0)
+            return false;
+
+        var rest = url[(idx + marker.Length)..];
+        var queryAt = rest.IndexOf('?');
+        if (queryAt >= 0)
+            rest = rest[..queryAt];
+
+        key = Uri.UnescapeDataString(rest.Trim('/'));
+        return key.Length > 0;
     }
 
     private static string StripPlaceholder(string value) =>
