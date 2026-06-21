@@ -23,7 +23,7 @@ public class ClienteService : IClienteService
     public async Task<PagedResultDto<ClienteDto>> GetAllAsync(int page = 1, int pageSize = 20, string? search = null)
     {
         Guid? memberUserId = null;
-        if (!_currentUserService.HasFullProjectAccess)
+        if (!_currentUserService.HasFullProjectAccessFor("clientes"))
         {
             memberUserId = _currentUserService.UserId;
         }
@@ -45,7 +45,7 @@ public class ClienteService : IClienteService
         var cliente = await _repository.GetByIdAsync(id);
         if (cliente == null) return null;
 
-        if (!_currentUserService.HasFullProjectAccess)
+        if (!_currentUserService.HasFullProjectAccessFor("clientes"))
         {
             var userId = _currentUserService.UserId;
             var isMemberOfAnyProject = cliente.Proyectos.Any(p => p.ProyectoMiembros.Any(pm => pm.UsuarioId == userId));

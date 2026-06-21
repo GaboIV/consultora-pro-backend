@@ -18,6 +18,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<Ambiente> Ambientes => Set<Ambiente>();
     public DbSet<Credencial> Credenciales => Set<Credencial>();
     public DbSet<AuditoriaCredencial> AuditoriasCredenciales => Set<AuditoriaCredencial>();
+    public DbSet<SolicitudRevelacionCredencial> SolicitudesRevelacionCredencial => Set<SolicitudRevelacionCredencial>();
     public DbSet<Repositorio> Repositorios => Set<Repositorio>();
     public DbSet<Despliegue> Despliegues => Set<Despliegue>();
     public DbSet<AmbienteComponente> AmbienteComponentes => Set<AmbienteComponente>();
@@ -310,6 +311,28 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             entity.HasOne(a => a.Usuario)
                   .WithMany()
                   .HasForeignKey(a => a.UsuarioId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SolicitudRevelacionCredencial>(entity =>
+        {
+            entity.HasKey(s => s.Id);
+            entity.Property(s => s.Estado).HasConversion<int>();
+            entity.Property(s => s.Motivo).HasMaxLength(500);
+            entity.Property(s => s.NotaResolucion).HasMaxLength(500);
+            entity.Property(s => s.FechaSolicitud).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(s => new { s.CredencialId, s.SolicitanteId, s.Estado });
+            entity.HasOne(s => s.Credencial)
+                  .WithMany()
+                  .HasForeignKey(s => s.CredencialId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(s => s.Solicitante)
+                  .WithMany()
+                  .HasForeignKey(s => s.SolicitanteId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(s => s.Aprobador)
+                  .WithMany()
+                  .HasForeignKey(s => s.AprobadorId)
                   .OnDelete(DeleteBehavior.Restrict);
         });
 

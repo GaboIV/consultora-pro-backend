@@ -54,9 +54,10 @@ public class ScreenshotsController : ControllerBase
     }
 
     [HttpGet("proyecto/{proyectoId}")]
+    [Authorize(Policy = "screenshots.ver")]
     public async Task<ActionResult<ApiResponse<IEnumerable<ScreenshotDto>>>> GetByProyecto(Guid proyectoId)
     {
-        if (!_currentUserService.HasFullProjectAccess)
+        if (!_currentUserService.HasFullProjectAccessFor("proyectos"))
         {
             var proyecto = await _proyectoRepository.GetByIdAsync(proyectoId);
             var isMember = proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == GetUserId()) ?? false;
@@ -73,6 +74,7 @@ public class ScreenshotsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "screenshots.editar")]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<ApiResponse<ScreenshotDto>>> Upload(
         [FromForm] Guid proyectoId,
@@ -107,7 +109,7 @@ public class ScreenshotsController : ControllerBase
         }
 
         var userId = GetUserId();
-        if (!_currentUserService.HasFullProjectAccess)
+        if (!_currentUserService.HasFullProjectAccessFor("proyectos"))
         {
             var isMember = proyecto.ProyectoMiembros.Any(pm => pm.UsuarioId == userId);
             if (!isMember)
@@ -149,6 +151,7 @@ public class ScreenshotsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Policy = "screenshots.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(Guid id)
     {
         var screenshot = await _screenshotRepository.GetByIdAsync(id);
@@ -157,7 +160,7 @@ public class ScreenshotsController : ControllerBase
             return NotFound(new ApiResponse<object> { Success = false, Message = "Screenshot no encontrada" });
         }
 
-        if (!_currentUserService.HasFullProjectAccess)
+        if (!_currentUserService.HasFullProjectAccessFor("proyectos"))
         {
             var proyecto = await _proyectoRepository.GetByIdAsync(screenshot.ProyectoId);
             var isMember = proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == GetUserId()) ?? false;

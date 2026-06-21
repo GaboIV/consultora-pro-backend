@@ -6,6 +6,7 @@ using ConsultoraPro.API.Interfaces;
 using ConsultoraPro.Application.Configuration;
 using ConsultoraPro.Application.DTOs.Auth;
 using ConsultoraPro.Domain.Models;
+using ConsultoraPro.Domain.Security;
 using ConsultoraPro.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -253,13 +254,17 @@ public class AuthService : IAuthService
         if (role is null)
             return (roleName, Array.Empty<string>());
 
-        var permisos = await _context.RolPermisos
+        var granted = await _context.RolPermisos
             .AsNoTracking()
             .Where(rp => rp.RolId == role.Id && rp.Concedido)
-            .OrderBy(rp => rp.Permiso.Modulo)
-            .ThenBy(rp => rp.Permiso.Clave)
             .Select(rp => rp.Permiso.Clave)
             .ToListAsync();
+
+        // Se expande al cierre transitivo de implicaciones (niveles de credenciales, "ver todos" → "ver",
+        // etc.) para que cliente y servidor evalúen exactamente el mismo conjunto efectivo de permisos.
+        var permisos = PermissionExpander.Expand(granted)
+            .OrderBy(clave => clave, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         return (roleName, permisos);
     }

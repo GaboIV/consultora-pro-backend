@@ -43,6 +43,8 @@ public class AmbienteRepository : IAmbienteRepository
         return await _context.Ambientes
             .Include(a => a.Proyecto)
                 .ThenInclude(p => p.Cliente)
+            .Include(a => a.Proyecto)
+                .ThenInclude(p => p.ProyectoMiembros)
             .FirstOrDefaultAsync(a => a.Id == id);
     }
 

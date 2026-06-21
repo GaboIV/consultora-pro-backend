@@ -6,23 +6,30 @@ using ConsultoraPro.Application.DTOs.Alertas;
 using ConsultoraPro.Application.Interfaces;
 using ConsultoraPro.Domain.Enums;
 using ConsultoraPro.Domain.Interfaces;
+using ConsultoraPro.Domain.Models;
 
 namespace ConsultoraPro.Application.Services;
 
 public class AlertaService : IAlertaService
 {
     private readonly ICredencialRepository _credencialRepository;
+    private readonly ISolicitudRevelacionRepository _solicitudRepository;
     private readonly IProyectoRepository _proyectoRepository;
     private readonly IAmbienteRepository _ambienteRepository;
+    private readonly ICurrentUserService _currentUserService;
 
     public AlertaService(
         ICredencialRepository credencialRepository,
+        ISolicitudRevelacionRepository solicitudRepository,
         IProyectoRepository proyectoRepository,
-        IAmbienteRepository ambienteRepository)
+        IAmbienteRepository ambienteRepository,
+        ICurrentUserService currentUserService)
     {
         _credencialRepository = credencialRepository;
+        _solicitudRepository = solicitudRepository;
         _proyectoRepository = proyectoRepository;
         _ambienteRepository = ambienteRepository;
+        _currentUserService = currentUserService;
     }
 
     public async Task<List<AlertaDto>> GetAlertasActivasAsync()
@@ -109,6 +116,66 @@ public class AlertaService : IAlertaService
             });
         }
 
+        // 4. Solicitudes de revelación de credenciales (específicas del usuario actual).
+        var userId = _currentUserService.UserId;
+        if (userId.HasValue)
+        {
+            // 4a. Pendientes por resolver, visibles solo para quien puede aprobar.
+            if (_currentUserService.HasPermission("credenciales.solicitud.aprobar"))
+            {
+                var pendientes = await _solicitudRepository.ListAsync(EstadoSolicitudRevelacion.Pendiente);
+                foreach (var solicitud in pendientes)
+                {
+                    alerts.Add(new AlertaDto
+                    {
+                        Id = $"solicitud-revelacion-{solicitud.Id}",
+                        Tipo = "SolicitudRevelacion",
+                        Mensaje = $"{FullName(solicitud.Solicitante)} solicita revelar la credencial '{solicitud.Credencial?.Nombre}'.",
+                        Tone = "amber",
+                        EsCritica = false,
+                        ReferenciaId = solicitud.Id.ToString(),
+                        FechaReferencia = solicitud.FechaSolicitud
+                    });
+                }
+            }
+
+            // 4b. Resoluciones de mis propias solicitudes (aprobación vigente o rechazo reciente).
+            var mias = await _solicitudRepository.ListBySolicitanteAsync(userId.Value);
+            foreach (var solicitud in mias)
+            {
+                if (solicitud.EsVigente(now))
+                {
+                    alerts.Add(new AlertaDto
+                    {
+                        Id = $"solicitud-aprobada-{solicitud.Id}",
+                        Tipo = "SolicitudRevelacionAprobada",
+                        Mensaje = $"Tu solicitud para '{solicitud.Credencial?.Nombre}' fue aprobada. Puedes revelarla hasta las {solicitud.VigenteHasta:HH:mm} UTC.",
+                        Tone = "info",
+                        EsCritica = false,
+                        ReferenciaId = solicitud.CredencialId.ToString(),
+                        FechaReferencia = solicitud.VigenteHasta
+                    });
+                }
+                else if (solicitud.Estado == EstadoSolicitudRevelacion.Rechazada
+                         && solicitud.FechaResolucion >= now.AddDays(-1))
+                {
+                    alerts.Add(new AlertaDto
+                    {
+                        Id = $"solicitud-rechazada-{solicitud.Id}",
+                        Tipo = "SolicitudRevelacionRechazada",
+                        Mensaje = $"Tu solicitud para '{solicitud.Credencial?.Nombre}' fue rechazada.",
+                        Tone = "warn",
+                        EsCritica = false,
+                        ReferenciaId = solicitud.CredencialId.ToString(),
+                        FechaReferencia = solicitud.FechaResolucion
+                    });
+                }
+            }
+        }
+
         return alerts.OrderByDescending(a => a.EsCritica).ThenBy(a => a.FechaReferencia).ToList();
     }
+
+    private static string FullName(ApplicationUser? user) =>
+        user is null ? string.Empty : $"{user.Nombres} {user.Apellidos}".Trim();
 }

@@ -26,7 +26,7 @@ public class AmbienteTestUserService : IAmbienteTestUserService
 
     public async Task<IEnumerable<AmbienteTestUserDto>> GetByAmbienteAsync(Guid ambienteId)
     {
-        if (!_currentUserService.HasFullProjectAccess)
+        if (!_currentUserService.HasFullProjectAccessFor("ambientes"))
         {
             var ambiente = await _ambienteRepository.GetByIdAsync(ambienteId);
             var isMember = ambiente?.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
@@ -42,7 +42,7 @@ public class AmbienteTestUserService : IAmbienteTestUserService
         var entity = await _repository.GetByIdAsync(id);
         if (entity is null || !entity.Activo) return null;
 
-        if (!_currentUserService.HasFullProjectAccess)
+        if (!_currentUserService.HasFullProjectAccessFor("ambientes"))
         {
             var isMember = entity.Ambiente?.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
             if (!isMember) return null;
@@ -53,7 +53,7 @@ public class AmbienteTestUserService : IAmbienteTestUserService
 
     public async Task<AmbienteTestUserDto> CreateAsync(CreateAmbienteTestUserDto dto)
     {
-        if (!_currentUserService.HasFullProjectAccess)
+        if (!_currentUserService.HasFullProjectAccessFor("ambientes"))
         {
             var ambiente = await _ambienteRepository.GetByIdAsync(dto.AmbienteId);
             var isMember = ambiente?.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
@@ -81,7 +81,7 @@ public class AmbienteTestUserService : IAmbienteTestUserService
     {
         var entity = await GetActiveEntityAsync(id);
 
-        if (!_currentUserService.HasFullProjectAccess)
+        if (!_currentUserService.HasFullProjectAccessFor("ambientes"))
         {
             var isMember = entity.Ambiente?.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
             if (!isMember) throw new UnauthorizedAccessException("No tienes acceso a este ambiente.");
@@ -103,7 +103,7 @@ public class AmbienteTestUserService : IAmbienteTestUserService
     {
         var entity = await GetActiveEntityAsync(id);
 
-        if (!_currentUserService.HasFullProjectAccess)
+        if (!_currentUserService.HasFullProjectAccessFor("ambientes"))
         {
             var isMember = entity.Ambiente?.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
             if (!isMember) throw new UnauthorizedAccessException("No tienes acceso a este ambiente.");

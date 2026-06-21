@@ -38,7 +38,7 @@ public class ProyectoService : IProyectoService
     public async Task<PagedResultDto<ProyectoDto>> GetAllAsync(int page = 1, int pageSize = 20, EstadoProyecto? estado = null, Guid? clienteId = null)
     {
         Guid? memberUserId = null;
-        if (!_currentUserService.HasFullProjectAccess)
+        if (!_currentUserService.HasFullProjectAccessFor("proyectos"))
         {
             memberUserId = _currentUserService.UserId;
         }
@@ -60,7 +60,7 @@ public class ProyectoService : IProyectoService
         var proyecto = await _repository.GetByIdAsync(id);
         if (proyecto == null) return null;
 
-        if (!_currentUserService.HasFullProjectAccess)
+        if (!_currentUserService.HasFullProjectAccessFor("proyectos"))
         {
             var isMember = proyecto.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId);
             if (!isMember) return null;
@@ -73,7 +73,7 @@ public class ProyectoService : IProyectoService
     {
         var proyectos = await _repository.GetByClienteIdAsync(clienteId);
 
-        if (!_currentUserService.HasFullProjectAccess)
+        if (!_currentUserService.HasFullProjectAccessFor("proyectos"))
         {
             proyectos = proyectos.Where(p => p.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId));
         }

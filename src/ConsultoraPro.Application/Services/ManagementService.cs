@@ -62,7 +62,7 @@ public class ManagementService : IManagementService
         // proyectos donde están asignados como miembros. Se usa HasFullProjectAccess (claim del JWT)
         // en lugar de IsInRole para mantener consistencia con ProyectoService.
         Guid? memberUserId = null;
-        var restringidoAProyectos = !_currentUserService.HasFullProjectAccess;
+        var restringidoAProyectos = !_currentUserService.HasFullProjectAccessFor("proyectos");
         if (restringidoAProyectos)
         {
             memberUserId = _currentUserService.UserId;

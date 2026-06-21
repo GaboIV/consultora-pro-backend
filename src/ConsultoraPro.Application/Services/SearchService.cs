@@ -58,7 +58,7 @@ public class SearchService : ISearchService
         if (searchTypes.Contains("cliente") && HasPermission(context, "clientes.ver"))
             tasks.Add(SearchClientesAsync(safeQuery, context));
 
-        if (searchTypes.Contains("usuario") && HasPermission(context, "roles.ver"))
+        if (searchTypes.Contains("usuario") && HasPermission(context, "usuarios.ver"))
             tasks.Add(SearchUsuariosAsync(safeQuery));
 
         if (searchTypes.Contains("credencial") && HasPermission(context, "credenciales.ver"))

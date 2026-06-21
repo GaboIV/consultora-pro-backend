@@ -40,6 +40,7 @@ public static class DependencyInjection
         services.AddScoped<IProyectoRepository, ProyectoRepository>();
         services.AddScoped<ITipoSolucionRepository, TipoSolucionRepository>();
         services.AddScoped<ICredencialRepository, CredencialRepository>();
+        services.AddScoped<ISolicitudRevelacionRepository, SolicitudRevelacionRepository>();
         services.AddScoped<IAmbienteRepository, AmbienteRepository>();
         services.AddScoped<IRepositorioRepository, RepositorioRepository>();
         services.AddScoped<IDespliegueRepository, DespliegueRepository>();
@@ -79,6 +80,7 @@ public static class DependencyInjection
         await SecuritySeeder.SeedPermisosAsync(context);
         await SecuritySeeder.SeedRolesAsync(roleManager);
         await SecuritySeeder.SeedRolPermisosAsync(context, roleManager);
+        await SecuritySeeder.MigrateLegacyGrantsAsync(context, roleManager);
         await SecuritySeeder.SeedDefaultUserAsync(userManager, roleManager);
         await DataSeeder.SeedAsync(context, userManager, roleManager);
         await KanbanSeeder.SeedAsync(context);

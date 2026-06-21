@@ -45,7 +45,7 @@ public class TarjetaService : ITarjetaService
         if (tarjeta is null || !tarjeta.Activo)
             return null;
 
-        if (!_currentUserService.HasFullProjectAccess && tarjeta.Tablero.ProyectoId.HasValue)
+        if (!_currentUserService.HasFullProjectAccessFor("proyectos") && tarjeta.Tablero.ProyectoId.HasValue)
         {
             var proyecto = await _proyectoRepository.GetByIdAsync(tarjeta.Tablero.ProyectoId.Value);
             var isMember = proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
@@ -598,7 +598,7 @@ public class TarjetaService : ITarjetaService
 
     private async Task ValidateTableroAccessAsync(Guid tableroId)
     {
-        if (!_currentUserService.HasFullProjectAccess)
+        if (!_currentUserService.HasFullProjectAccessFor("proyectos"))
         {
             var tablero = await _tableroRepository.GetByIdAsync(tableroId);
             if (tablero?.ProyectoId.HasValue == true)

@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using ConsultoraPro.Application.DTOs.Credenciales;
 using ConsultoraPro.Application.DTOs.Common;
+using ConsultoraPro.Application.Exceptions;
 using ConsultoraPro.Application.Interfaces;
+using ConsultoraPro.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,10 +14,14 @@ namespace ConsultoraPro.API.Controllers;
 public class CredencialesController : ControllerBase
 {
     private readonly ICredencialService _credencialService;
+    private readonly ICurrentUserService _currentUserService;
 
-    public CredencialesController(ICredencialService credencialService)
+    public CredencialesController(
+        ICredencialService credencialService,
+        ICurrentUserService currentUserService)
     {
         _credencialService = credencialService;
+        _currentUserService = currentUserService;
     }
 
     [HttpGet]
@@ -40,27 +46,44 @@ public class CredencialesController : ControllerBase
         return Ok(new ApiResponse<CredencialDetalleDto> { Success = true, Data = data });
     }
 
+    // Política relajada a "credenciales.ver": un usuario de nivel básico puede ALCANZAR el endpoint,
+    // pero la revelación real se decide en servidor (permiso directo de revelar o aprobación vigente).
     [HttpGet("{id}/revelar")]
-    [Authorize(Policy = "credenciales.revelar")]
+    [Authorize(Policy = "credenciales.ver")]
     [EndpointDescription("Devuelve temporalmente el valor descifrado de la credencial y registra una auditoría automática de acceso.")]
     public async Task<ActionResult<ApiResponse<CredencialRevealDto>>> Reveal(Guid id)
     {
-        var data = await _credencialService.RevealAsync(
-            id,
-            GetCurrentUserId(),
-            HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
-            Request.Headers.UserAgent.ToString());
-
-        return Ok(new ApiResponse<CredencialRevealDto>
+        try
         {
-            Success = true,
-            Data = data,
-            Message = "Credencial revelada y auditada"
-        });
+            var data = await _credencialService.RevealAsync(
+                id,
+                GetCurrentUserId(),
+                _currentUserService.HasPermission("credenciales.revelar"),
+                HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
+                Request.Headers.UserAgent.ToString());
+
+            return Ok(new ApiResponse<CredencialRevealDto>
+            {
+                Success = true,
+                Data = data,
+                Message = "Credencial revelada y auditada"
+            });
+        }
+        catch (RevelacionRequiereSolicitudException ex)
+        {
+            // 409 (no 403) para evitar el redirect global del frontend ante 403; el código permite
+            // al cliente ofrecer la creación de una solicitud de revelación.
+            return Conflict(new ApiResponse<object>
+            {
+                Success = false,
+                Message = ex.Message,
+                Errors = [RevelacionRequiereSolicitudException.Code]
+            });
+        }
     }
 
     [HttpPost("{id}/copiado")]
-    [Authorize(Policy = "credenciales.revelar")]
+    [Authorize(Policy = "credenciales.ver")]
     [EndpointDescription("Registra en la auditoría que el usuario copió un dato de la credencial al portapapeles.")]
     public async Task<ActionResult<ApiResponse<object>>> RegistrarCopiado(Guid id, [FromBody] RegistrarCopiadoDto dto)
     {
@@ -135,6 +158,59 @@ public class CredencialesController : ControllerBase
             Success = true,
             Data = data
         });
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Flujo de solicitud de revelación (nivel básico solicita; nivel full/aprobador resuelve).
+    // ---------------------------------------------------------------------------------------------
+
+    [HttpPost("{id}/solicitudes")]
+    [Authorize(Policy = "credenciales.ver")]
+    [EndpointDescription("Crea una solicitud para revelar los secretos de una credencial (nivel básico).")]
+    public async Task<ActionResult<ApiResponse<SolicitudRevelacionDto>>> CrearSolicitud(Guid id, [FromBody] CrearSolicitudRevelacionDto dto)
+    {
+        var data = await _credencialService.CrearSolicitudAsync(id, GetCurrentUserId(), dto.Motivo);
+        return Ok(new ApiResponse<SolicitudRevelacionDto>
+        {
+            Success = true,
+            Data = data,
+            Message = "Solicitud de revelación registrada"
+        });
+    }
+
+    [HttpGet("mis-solicitudes")]
+    [Authorize(Policy = "credenciales.ver")]
+    [EndpointDescription("Lista las solicitudes de revelación creadas por el usuario actual.")]
+    public async Task<ActionResult<ApiResponse<IEnumerable<SolicitudRevelacionDto>>>> GetMisSolicitudes()
+    {
+        var data = await _credencialService.GetMisSolicitudesAsync(GetCurrentUserId());
+        return Ok(new ApiResponse<IEnumerable<SolicitudRevelacionDto>> { Success = true, Data = data });
+    }
+
+    [HttpGet("solicitudes")]
+    [Authorize(Policy = "credenciales.solicitud.aprobar")]
+    [EndpointDescription("Bandeja del aprobador: lista solicitudes de revelación, filtrables por estado.")]
+    public async Task<ActionResult<ApiResponse<IEnumerable<SolicitudRevelacionDto>>>> GetSolicitudes(
+        [FromQuery] EstadoSolicitudRevelacion? estado = null)
+    {
+        var data = await _credencialService.GetSolicitudesAsync(estado);
+        return Ok(new ApiResponse<IEnumerable<SolicitudRevelacionDto>> { Success = true, Data = data });
+    }
+
+    [HttpPost("solicitudes/{solicitudId}/aprobar")]
+    [Authorize(Policy = "credenciales.solicitud.aprobar")]
+    public async Task<ActionResult<ApiResponse<SolicitudRevelacionDto>>> AprobarSolicitud(Guid solicitudId, [FromBody] ResolverSolicitudRevelacionDto? dto)
+    {
+        var data = await _credencialService.ResolverSolicitudAsync(solicitudId, GetCurrentUserId(), aprobar: true, dto?.Nota);
+        return Ok(new ApiResponse<SolicitudRevelacionDto> { Success = true, Data = data, Message = "Solicitud aprobada" });
+    }
+
+    [HttpPost("solicitudes/{solicitudId}/rechazar")]
+    [Authorize(Policy = "credenciales.solicitud.aprobar")]
+    public async Task<ActionResult<ApiResponse<SolicitudRevelacionDto>>> RechazarSolicitud(Guid solicitudId, [FromBody] ResolverSolicitudRevelacionDto? dto)
+    {
+        var data = await _credencialService.ResolverSolicitudAsync(solicitudId, GetCurrentUserId(), aprobar: false, dto?.Nota);
+        return Ok(new ApiResponse<SolicitudRevelacionDto> { Success = true, Data = data, Message = "Solicitud rechazada" });
     }
 
     private Guid GetCurrentUserId()

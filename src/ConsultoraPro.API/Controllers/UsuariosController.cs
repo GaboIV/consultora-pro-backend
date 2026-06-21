@@ -30,7 +30,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Policy = "roles.ver")]
+    [Authorize(Policy = "usuarios.ver")]
     public async Task<ActionResult<ApiResponse<PagedResultDto<UsuarioListDto>>>> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -73,7 +73,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "roles.ver")]
+    [Authorize(Policy = "usuarios.ver")]
     public async Task<ActionResult<ApiResponse<UsuarioDetalleDto>>> GetById(Guid id)
     {
         var user = await _userManager.FindByIdAsync(id.ToString());
@@ -107,7 +107,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = "roles.crear")]
+    [Authorize(Policy = "usuarios.editar")]
     public async Task<ActionResult<ApiResponse<UsuarioListDto>>> Create([FromBody] CreateUsuarioDto dto)
     {
         var validation = ValidateUsuario(dto.Nombres, dto.Apellidos, dto.Correo);
@@ -158,7 +158,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "roles.editar")]
+    [Authorize(Policy = "usuarios.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Update(Guid id, [FromBody] UpdateUsuarioDto dto)
     {
         var user = await _userManager.FindByIdAsync(id.ToString());
@@ -211,7 +211,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpPut("{id:guid}/password")]
-    [Authorize(Policy = "roles.editar")]
+    [Authorize(Policy = "usuarios.cambiar-password")]
     public async Task<ActionResult<ApiResponse<object>>> ChangePassword(Guid id, [FromBody] UpdateUsuarioPasswordDto dto)
     {
         var user = await _userManager.FindByIdAsync(id.ToString());
@@ -227,7 +227,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpPut("{id:guid}/toggle")]
-    [Authorize(Policy = "roles.editar")]
+    [Authorize(Policy = "usuarios.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Toggle(Guid id)
     {
         var user = await _userManager.FindByIdAsync(id.ToString());
@@ -250,7 +250,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpPut("{id:guid}/desactivar")]
-    [Authorize(Policy = "roles.editar")]
+    [Authorize(Policy = "usuarios.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Desactivar(Guid id)
     {
         var user = await _userManager.FindByIdAsync(id.ToString());
@@ -269,7 +269,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpPut("{id:guid}/activar")]
-    [Authorize(Policy = "roles.editar")]
+    [Authorize(Policy = "usuarios.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Activar(Guid id)
     {
         var user = await _userManager.FindByIdAsync(id.ToString());
@@ -285,7 +285,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "roles.eliminar")]
+    [Authorize(Policy = "usuarios.eliminar")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(Guid id)
     {
         var user = await _userManager.FindByIdAsync(id.ToString());
@@ -314,7 +314,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpGet("{id:guid}/proyectos")]
-    [Authorize(Policy = "equipo.asignar-proyectos")]
+    [Authorize(Policy = "usuarios.asignar-proyectos")]
     public async Task<ActionResult<ApiResponse<UsuarioProyectosAccesoDto>>> GetProyectos(Guid id)
     {
         var user = await _userManager.FindByIdAsync(id.ToString());
@@ -353,7 +353,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpPut("{id:guid}/proyectos")]
-    [Authorize(Policy = "equipo.asignar-proyectos")]
+    [Authorize(Policy = "usuarios.asignar-proyectos")]
     public async Task<ActionResult<ApiResponse<object>>> UpdateProyectos(Guid id, [FromBody] UpdateUsuarioProyectosDto dto)
     {
         var user = await _userManager.FindByIdAsync(id.ToString());
