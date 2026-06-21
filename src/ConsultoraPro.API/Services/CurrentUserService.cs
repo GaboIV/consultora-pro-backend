@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Security.Claims;
 using ConsultoraPro.Application.Interfaces;
+using ConsultoraPro.Domain.Security;
 using Microsoft.AspNetCore.Http;
 
 namespace ConsultoraPro.API.Services;
@@ -26,6 +27,19 @@ public class CurrentUserService : ICurrentUserService
     }
 
     public string? Role => _httpContextAccessor.HttpContext?.User?.FindFirst("role")?.Value;
+
+    public bool HasFullProjectAccess
+    {
+        get
+        {
+            var claim = _httpContextAccessor.HttpContext?.User?.FindFirst("accesoTotalProyectos")?.Value;
+            if (!string.IsNullOrEmpty(claim))
+                return string.Equals(claim, "true", StringComparison.OrdinalIgnoreCase);
+
+            // Fallback para tokens emitidos antes de incorporar el claim: se infiere por nombre de rol.
+            return Role is not null && PermissionCatalog.FullProjectAccessRoles.Contains(Role);
+        }
+    }
 
     public bool IsInRole(string role)
     {

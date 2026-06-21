@@ -59,8 +59,18 @@ public static class PermissionCatalog
         new(33, "kanban.gestionar", "Gestionar tableros", "Kanban", "Permite administrar miembros y configuración del tablero."),
 
         new(34, "repositorios.ver", "Ver repositorios", "Repositorios", "Permite consultar listado de repositorios."),
-        new(35, "repositorios.editar", "Editar repositorios", "Repositorios", "Permite modificar repositorios.")
+        new(35, "repositorios.editar", "Editar repositorios", "Repositorios", "Permite modificar repositorios."),
+
+        new(36, "equipo.asignar-proyectos", "Asignar proyectos", "Equipo", "Permite definir a qué proyectos accede cada miembro sin acceso total.")
     ];
+
+    /// <summary>Roles cuyos usuarios acceden a todos los proyectos sin asignación explícita.</summary>
+    public static readonly IReadOnlySet<string> FullProjectAccessRoles =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Gerencia, Arquitecto, LT };
+
+    /// <summary>Roles creados por el seeder; sus flags estructurales no se pueden editar.</summary>
+    public static readonly IReadOnlySet<string> SystemRoles =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Gerencia, Arquitecto, LT, Dev, Soporte };
 
     public static readonly IReadOnlyDictionary<string, IReadOnlySet<string>> RolePermissions =
         new Dictionary<string, IReadOnlySet<string>>(StringComparer.OrdinalIgnoreCase)
@@ -73,6 +83,7 @@ public static class PermissionCatalog
                 "despliegues.ver",
                 "despliegues.historial",
                 "equipo.ver",
+                "equipo.asignar-proyectos",
                 "roles.ver",
                 "kanban.ver",
                 "kanban.comentar",
@@ -93,6 +104,7 @@ public static class PermissionCatalog
                 "despliegues.ejecutar",
                 "despliegues.historial",
                 "equipo.ver",
+                "equipo.asignar-proyectos",
                 "kanban.ver",
                 "kanban.crear",
                 "kanban.editar",

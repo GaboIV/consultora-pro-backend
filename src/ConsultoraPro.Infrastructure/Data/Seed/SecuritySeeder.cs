@@ -38,13 +38,16 @@ public static class SecuritySeeder
     {
         foreach (var roleName in PermissionCatalog.RolePermissions.Keys)
         {
+            var accesoTotal = PermissionCatalog.FullProjectAccessRoles.Contains(roleName);
             var role = await roleManager.FindByNameAsync(roleName);
             if (role is null)
             {
                 var result = await roleManager.CreateAsync(new ApplicationRole(roleName)
                 {
                     Descripcion = PermissionCatalog.RoleDescriptions[roleName],
-                    EsActivo = true
+                    EsActivo = true,
+                    AccesoTotalProyectos = accesoTotal,
+                    EsSistema = true
                 });
                 ThrowIfFailed(result, $"No se pudo crear el rol {roleName}");
                 continue;
@@ -53,6 +56,9 @@ public static class SecuritySeeder
             if (string.IsNullOrWhiteSpace(role.Descripcion))
                 role.Descripcion = PermissionCatalog.RoleDescriptions[roleName];
             role.EsActivo = true;
+            // Los flags estructurales de los roles de sistema se imponen siempre desde el seeder.
+            role.AccesoTotalProyectos = accesoTotal;
+            role.EsSistema = true;
             var updateResult = await roleManager.UpdateAsync(role);
             ThrowIfFailed(updateResult, $"No se pudo actualizar el rol {roleName}");
         }

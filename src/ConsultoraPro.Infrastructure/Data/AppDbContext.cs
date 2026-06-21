@@ -61,6 +61,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
         {
             entity.Property(r => r.Descripcion).HasMaxLength(300);
             entity.Property(r => r.EsActivo).HasDefaultValue(true);
+            entity.Property(r => r.AccesoTotalProyectos).HasDefaultValue(false);
+            entity.Property(r => r.EsSistema).HasDefaultValue(false);
         });
 
         modelBuilder.Entity<Permiso>(entity =>

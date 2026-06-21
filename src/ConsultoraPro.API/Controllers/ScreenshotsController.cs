@@ -30,6 +30,7 @@ public class ScreenshotsController : ControllerBase
     private readonly IFileUrlResolver _urlResolver;
     private readonly StorageOptions _storage;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
 
     public ScreenshotsController(
@@ -39,6 +40,7 @@ public class ScreenshotsController : ControllerBase
         IFileUrlResolver urlResolver,
         IOptions<StorageOptions> storageOptions,
         UserManager<ApplicationUser> userManager,
+        ICurrentUserService currentUserService,
         IMapper mapper)
     {
         _screenshotRepository = screenshotRepository;
@@ -47,13 +49,14 @@ public class ScreenshotsController : ControllerBase
         _urlResolver = urlResolver;
         _storage = storageOptions.Value;
         _userManager = userManager;
+        _currentUserService = currentUserService;
         _mapper = mapper;
     }
 
     [HttpGet("proyecto/{proyectoId}")]
     public async Task<ActionResult<ApiResponse<IEnumerable<ScreenshotDto>>>> GetByProyecto(Guid proyectoId)
     {
-        if (User.IsInRole(ConsultoraPro.Domain.Security.PermissionCatalog.Soporte) || User.IsInRole(ConsultoraPro.Domain.Security.PermissionCatalog.Dev))
+        if (!_currentUserService.HasFullProjectAccess)
         {
             var proyecto = await _proyectoRepository.GetByIdAsync(proyectoId);
             var isMember = proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == GetUserId()) ?? false;
@@ -104,7 +107,7 @@ public class ScreenshotsController : ControllerBase
         }
 
         var userId = GetUserId();
-        if (User.IsInRole(ConsultoraPro.Domain.Security.PermissionCatalog.Soporte) || User.IsInRole(ConsultoraPro.Domain.Security.PermissionCatalog.Dev))
+        if (!_currentUserService.HasFullProjectAccess)
         {
             var isMember = proyecto.ProyectoMiembros.Any(pm => pm.UsuarioId == userId);
             if (!isMember)
@@ -154,7 +157,7 @@ public class ScreenshotsController : ControllerBase
             return NotFound(new ApiResponse<object> { Success = false, Message = "Screenshot no encontrada" });
         }
 
-        if (User.IsInRole(ConsultoraPro.Domain.Security.PermissionCatalog.Soporte) || User.IsInRole(ConsultoraPro.Domain.Security.PermissionCatalog.Dev))
+        if (!_currentUserService.HasFullProjectAccess)
         {
             var proyecto = await _proyectoRepository.GetByIdAsync(screenshot.ProyectoId);
             var isMember = proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == GetUserId()) ?? false;

@@ -67,6 +67,8 @@ public class RolesController : ControllerBase
                 Nombre = list.Nombre,
                 Descripcion = list.Descripcion,
                 EsActivo = list.EsActivo,
+                AccesoTotalProyectos = list.AccesoTotalProyectos,
+                EsSistema = list.EsSistema,
                 UsuariosCount = list.UsuariosCount,
                 Permisos = list.Permisos,
                 PermisosIds = permisosIds
@@ -87,7 +89,9 @@ public class RolesController : ControllerBase
         var role = new ApplicationRole(dto.Nombre.Trim())
         {
             Descripcion = dto.Descripcion.Trim(),
-            EsActivo = true
+            EsActivo = true,
+            AccesoTotalProyectos = dto.AccesoTotalProyectos,
+            EsSistema = false
         };
 
         var result = await _roleManager.CreateAsync(role);
@@ -114,9 +118,9 @@ public class RolesController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.Nombre))
             return BadRequest(new ApiResponse<object> { Success = false, Message = "El nombre del rol es obligatorio" });
 
-        if (string.Equals(role.Name, PermissionCatalog.Arquitecto, StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(dto.Nombre.Trim(), PermissionCatalog.Arquitecto, StringComparison.OrdinalIgnoreCase))
-            return Conflict(new ApiResponse<object> { Success = false, Message = "No se puede renombrar el rol Arquitecto" });
+        if (role.EsSistema
+            && !string.Equals(role.Name, dto.Nombre.Trim(), StringComparison.OrdinalIgnoreCase))
+            return Conflict(new ApiResponse<object> { Success = false, Message = $"No se puede renombrar el rol de sistema {role.Name}" });
 
         var existing = await _roleManager.FindByNameAsync(dto.Nombre.Trim());
         if (existing is not null && existing.Id != id)
@@ -125,6 +129,9 @@ public class RolesController : ControllerBase
         role.Name = dto.Nombre.Trim();
         role.Descripcion = dto.Descripcion.Trim();
         role.EsActivo = dto.EsActivo;
+        // El acceso total de los roles de sistema está bloqueado: lo gestiona el seeder.
+        if (!role.EsSistema)
+            role.AccesoTotalProyectos = dto.AccesoTotalProyectos;
 
         var result = await _roleManager.UpdateAsync(role);
         if (!result.Succeeded)
@@ -242,6 +249,8 @@ public class RolesController : ControllerBase
             Nombre = role.Name ?? string.Empty,
             Descripcion = role.Descripcion,
             EsActivo = role.EsActivo,
+            AccesoTotalProyectos = role.AccesoTotalProyectos,
+            EsSistema = role.EsSistema,
             UsuariosCount = users.Count,
             Permisos = permisos
                 .GroupBy(permiso => permiso.Modulo)

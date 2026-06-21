@@ -24,7 +24,7 @@ public class AmbienteService : IAmbienteService
     public async Task<IEnumerable<AmbienteDto>> GetAllAsync(Guid? proyectoId = null)
     {
         Guid? memberUserId = null;
-        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        if (!_currentUserService.HasFullProjectAccess)
         {
             memberUserId = _currentUserService.UserId;
         }
@@ -38,7 +38,7 @@ public class AmbienteService : IAmbienteService
         var ambiente = await _repository.GetByIdAsync(id);
         if (ambiente is null || !ambiente.Activo) return null;
 
-        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        if (!_currentUserService.HasFullProjectAccess)
         {
             var isMember = ambiente.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
             if (!isMember) return null;
@@ -49,7 +49,7 @@ public class AmbienteService : IAmbienteService
 
     public async Task<AmbienteDto> CreateAsync(CreateAmbienteDto dto)
     {
-        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        if (!_currentUserService.HasFullProjectAccess)
         {
             var proyecto = await _proyectoRepository.GetByIdAsync(dto.ProyectoId);
             var isMember = proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
@@ -81,7 +81,7 @@ public class AmbienteService : IAmbienteService
     {
         var ambiente = await GetActiveEntityAsync(id);
 
-        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        if (!_currentUserService.HasFullProjectAccess)
         {
             var isMember = ambiente.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
             if (!isMember) throw new UnauthorizedAccessException("No tienes acceso a este ambiente.");
@@ -104,7 +104,7 @@ public class AmbienteService : IAmbienteService
     {
         var ambiente = await GetActiveEntityAsync(id);
 
-        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        if (!_currentUserService.HasFullProjectAccess)
         {
             var isMember = ambiente.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
             if (!isMember) throw new UnauthorizedAccessException("No tienes acceso a este ambiente.");
@@ -118,7 +118,7 @@ public class AmbienteService : IAmbienteService
     {
         var ambiente = await GetActiveEntityAsync(id);
 
-        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        if (!_currentUserService.HasFullProjectAccess)
         {
             var isMember = ambiente.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
             if (!isMember) throw new UnauthorizedAccessException("No tienes acceso a este ambiente.");

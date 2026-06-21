@@ -1,5 +1,6 @@
 using ConsultoraPro.Application.DTOs.Common;
 using ConsultoraPro.Application.DTOs.Security;
+using ConsultoraPro.Domain.Enums;
 using ConsultoraPro.Domain.Models;
 using ConsultoraPro.Domain.Security;
 using ConsultoraPro.Infrastructure.Data;
@@ -83,11 +84,6 @@ public class UsuariosController : ControllerBase
         var permisos = role is null ? Array.Empty<string>() : await GetGrantedPermissionKeysAsync(role.Id);
         var list = await MapListDtoAsync(user);
 
-        var proyectosIds = await _context.ProyectoMiembros
-            .Where(pm => pm.UsuarioId == id)
-            .Select(pm => pm.ProyectoId)
-            .ToListAsync();
-
         return Ok(new ApiResponse<UsuarioDetalleDto>
         {
             Success = true,
@@ -105,8 +101,7 @@ public class UsuariosController : ControllerBase
                 Activo = list.Activo,
                 FechaAlta = list.FechaAlta,
                 UltimoAcceso = list.UltimoAcceso,
-                Permisos = permisos,
-                ProyectosIds = proyectosIds
+                Permisos = permisos
             }
         });
     }
@@ -152,24 +147,6 @@ public class UsuariosController : ControllerBase
         var roleResult = await _userManager.AddToRoleAsync(user, role.Name!);
         if (!roleResult.Succeeded)
             return BadRequest(ToErrorResponse(roleResult, "No se pudo asignar el rol"));
-
-        // Sync project memberships if role is Dev or Soporte
-        if ((string.Equals(role.Name, PermissionCatalog.Dev, StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(role.Name, PermissionCatalog.Soporte, StringComparison.OrdinalIgnoreCase)) &&
-            dto.ProyectosIds != null)
-        {
-            foreach (var projId in dto.ProyectosIds)
-            {
-                _context.ProyectoMiembros.Add(new ProyectoMiembro
-                {
-                    Id = Guid.NewGuid(),
-                    UsuarioId = user.Id,
-                    ProyectoId = projId,
-                    Rol = ConsultoraPro.Domain.Enums.RolDesarrollador.Apoyo
-                });
-            }
-            await _context.SaveChangesAsync();
-        }
 
         var data = await MapListDtoAsync(user);
         return CreatedAtAction(nameof(GetById), new { id = user.Id }, new ApiResponse<UsuarioListDto>
@@ -229,48 +206,6 @@ public class UsuariosController : ControllerBase
         var addResult = await _userManager.AddToRoleAsync(user, role.Name!);
         if (!addResult.Succeeded)
             return BadRequest(ToErrorResponse(addResult, "No se pudo asignar el rol"));
-
-        // Sync project memberships if role is Dev or Soporte
-        if (string.Equals(role.Name, PermissionCatalog.Dev, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(role.Name, PermissionCatalog.Soporte, StringComparison.OrdinalIgnoreCase))
-        {
-            var targetProyectos = dto.ProyectosIds ?? new List<Guid>();
-            var existingMemberships = await _context.ProyectoMiembros
-                .Where(pm => pm.UsuarioId == user.Id)
-                .ToListAsync();
-
-            var toRemove = existingMemberships
-                .Where(pm => !targetProyectos.Contains(pm.ProyectoId))
-                .ToList();
-            if (toRemove.Count > 0)
-                _context.ProyectoMiembros.RemoveRange(toRemove);
-
-            var existingProjIds = existingMemberships.Select(pm => pm.ProyectoId).ToHashSet();
-            var toAdd = targetProyectos.Where(pid => !existingProjIds.Contains(pid)).ToList();
-            foreach (var projId in toAdd)
-            {
-                _context.ProyectoMiembros.Add(new ProyectoMiembro
-                {
-                    Id = Guid.NewGuid(),
-                    UsuarioId = user.Id,
-                    ProyectoId = projId,
-                    Rol = ConsultoraPro.Domain.Enums.RolDesarrollador.Apoyo
-                });
-            }
-            await _context.SaveChangesAsync();
-        }
-        else
-        {
-            // Clear project memberships for non-restricted users (Gerencia, LT, Arquitecto)
-            var existingMemberships = await _context.ProyectoMiembros
-                .Where(pm => pm.UsuarioId == user.Id)
-                .ToListAsync();
-            if (existingMemberships.Count > 0)
-            {
-                _context.ProyectoMiembros.RemoveRange(existingMemberships);
-                await _context.SaveChangesAsync();
-            }
-        }
 
         return Ok(new ApiResponse<object> { Success = true, Message = "Usuario actualizado exitosamente" });
     }
@@ -376,6 +311,117 @@ public class UsuariosController : ControllerBase
                 Message = "No se puede eliminar el usuario porque tiene actividades o registros asociados en el sistema. Considere desactivarlo."
             });
         }
+    }
+
+    [HttpGet("{id:guid}/proyectos")]
+    [Authorize(Policy = "equipo.asignar-proyectos")]
+    public async Task<ActionResult<ApiResponse<UsuarioProyectosAccesoDto>>> GetProyectos(Guid id)
+    {
+        var user = await _userManager.FindByIdAsync(id.ToString());
+        if (user is null)
+            return NotFound(new ApiResponse<UsuarioProyectosAccesoDto> { Success = false, Message = "Usuario no encontrado" });
+
+        var role = await GetSingleRoleAsync(user);
+        var accesoTotal = role?.AccesoTotalProyectos ?? false;
+
+        var asignados = (await _context.ProyectoMiembros
+            .AsNoTracking()
+            .Where(pm => pm.UsuarioId == id)
+            .Select(pm => pm.ProyectoId)
+            .ToListAsync())
+            .ToHashSet();
+
+        var proyectos = await _context.Proyectos
+            .AsNoTracking()
+            .Include(p => p.Cliente)
+            .OrderBy(p => p.Nombre)
+            .Select(p => new UsuarioProyectoAccesoDto
+            {
+                ProyectoId = p.Id,
+                Nombre = p.Nombre,
+                Clave = p.Clave,
+                Cliente = p.Cliente.Nombre,
+                Asignado = asignados.Contains(p.Id)
+            })
+            .ToListAsync();
+
+        return Ok(new ApiResponse<UsuarioProyectosAccesoDto>
+        {
+            Success = true,
+            Data = new UsuarioProyectosAccesoDto { AccesoTotal = accesoTotal, Proyectos = proyectos }
+        });
+    }
+
+    [HttpPut("{id:guid}/proyectos")]
+    [Authorize(Policy = "equipo.asignar-proyectos")]
+    public async Task<ActionResult<ApiResponse<object>>> UpdateProyectos(Guid id, [FromBody] UpdateUsuarioProyectosDto dto)
+    {
+        var user = await _userManager.FindByIdAsync(id.ToString());
+        if (user is null)
+            return NotFound(new ApiResponse<object> { Success = false, Message = "Usuario no encontrado" });
+
+        var seleccionados = dto.ProyectoIds.Distinct().ToHashSet();
+        if (seleccionados.Count > 0)
+        {
+            var existentes = await _context.Proyectos
+                .Where(p => seleccionados.Contains(p.Id))
+                .Select(p => p.Id)
+                .ToListAsync();
+            if (existentes.Count != seleccionados.Count)
+                return BadRequest(new ApiResponse<object> { Success = false, Message = "La lista contiene proyectos inválidos" });
+        }
+
+        var actuales = await _context.ProyectoMiembros
+            .Where(pm => pm.UsuarioId == id)
+            .ToListAsync();
+        var actualesPorProyecto = actuales.ToDictionary(pm => pm.ProyectoId);
+
+        var afectados = new HashSet<Guid>();
+
+        // Quitar accesos que ya no están seleccionados.
+        foreach (var miembro in actuales.Where(pm => !seleccionados.Contains(pm.ProyectoId)))
+        {
+            _context.ProyectoMiembros.Remove(miembro);
+            afectados.Add(miembro.ProyectoId);
+        }
+
+        // Agregar accesos nuevos.
+        foreach (var proyectoId in seleccionados.Where(pid => !actualesPorProyecto.ContainsKey(pid)))
+        {
+            _context.ProyectoMiembros.Add(new ProyectoMiembro
+            {
+                Id = Guid.NewGuid(),
+                UsuarioId = id,
+                ProyectoId = proyectoId,
+                Rol = RolDesarrollador.Apoyo,
+                FechaAsignacion = DateTime.UtcNow
+            });
+            afectados.Add(proyectoId);
+        }
+
+        if (afectados.Count > 0)
+        {
+            await _context.SaveChangesAsync();
+            await RefreshTotalMiembrosAsync(afectados);
+        }
+
+        return Ok(new ApiResponse<object> { Success = true, Message = "Acceso a proyectos actualizado exitosamente" });
+    }
+
+    private async Task RefreshTotalMiembrosAsync(IEnumerable<Guid> proyectoIds)
+    {
+        var ids = proyectoIds.ToList();
+        var conteos = await _context.ProyectoMiembros
+            .Where(pm => ids.Contains(pm.ProyectoId))
+            .GroupBy(pm => pm.ProyectoId)
+            .Select(g => new { ProyectoId = g.Key, Total = g.Count() })
+            .ToDictionaryAsync(x => x.ProyectoId, x => x.Total);
+
+        var proyectos = await _context.Proyectos.Where(p => ids.Contains(p.Id)).ToListAsync();
+        foreach (var proyecto in proyectos)
+            proyecto.TotalMiembros = conteos.TryGetValue(proyecto.Id, out var total) ? total : 0;
+
+        await _context.SaveChangesAsync();
     }
 
     private async Task<UsuarioListDto> MapListDtoAsync(ApplicationUser user)

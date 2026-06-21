@@ -167,8 +167,7 @@ public class SearchService : ISearchService
         var repository = scope.ServiceProvider.GetRequiredService<IClienteRepository>();
         
         IEnumerable<Cliente> clientes;
-        if (context.Role.Equals(PermissionCatalog.Soporte, StringComparison.OrdinalIgnoreCase)
-            || context.Role.Equals(PermissionCatalog.Dev, StringComparison.OrdinalIgnoreCase))
+        if (context.Role.Equals(PermissionCatalog.Soporte, StringComparison.OrdinalIgnoreCase))
         {
             clientes = await repository.GetAllAsync(context.UserId);
         }
@@ -393,8 +392,7 @@ public class SearchService : ISearchService
     private static bool IsPrivilegedRole(string role)
     {
         return role.Equals(PermissionCatalog.Arquitecto, StringComparison.OrdinalIgnoreCase)
-            || role.Equals(PermissionCatalog.Gerencia, StringComparison.OrdinalIgnoreCase)
-            || role.Equals(PermissionCatalog.LT, StringComparison.OrdinalIgnoreCase);
+            || role.Equals(PermissionCatalog.Gerencia, StringComparison.OrdinalIgnoreCase);
     }
 
     private static IEnumerable<string> ReadPermissions(ClaimsPrincipal user)

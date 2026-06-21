@@ -202,6 +202,7 @@ public class AuthService : IAuthService
     private async Task<AuthResponseDto> GenerateTokenAsync(ApplicationUser user)
     {
         var (roleName, permisos) = await GetRoleAndPermissionsAsync(user);
+        var accesoTotal = await HasFullProjectAccessAsync(roleName);
         var expiresAt = DateTime.UtcNow.AddHours(8);
 
         var claims = new List<Claim>
@@ -218,6 +219,7 @@ public class AuthService : IAuthService
             new("fechaAlta", user.FechaAlta.ToString("o")),
             new("ultimoAcceso", user.UltimoAcceso?.ToString("o") ?? string.Empty),
             new("role", roleName),
+            new("accesoTotalProyectos", accesoTotal ? "true" : "false"),
             new("permisos", JsonSerializer.Serialize(permisos), JsonClaimValueTypes.JsonArray)
         };
 
@@ -260,6 +262,15 @@ public class AuthService : IAuthService
             .ToListAsync();
 
         return (roleName, permisos);
+    }
+
+    private async Task<bool> HasFullProjectAccessAsync(string roleName)
+    {
+        if (string.IsNullOrWhiteSpace(roleName))
+            return false;
+
+        var role = await _roleManager.FindByNameAsync(roleName);
+        return role?.AccesoTotalProyectos ?? false;
     }
 
     private static AuthUserDto ToAuthUserDto(ApplicationUser user, string roleName, IReadOnlyList<string> permisos)
