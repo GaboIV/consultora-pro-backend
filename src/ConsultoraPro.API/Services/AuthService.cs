@@ -3,32 +3,40 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using ConsultoraPro.API.Interfaces;
+using ConsultoraPro.Application.Configuration;
 using ConsultoraPro.Application.DTOs.Auth;
 using ConsultoraPro.Domain.Models;
 using ConsultoraPro.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace ConsultoraPro.API.Services;
 
 public class AuthService : IAuthService
 {
+    /// <summary>Proveedor del login externo de Google en la tabla AspNetUserLogins.</summary>
+    private const string GoogleLoginProvider = "Google";
+
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly AppDbContext _context;
     private readonly IConfiguration _configuration;
+    private readonly AuthOptions _authOptions;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
         AppDbContext context,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IOptions<AuthOptions> authOptions)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _context = context;
         _configuration = configuration;
+        _authOptions = authOptions.Value;
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
@@ -61,6 +69,11 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
     {
+        // En modo "solo Google" (CredentialsEnabled=false) el login por contraseña solo se
+        // admite para los emails break-glass; para el resto se rechaza igual que un credencial inválido.
+        if (!_authOptions.IsPasswordLoginAllowed(dto.Email))
+            throw new UnauthorizedAccessException("El acceso por contraseña está deshabilitado");
+
         var user = await _userManager.FindByEmailAsync(dto.Email);
         if (user is null || !user.Activo || !await _userManager.CheckPasswordAsync(user, dto.Password))
             throw new UnauthorizedAccessException("Credenciales inválidas");
@@ -69,6 +82,82 @@ public class AuthService : IAuthService
         ThrowIfFailed(await _userManager.UpdateAsync(user));
 
         return await GenerateTokenAsync(user);
+    }
+
+    public async Task<AuthResponseDto> LoginWithGoogleAsync(string email, string? fullName, string? pictureUrl)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            throw new UnauthorizedAccessException("Google no proporcionó un email");
+
+        email = email.Trim();
+
+        if (!_authOptions.Google.IsDomainAllowed(email))
+            throw new GoogleDomainNotAllowedException($"El dominio de {email} no está autorizado");
+
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user is null)
+            user = await ProvisionGoogleUserAsync(email, fullName, pictureUrl);
+        else if (!user.Activo)
+            throw new UnauthorizedAccessException("Usuario inactivo");
+
+        // Vincula el login externo (AspNetUserLogins) si todavía no existe, y refresca el avatar.
+        await EnsureGoogleLoginLinkedAsync(user, email);
+        if (!string.IsNullOrWhiteSpace(pictureUrl) && user.AvatarUrl != pictureUrl)
+            user.AvatarUrl = pictureUrl;
+
+        user.UltimoAcceso = DateTime.UtcNow;
+        ThrowIfFailed(await _userManager.UpdateAsync(user));
+
+        return await GenerateTokenAsync(user);
+    }
+
+    // Crea un usuario nuevo a partir de su cuenta de Google. Se crea SIN rol: queda autenticado
+    // pero sin permisos hasta que un administrador le asigne un rol desde el módulo de equipo.
+    private async Task<ApplicationUser> ProvisionGoogleUserAsync(string email, string? fullName, string? pictureUrl)
+    {
+        var (nombres, apellidos) = SplitFullName(fullName, email);
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            Nombres = nombres,
+            Apellidos = apellidos,
+            Iniciales = BuildInitials(nombres, apellidos),
+            Puesto = string.Empty,
+            Telefono = string.Empty,
+            Activo = true,
+            AuthProvider = "google",
+            AvatarUrl = pictureUrl,
+            FechaAlta = DateTime.UtcNow
+        };
+
+        ThrowIfFailed(await _userManager.CreateAsync(user));
+        return user;
+    }
+
+    private async Task EnsureGoogleLoginLinkedAsync(ApplicationUser user, string providerKey)
+    {
+        var logins = await _userManager.GetLoginsAsync(user);
+        if (logins.Any(l => l.LoginProvider == GoogleLoginProvider))
+            return;
+
+        ThrowIfFailed(await _userManager.AddLoginAsync(
+            user, new UserLoginInfo(GoogleLoginProvider, providerKey, GoogleLoginProvider)));
+    }
+
+    private static (string Nombres, string Apellidos) SplitFullName(string? fullName, string email)
+    {
+        var name = (fullName ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(name))
+        {
+            var local = email.Split('@')[0];
+            return (local, string.Empty);
+        }
+
+        var parts = name.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return parts.Length == 1 ? (parts[0], string.Empty) : (parts[0], parts[1]);
     }
 
     public async Task<AuthUserDto> GetCurrentUserAsync(Guid userId)

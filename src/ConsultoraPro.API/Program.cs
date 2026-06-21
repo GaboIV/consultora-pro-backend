@@ -7,14 +7,19 @@ using ConsultoraPro.API.Interfaces;
 using ConsultoraPro.API.Middleware;
 using ConsultoraPro.API.Services;
 using ConsultoraPro.Application;
+using ConsultoraPro.Application.Configuration;
 using ConsultoraPro.Application.DTOs.Common;
 using ConsultoraPro.Domain.Security;
 using ConsultoraPro.Infrastructure;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -73,7 +78,15 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<IAuthService, AuthService>();
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+// Opciones de autenticación: sección "Auth" + fallback a las env vars planas
+// (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / ALLOWED_DOMAINS) para reutilizar la misma
+// configuración que ya existe en Outline. Se resuelve aquí una sola instancia porque el
+// registro de los esquemas OAuth necesita los valores ya materializados al arrancar.
+var authOptions = builder.Configuration.GetSection(AuthOptions.SectionName).Get<AuthOptions>() ?? new AuthOptions();
+ApplyGoogleEnvFallback(authOptions, builder.Configuration);
+builder.Services.AddSingleton(Options.Create(authOptions));
+
+var authBuilder = builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
@@ -109,6 +122,40 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             }
         };
     });
+
+// Esquema OAuth de Google: solo se registra si está habilitado y configurado. El handler
+// deposita los claims externos en la cookie temporal "External"; el AuthController los
+// intercambia por el JWT propio de la app (mismo flujo de claims/permisos que el login local).
+// CallbackPath va bajo /api para que el proxy Nginx del frontend lo reenvíe sin tocar su config.
+if (authOptions.Google.Enabled && !string.IsNullOrWhiteSpace(authOptions.Google.ClientId))
+{
+    authBuilder
+        .AddCookie(AuthSchemes.External, options =>
+        {
+            options.Cookie.Name = "ConsultoraPro.External";
+            options.Cookie.SameSite = SameSiteMode.Lax;
+            options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+            options.ExpireTimeSpan = TimeSpan.FromMinutes(10);
+        })
+        .AddGoogle(GoogleDefaults.AuthenticationScheme, options =>
+        {
+            options.ClientId = authOptions.Google.ClientId;
+            options.ClientSecret = authOptions.Google.ClientSecret;
+            options.SignInScheme = AuthSchemes.External;
+            options.CallbackPath = "/api/auth/google/signin";
+            options.SaveTokens = false;
+            // Google no mapea la foto por defecto: la extraemos del payload y la añadimos como claim.
+            options.Events.OnCreatingTicket = context =>
+            {
+                if (context.User.TryGetProperty("picture", out var picture)
+                    && picture.ValueKind == JsonValueKind.String)
+                {
+                    context.Identity?.AddClaim(new Claim("urn:google:picture", picture.GetString()!));
+                }
+                return Task.CompletedTask;
+            };
+        });
+}
 
 builder.Services.AddAuthorization(options =>
 {
@@ -202,4 +249,18 @@ static async Task WriteAuthErrorResponseAsync(HttpResponse response, int statusC
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     }));
+}
+
+// Si la sección "Auth:Google" no trae credenciales, las toma de las env vars planas que
+// ya usas en Outline (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / ALLOWED_DOMAINS).
+static void ApplyGoogleEnvFallback(AuthOptions options, IConfiguration config)
+{
+    if (string.IsNullOrWhiteSpace(options.Google.ClientId))
+        options.Google.ClientId = config["GOOGLE_CLIENT_ID"] ?? string.Empty;
+
+    if (string.IsNullOrWhiteSpace(options.Google.ClientSecret))
+        options.Google.ClientSecret = config["GOOGLE_CLIENT_SECRET"] ?? string.Empty;
+
+    if (string.IsNullOrWhiteSpace(options.Google.AllowedDomains))
+        options.Google.AllowedDomains = config["ALLOWED_DOMAINS"] ?? string.Empty;
 }

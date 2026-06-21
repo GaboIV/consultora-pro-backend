@@ -49,6 +49,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             entity.Property(u => u.Telefono).HasMaxLength(20);
             entity.Property(u => u.Iniciales).HasMaxLength(2);
             entity.Property(u => u.Puesto).HasMaxLength(120);
+            entity.Property(u => u.AuthProvider).HasMaxLength(20).HasDefaultValue("local");
+            entity.Property(u => u.AvatarUrl).HasMaxLength(500);
             entity.Property(u => u.Activo).HasDefaultValue(true);
             entity.Property(u => u.FechaAlta).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.HasIndex(u => u.NormalizedEmail).IsUnique();
