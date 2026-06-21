@@ -2,7 +2,7 @@ using ConsultoraPro.Domain.Enums;
 
 namespace ConsultoraPro.Domain.Models;
 
-public class Ambiente
+public class Ambiente : IProyectoScoped
 {
     public Guid Id { get; set; }
     public string Nombre { get; set; } = string.Empty;

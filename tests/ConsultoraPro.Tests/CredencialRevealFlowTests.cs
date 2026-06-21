@@ -18,6 +18,8 @@ public class CredencialRevealFlowTests
     private readonly Mock<IAmbienteRepository> _ambRepo = new();
     private readonly Mock<IEncryptionService> _encryption = new();
     private readonly Mock<IValidator<CreateCredencialDto>> _validator = new();
+    private readonly Mock<ICurrentUserService> _currentUser = new();
+    private readonly Mock<IProjectScope> _projectScope = new();
 
     private static readonly Guid CredId = Guid.NewGuid();
     private static readonly Guid UserId = Guid.NewGuid();
@@ -36,7 +38,8 @@ public class CredencialRevealFlowTests
 
         return new CredencialService(
             _credRepo.Object, _solRepo.Object, _proyRepo.Object,
-            _ambRepo.Object, _encryption.Object, _validator.Object);
+            _ambRepo.Object, _encryption.Object, _validator.Object,
+            _currentUser.Object, _projectScope.Object);
     }
 
     [Fact]

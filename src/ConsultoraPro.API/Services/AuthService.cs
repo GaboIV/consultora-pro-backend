@@ -167,7 +167,7 @@ public class AuthService : IAuthService
         if (user is null || !user.Activo)
             throw new UnauthorizedAccessException("Usuario no encontrado o inactivo");
 
-        var (roleName, permisos) = await GetRoleAndPermissionsAsync(user);
+        var (roleName, permisos, _) = await GetRoleAndPermissionsAsync(user);
         return ToAuthUserDto(user, roleName, permisos);
     }
 
@@ -202,7 +202,7 @@ public class AuthService : IAuthService
 
     private async Task<AuthResponseDto> GenerateTokenAsync(ApplicationUser user)
     {
-        var (roleName, permisos) = await GetRoleAndPermissionsAsync(user);
+        var (roleName, permisos, permVersion) = await GetRoleAndPermissionsAsync(user);
         var accesoTotal = await HasFullProjectAccessAsync(roleName);
         var expiresAt = DateTime.UtcNow.AddHours(8);
 
@@ -221,7 +221,8 @@ public class AuthService : IAuthService
             new("ultimoAcceso", user.UltimoAcceso?.ToString("o") ?? string.Empty),
             new("role", roleName),
             new("accesoTotalProyectos", accesoTotal ? "true" : "false"),
-            new("permisos", JsonSerializer.Serialize(permisos), JsonClaimValueTypes.JsonArray)
+            new("permisos", JsonSerializer.Serialize(permisos), JsonClaimValueTypes.JsonArray),
+            new("permVersion", permVersion.ToString())
         };
 
         var key = new SymmetricSecurityKey(
@@ -244,15 +245,15 @@ public class AuthService : IAuthService
         };
     }
 
-    private async Task<(string RoleName, IReadOnlyList<string> Permisos)> GetRoleAndPermissionsAsync(ApplicationUser user)
+    private async Task<(string RoleName, IReadOnlyList<string> Permisos, int PermVersion)> GetRoleAndPermissionsAsync(ApplicationUser user)
     {
         var roleName = (await _userManager.GetRolesAsync(user)).FirstOrDefault() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(roleName))
-            return (string.Empty, Array.Empty<string>());
+            return (string.Empty, Array.Empty<string>(), user.PermVersion);
 
         var role = await _roleManager.FindByNameAsync(roleName);
         if (role is null)
-            return (roleName, Array.Empty<string>());
+            return (roleName, Array.Empty<string>(), user.PermVersion);
 
         var granted = await _context.RolPermisos
             .AsNoTracking()
@@ -266,7 +267,8 @@ public class AuthService : IAuthService
             .OrderBy(clave => clave, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return (roleName, permisos);
+        var permVersion = user.PermVersion ^ role.PermVersion;
+        return (roleName, permisos, permVersion);
     }
 
     private async Task<bool> HasFullProjectAccessAsync(string roleName)
@@ -294,6 +296,26 @@ public class AuthService : IAuthService
             UltimoAcceso = user.UltimoAcceso,
             Permisos = permisos
         };
+    }
+
+    public async Task IncrementUserPermVersionAsync(Guid userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user is not null)
+        {
+            user.PermVersion++;
+            await _userManager.UpdateAsync(user);
+        }
+    }
+
+    public async Task IncrementRolePermVersionAsync(Guid roleId)
+    {
+        var role = await _roleManager.FindByIdAsync(roleId.ToString());
+        if (role is not null)
+        {
+            role.PermVersion++;
+            await _roleManager.UpdateAsync(role);
+        }
     }
 
     private static string BuildInitials(string nombres, string apellidos)

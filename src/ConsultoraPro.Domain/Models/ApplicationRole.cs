@@ -27,5 +27,8 @@ public class ApplicationRole : IdentityRole<Guid>
     /// </summary>
     public bool EsSistema { get; set; }
 
+    /// <summary>Versión de los permisos del rol. Se incrementa al cambiar permisos del rol para invalidar JWTs.</summary>
+    public int PermVersion { get; set; }
+
     public ICollection<RolPermiso> Permisos { get; set; } = new List<RolPermiso>();
 }

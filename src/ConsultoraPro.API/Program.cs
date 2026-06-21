@@ -78,8 +78,10 @@ builder.Services.AddAutoMapper(typeof(ConsultoraPro.Application.Profiles.AutoMap
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<IProjectScope, ProjectScopeService>();
 
 // Opciones de autenticación: sección "Auth" + fallback a las env vars planas
 // (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / ALLOWED_DOMAINS) para reutilizar la misma
@@ -177,6 +179,7 @@ builder.Services.AddAuthorization(options =>
     }
 });
 builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, ProjectResourceHandler>();
 
 // Forwarded Headers: detras del Nginx del contenedor frontend y del Nginx del host,
 // el backend recibe trafico HTTP. Estas cabeceras (X-Forwarded-For / -Proto) permiten
@@ -227,6 +230,7 @@ if (string.Equals(storageOptions.Provider, "Local", StringComparison.OrdinalIgno
 
 app.UseMiddleware<GlobalExceptionHandler>();
 app.UseAuthentication();
+app.UseMiddleware<TokenFreshnessMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();

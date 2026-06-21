@@ -2,7 +2,7 @@ using System;
 
 namespace ConsultoraPro.Domain.Models;
 
-public class Screenshot
+public class Screenshot : IProyectoScoped
 {
     public Guid Id { get; set; }
     public Guid ProyectoId { get; set; }

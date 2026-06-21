@@ -38,6 +38,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<ComentarioTarjeta> ComentariosTarjeta => Set<ComentarioTarjeta>();
     public DbSet<AdjuntoTarjeta> AdjuntosTarjeta => Set<AdjuntoTarjeta>();
     public DbSet<ActividadTarjeta> ActividadesTarjeta => Set<ActividadTarjeta>();
+    public DbSet<AuditoriaSeguridad> AuditoriasSeguridad => Set<AuditoriaSeguridad>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -53,6 +54,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             entity.Property(u => u.AuthProvider).HasMaxLength(20).HasDefaultValue("local");
             entity.Property(u => u.AvatarUrl).HasMaxLength(500);
             entity.Property(u => u.Activo).HasDefaultValue(true);
+            entity.Property(u => u.PermVersion).HasDefaultValue(0);
             entity.Property(u => u.FechaAlta).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.HasIndex(u => u.NormalizedEmail).IsUnique();
             entity.HasIndex(u => u.Email);
@@ -64,6 +66,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             entity.Property(r => r.EsActivo).HasDefaultValue(true);
             entity.Property(r => r.AccesoTotalProyectos).HasDefaultValue(false);
             entity.Property(r => r.EsSistema).HasDefaultValue(false);
+            entity.Property(r => r.PermVersion).HasDefaultValue(0);
         });
 
         modelBuilder.Entity<Permiso>(entity =>
@@ -353,6 +356,24 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             entity.HasOne(s => s.SubidoPor)
                   .WithMany()
                   .HasForeignKey(s => s.SubidoPorId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AuditoriaSeguridad>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.Accion).IsRequired().HasMaxLength(60);
+            entity.Property(a => a.Entidad).IsRequired().HasMaxLength(100);
+            entity.Property(a => a.EntidadId).HasMaxLength(100);
+            entity.Property(a => a.Antes).HasColumnType("text");
+            entity.Property(a => a.Despues).HasColumnType("text");
+            entity.Property(a => a.Ip).HasMaxLength(80);
+            entity.Property(a => a.Fecha).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(a => new { a.ActorId, a.Fecha });
+            entity.HasIndex(a => new { a.Entidad, a.Fecha });
+            entity.HasOne(a => a.Actor)
+                  .WithMany()
+                  .HasForeignKey(a => a.ActorId)
                   .OnDelete(DeleteBehavior.Restrict);
         });
 

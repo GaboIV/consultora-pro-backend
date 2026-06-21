@@ -21,6 +21,8 @@ public class CredencialService : ICredencialService
     private readonly IAmbienteRepository _ambienteRepository;
     private readonly IEncryptionService _encryptionService;
     private readonly IValidator<CreateCredencialDto> _createValidator;
+    private readonly ICurrentUserService _currentUser;
+    private readonly IProjectScope _projectScope;
 
     public CredencialService(
         ICredencialRepository repository,
@@ -28,7 +30,9 @@ public class CredencialService : ICredencialService
         IProyectoRepository proyectoRepository,
         IAmbienteRepository ambienteRepository,
         IEncryptionService encryptionService,
-        IValidator<CreateCredencialDto> createValidator)
+        IValidator<CreateCredencialDto> createValidator,
+        ICurrentUserService currentUser,
+        IProjectScope projectScope)
     {
         _repository = repository;
         _solicitudRepository = solicitudRepository;
@@ -36,6 +40,8 @@ public class CredencialService : ICredencialService
         _ambienteRepository = ambienteRepository;
         _encryptionService = encryptionService;
         _createValidator = createValidator;
+        _currentUser = currentUser;
+        _projectScope = projectScope;
     }
 
     public async Task<PagedResultDto<CredencialListDto>> GetAllAsync(int page = 1, int pageSize = 20, Guid? proyectoId = null)
@@ -43,10 +49,17 @@ public class CredencialService : ICredencialService
         var items = await _repository.GetPagedAsync(page, pageSize, proyectoId);
         var total = await _repository.GetTotalCountAsync(proyectoId);
 
+        IEnumerable<Credencial> filtered = items;
+        if (!_projectScope.VeTodos("proyectos"))
+        {
+            var proyectosAsignados = await _projectScope.ProyectosAsignadosAsync();
+            filtered = items.Where(c => proyectosAsignados.Contains(c.ProyectoId));
+        }
+
         return new PagedResultDto<CredencialListDto>
         {
-            Data = items.Select(ToListDto).ToList(),
-            TotalCount = total,
+            Data = filtered.Select(ToListDto).ToList(),
+            TotalCount = _projectScope.VeTodos("proyectos") ? total : filtered.Count(),
             Page = page,
             PageSize = pageSize
         };
@@ -55,7 +68,16 @@ public class CredencialService : ICredencialService
     public async Task<CredencialDetalleDto?> GetByIdAsync(Guid id)
     {
         var credencial = await _repository.GetByIdAsync(id);
-        return credencial is null || !credencial.Activo ? null : ToDetalleDto(credencial);
+        if (credencial is null || !credencial.Activo) return null;
+
+        if (!_projectScope.VeTodos("proyectos"))
+        {
+            var proyectosAsignados = await _projectScope.ProyectosAsignadosAsync();
+            if (!proyectosAsignados.Contains(credencial.ProyectoId))
+                return null;
+        }
+
+        return ToDetalleDto(credencial);
     }
 
     public async Task<CredencialListDto> CreateAsync(CreateCredencialDto dto, Guid userId)
@@ -172,6 +194,14 @@ public class CredencialService : ICredencialService
     public async Task<SolicitudRevelacionDto> CrearSolicitudAsync(Guid credencialId, Guid solicitanteId, string? motivo)
     {
         var credencial = await GetActiveEntityAsync(credencialId);
+
+        if (!_projectScope.VeTodos("proyectos"))
+        {
+            var proyectosAsignados = await _projectScope.ProyectosAsignadosAsync();
+            if (!proyectosAsignados.Contains(credencial.ProyectoId))
+                throw new KeyNotFoundException($"Credencial con ID {credencialId} no encontrada");
+        }
+
         var now = DateTime.UtcNow;
 
         // Si ya hay una aprobación vigente o una solicitud pendiente, se devuelve esa (idempotente).
