@@ -17,25 +17,34 @@ public class ProyectoService : IProyectoService
     private readonly ITipoSolucionRepository _tipoSolucionRepository;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IMapper _mapper;
+    private readonly ICurrentUserService _currentUserService;
 
     public ProyectoService(
         IProyectoRepository repository, 
         IClienteRepository clienteRepository, 
         ITipoSolucionRepository tipoSolucionRepository, 
         UserManager<ApplicationUser> userManager, 
-        IMapper mapper)
+        IMapper mapper,
+        ICurrentUserService currentUserService)
     {
         _repository = repository;
         _clienteRepository = clienteRepository;
         _tipoSolucionRepository = tipoSolucionRepository;
         _userManager = userManager;
         _mapper = mapper;
+        _currentUserService = currentUserService;
     }
 
     public async Task<PagedResultDto<ProyectoDto>> GetAllAsync(int page = 1, int pageSize = 20, EstadoProyecto? estado = null, Guid? clienteId = null)
     {
-        var items = await _repository.GetPagedAsync(page, pageSize, estado, clienteId);
-        var total = await _repository.GetTotalCountAsync(estado, clienteId);
+        Guid? memberUserId = null;
+        if (!_currentUserService.HasFullProjectAccessFor("proyectos"))
+        {
+            memberUserId = _currentUserService.UserId;
+        }
+
+        var items = await _repository.GetPagedAsync(page, pageSize, estado, clienteId, memberUserId);
+        var total = await _repository.GetTotalCountAsync(estado, clienteId, memberUserId);
 
         return new PagedResultDto<ProyectoDto>
         {
@@ -49,12 +58,26 @@ public class ProyectoService : IProyectoService
     public async Task<ProyectoDto?> GetByIdAsync(Guid id)
     {
         var proyecto = await _repository.GetByIdAsync(id);
-        return proyecto == null ? null : _mapper.Map<ProyectoDto>(proyecto);
+        if (proyecto == null) return null;
+
+        if (!_currentUserService.HasFullProjectAccessFor("proyectos"))
+        {
+            var isMember = proyecto.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId);
+            if (!isMember) return null;
+        }
+
+        return _mapper.Map<ProyectoDto>(proyecto);
     }
 
     public async Task<IEnumerable<ProyectoDto>> GetByClienteIdAsync(Guid clienteId)
     {
         var proyectos = await _repository.GetByClienteIdAsync(clienteId);
+
+        if (!_currentUserService.HasFullProjectAccessFor("proyectos"))
+        {
+            proyectos = proyectos.Where(p => p.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId));
+        }
+
         return _mapper.Map<IEnumerable<ProyectoDto>>(proyectos);
     }
 

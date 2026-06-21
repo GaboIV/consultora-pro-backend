@@ -11,16 +11,21 @@ namespace ConsultoraPro.API.Controllers;
 public class AmbienteCloudResourcesController : ControllerBase
 {
     private readonly IAmbienteCloudResourceService _service;
+    private readonly ICurrentUserService _currentUserService;
 
-    public AmbienteCloudResourcesController(IAmbienteCloudResourceService service)
+    public AmbienteCloudResourcesController(IAmbienteCloudResourceService service, ICurrentUserService currentUserService)
     {
         _service = service;
+        _currentUserService = currentUserService;
     }
 
     [HttpGet]
     [Authorize(Policy = "ambientes.ver")]
     public async Task<ActionResult<ApiResponse<IEnumerable<AmbienteCloudResourceDto>>>> GetAll(Guid ambienteId)
     {
+        if (!_currentUserService.HasFullProjectAccess)
+            return Forbid();
+
         var data = await _service.GetByAmbienteAsync(ambienteId);
         return Ok(new ApiResponse<IEnumerable<AmbienteCloudResourceDto>> { Success = true, Data = data });
     }
@@ -29,6 +34,9 @@ public class AmbienteCloudResourcesController : ControllerBase
     [Authorize(Policy = "ambientes.ver")]
     public async Task<ActionResult<ApiResponse<AmbienteCloudResourceDto>>> GetById(Guid ambienteId, Guid id)
     {
+        if (!_currentUserService.HasFullProjectAccess)
+            return Forbid();
+
         var data = await _service.GetByIdAsync(id);
         if (data is null)
             return NotFound(new ApiResponse<AmbienteCloudResourceDto> { Success = false, Message = $"Recurso en la nube con ID {id} no encontrado" });
@@ -40,6 +48,9 @@ public class AmbienteCloudResourcesController : ControllerBase
     [Authorize(Policy = "ambientes.editar")]
     public async Task<ActionResult<ApiResponse<AmbienteCloudResourceDto>>> Create(Guid ambienteId, [FromBody] CreateAmbienteCloudResourceDto dto)
     {
+        if (!_currentUserService.HasFullProjectAccess)
+            return Forbid();
+
         dto.AmbienteId = ambienteId;
         var data = await _service.CreateAsync(dto);
         return CreatedAtAction(nameof(GetById), new { ambienteId, id = data.Id }, new ApiResponse<AmbienteCloudResourceDto>
@@ -54,6 +65,9 @@ public class AmbienteCloudResourcesController : ControllerBase
     [Authorize(Policy = "ambientes.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Update(Guid ambienteId, Guid id, [FromBody] UpdateAmbienteCloudResourceDto dto)
     {
+        if (!_currentUserService.HasFullProjectAccess)
+            return Forbid();
+
         await _service.UpdateAsync(id, dto);
         return Ok(new ApiResponse<object> { Success = true, Message = "Recurso en la nube actualizado exitosamente" });
     }
@@ -62,6 +76,9 @@ public class AmbienteCloudResourcesController : ControllerBase
     [Authorize(Policy = "ambientes.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(Guid ambienteId, Guid id)
     {
+        if (!_currentUserService.HasFullProjectAccess)
+            return Forbid();
+
         await _service.DeleteAsync(id);
         return Ok(new ApiResponse<object> { Success = true, Message = "Recurso en la nube desactivado exitosamente" });
     }
@@ -70,6 +87,9 @@ public class AmbienteCloudResourcesController : ControllerBase
     [Authorize(Policy = "ambientes.editar")]
     public async Task<ActionResult<ApiResponse<ImportCloudResourcesCsvResponse>>> ImportCsv(Guid ambienteId, [FromBody] ImportCloudResourcesCsvRequest request)
     {
+        if (!_currentUserService.HasFullProjectAccess)
+            return Forbid();
+
         var result = await _service.ImportFromCsvAsync(ambienteId, request);
 
         var message = result.ImportedCount > 0

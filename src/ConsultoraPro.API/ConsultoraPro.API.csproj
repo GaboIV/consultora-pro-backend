@@ -25,4 +25,8 @@
     <UserSecretsId>7590a476-b759-47f8-9867-4d3e9616a310</UserSecretsId>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="ConsultoraPro.Tests" />
+  </ItemGroup>
+
 </Project>

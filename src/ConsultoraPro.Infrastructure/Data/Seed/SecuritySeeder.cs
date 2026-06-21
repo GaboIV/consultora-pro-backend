@@ -38,13 +38,16 @@ public static class SecuritySeeder
     {
         foreach (var roleName in PermissionCatalog.RolePermissions.Keys)
         {
+            var accesoTotal = PermissionCatalog.FullProjectAccessRoles.Contains(roleName);
             var role = await roleManager.FindByNameAsync(roleName);
             if (role is null)
             {
                 var result = await roleManager.CreateAsync(new ApplicationRole(roleName)
                 {
                     Descripcion = PermissionCatalog.RoleDescriptions[roleName],
-                    EsActivo = true
+                    EsActivo = true,
+                    AccesoTotalProyectos = accesoTotal,
+                    EsSistema = true
                 });
                 ThrowIfFailed(result, $"No se pudo crear el rol {roleName}");
                 continue;
@@ -53,6 +56,9 @@ public static class SecuritySeeder
             if (string.IsNullOrWhiteSpace(role.Descripcion))
                 role.Descripcion = PermissionCatalog.RoleDescriptions[roleName];
             role.EsActivo = true;
+            // Los flags estructurales de los roles de sistema se imponen siempre desde el seeder.
+            role.AccesoTotalProyectos = accesoTotal;
+            role.EsSistema = true;
             var updateResult = await roleManager.UpdateAsync(role);
             ThrowIfFailed(updateResult, $"No se pudo actualizar el rol {roleName}");
         }
@@ -88,6 +94,85 @@ public static class SecuritySeeder
         }
 
         await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Migra las concesiones de claves legacy a las nuevas claves granulares para roles ya existentes
+    /// (especialmente los personalizados, que el seeder de defaults no toca). Es idempotente y solo
+    /// AGREGA concesiones que falten: nunca revoca, de modo que respeta los ajustes manuales de un admin.
+    /// </summary>
+    public static async Task MigrateLegacyGrantsAsync(AppDbContext context, RoleManager<ApplicationRole> roleManager)
+    {
+        var permisos = await context.Permisos.AsNoTracking().ToListAsync();
+        var idByClave = permisos.ToDictionary(p => p.Clave, p => p.Id, StringComparer.OrdinalIgnoreCase);
+        var claveById = permisos.ToDictionary(p => p.Id, p => p.Clave);
+
+        var roles = await roleManager.Roles.ToListAsync();
+        var added = false;
+
+        foreach (var role in roles)
+        {
+            var rolePermisos = await context.RolPermisos
+                .Where(rp => rp.RolId == role.Id)
+                .ToListAsync();
+
+            var existingPermisoIds = rolePermisos.Select(rp => rp.PermisoId).ToHashSet();
+            var granted = rolePermisos
+                .Where(rp => rp.Concedido && claveById.ContainsKey(rp.PermisoId))
+                .Select(rp => claveById[rp.PermisoId])
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var clave in DeriveNewGrants(granted, role.AccesoTotalProyectos))
+            {
+                if (!idByClave.TryGetValue(clave, out var permisoId))
+                    continue;
+                if (existingPermisoIds.Contains(permisoId))
+                    continue; // ya tiene una fila (concedida o no): no se pisa la decisión existente.
+
+                context.RolPermisos.Add(new RolPermiso
+                {
+                    RolId = role.Id,
+                    PermisoId = permisoId,
+                    Concedido = true
+                });
+                existingPermisoIds.Add(permisoId);
+                added = true;
+            }
+        }
+
+        if (added)
+            await context.SaveChangesAsync();
+    }
+
+    // Traduce un conjunto de claves legacy concedidas a las nuevas claves equivalentes, preservando
+    // el comportamiento previo (el ámbito "ver todos" se infiere del flag global del rol).
+    private static IEnumerable<string> DeriveNewGrants(ISet<string> granted, bool accesoTotal)
+    {
+        var add = new List<string>();
+
+        foreach (var modulo in PermissionCatalog.ScopedModules)
+        {
+            if (accesoTotal && granted.Contains($"{modulo}.ver"))
+                add.Add($"{modulo}.ver.todos");
+        }
+
+        if (granted.Contains("credenciales.crear") || granted.Contains("credenciales.editar"))
+            add.Add("credenciales.nivel.full");
+        else if (granted.Contains("credenciales.revelar"))
+            add.Add("credenciales.nivel.ver-todo");
+        else if (granted.Contains("credenciales.ver"))
+            add.Add("credenciales.nivel.basico");
+
+        if (granted.Contains("roles.ver")) add.Add("usuarios.ver");
+        if (granted.Contains("roles.crear")) add.Add("usuarios.editar");
+        if (granted.Contains("roles.editar")) { add.Add("usuarios.editar"); add.Add("usuarios.cambiar-password"); }
+        if (granted.Contains("roles.eliminar")) add.Add("usuarios.eliminar");
+        if (granted.Contains("equipo.asignar-proyectos")) add.Add("usuarios.asignar-proyectos");
+
+        if (granted.Contains("proyectos.editar")) { add.Add("screenshots.ver"); add.Add("screenshots.editar"); }
+        else if (granted.Contains("proyectos.ver")) add.Add("screenshots.ver");
+
+        return add;
     }
 
     public static async Task SeedDefaultUserAsync(

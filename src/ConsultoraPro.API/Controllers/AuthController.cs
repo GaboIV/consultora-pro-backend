@@ -26,6 +26,7 @@ public class AuthController : ControllerBase
         _authOptions = authOptions.Value;
     }
 
+    [AllowAnonymous]
     [HttpGet("config")]
     public ActionResult<AuthConfigDto> GetConfig()
     {
@@ -39,6 +40,7 @@ public class AuthController : ControllerBase
 
     // Inicia el flujo OAuth: redirige al consentimiento de Google. Tras autenticar, Google
     // vuelve al CallbackPath del middleware, que a su vez redirige a la acción "complete".
+    [AllowAnonymous]
     [HttpGet("google/start")]
     public IActionResult GoogleStart()
     {
@@ -51,6 +53,7 @@ public class AuthController : ControllerBase
 
     // Lee los claims externos depositados por el handler de Google, encuentra/aprovisiona al
     // usuario, emite el JWT propio y redirige al frontend con el token en el fragment de la URL.
+    [AllowAnonymous]
     [HttpGet("google/complete")]
     public async Task<IActionResult> GoogleComplete()
     {
@@ -88,6 +91,7 @@ public class AuthController : ControllerBase
         }
     }
 
+    [AllowAnonymous]
     [HttpPost("register")]
     public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Register([FromBody] RegisterDto dto)
     {
@@ -95,6 +99,7 @@ public class AuthController : ControllerBase
         return Ok(new ApiResponse<AuthResponseDto> { Success = true, Data = data, Message = "Usuario registrado exitosamente" });
     }
 
+    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginDto dto)
     {

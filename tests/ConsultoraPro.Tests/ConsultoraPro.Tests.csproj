@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\ConsultoraPro.API\ConsultoraPro.API.csproj" />
     <ProjectReference Include="..\..\src\ConsultoraPro.Application\ConsultoraPro.Application.csproj" />
   </ItemGroup>
 

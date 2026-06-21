@@ -16,4 +16,6 @@ public interface IAuthService
     Task<AuthUserDto> GetCurrentUserAsync(Guid userId);
     Task ChangePasswordAsync(Guid userId, ChangePasswordDto dto);
     Task<AuthResponseDto> UpdatePerfilAsync(Guid userId, UpdatePerfilDto dto);
+    Task IncrementUserPermVersionAsync(Guid userId);
+    Task IncrementRolePermVersionAsync(Guid roleId);
 }

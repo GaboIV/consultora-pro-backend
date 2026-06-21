@@ -1,7 +1,9 @@
 using System.Text.Json;
 using ConsultoraPro.Application.DTOs.Credenciales;
 using ConsultoraPro.Application.DTOs.Common;
+using ConsultoraPro.Application.Exceptions;
 using ConsultoraPro.Application.Interfaces;
+using ConsultoraPro.Domain.Enums;
 using ConsultoraPro.Domain.Interfaces;
 using ConsultoraPro.Domain.Models;
 using FluentValidation;
@@ -10,24 +12,36 @@ namespace ConsultoraPro.Application.Services;
 
 public class CredencialService : ICredencialService
 {
+    /// <summary>Ventana de vigencia de una revelación aprobada para un usuario de nivel básico.</summary>
+    private static readonly TimeSpan RevelacionTemporalTtl = TimeSpan.FromMinutes(15);
+
     private readonly ICredencialRepository _repository;
+    private readonly ISolicitudRevelacionRepository _solicitudRepository;
     private readonly IProyectoRepository _proyectoRepository;
     private readonly IAmbienteRepository _ambienteRepository;
     private readonly IEncryptionService _encryptionService;
     private readonly IValidator<CreateCredencialDto> _createValidator;
+    private readonly ICurrentUserService _currentUser;
+    private readonly IProjectScope _projectScope;
 
     public CredencialService(
         ICredencialRepository repository,
+        ISolicitudRevelacionRepository solicitudRepository,
         IProyectoRepository proyectoRepository,
         IAmbienteRepository ambienteRepository,
         IEncryptionService encryptionService,
-        IValidator<CreateCredencialDto> createValidator)
+        IValidator<CreateCredencialDto> createValidator,
+        ICurrentUserService currentUser,
+        IProjectScope projectScope)
     {
         _repository = repository;
+        _solicitudRepository = solicitudRepository;
         _proyectoRepository = proyectoRepository;
         _ambienteRepository = ambienteRepository;
         _encryptionService = encryptionService;
         _createValidator = createValidator;
+        _currentUser = currentUser;
+        _projectScope = projectScope;
     }
 
     public async Task<PagedResultDto<CredencialListDto>> GetAllAsync(int page = 1, int pageSize = 20, Guid? proyectoId = null)
@@ -35,10 +49,17 @@ public class CredencialService : ICredencialService
         var items = await _repository.GetPagedAsync(page, pageSize, proyectoId);
         var total = await _repository.GetTotalCountAsync(proyectoId);
 
+        IEnumerable<Credencial> filtered = items;
+        if (!_projectScope.VeTodos("proyectos"))
+        {
+            var proyectosAsignados = await _projectScope.ProyectosAsignadosAsync();
+            filtered = items.Where(c => proyectosAsignados.Contains(c.ProyectoId));
+        }
+
         return new PagedResultDto<CredencialListDto>
         {
-            Data = items.Select(ToListDto).ToList(),
-            TotalCount = total,
+            Data = filtered.Select(ToListDto).ToList(),
+            TotalCount = _projectScope.VeTodos("proyectos") ? total : filtered.Count(),
             Page = page,
             PageSize = pageSize
         };
@@ -47,7 +68,16 @@ public class CredencialService : ICredencialService
     public async Task<CredencialDetalleDto?> GetByIdAsync(Guid id)
     {
         var credencial = await _repository.GetByIdAsync(id);
-        return credencial is null || !credencial.Activo ? null : ToDetalleDto(credencial);
+        if (credencial is null || !credencial.Activo) return null;
+
+        if (!_projectScope.VeTodos("proyectos"))
+        {
+            var proyectosAsignados = await _projectScope.ProyectosAsignadosAsync();
+            if (!proyectosAsignados.Contains(credencial.ProyectoId))
+                return null;
+        }
+
+        return ToDetalleDto(credencial);
     }
 
     public async Task<CredencialListDto> CreateAsync(CreateCredencialDto dto, Guid userId)
@@ -124,10 +154,20 @@ public class CredencialService : ICredencialService
         await _repository.UpdateAsync(credencial);
     }
 
-    public async Task<CredencialRevealDto> RevealAsync(Guid id, Guid userId, string ip, string userAgent)
+    public async Task<CredencialRevealDto> RevealAsync(Guid id, Guid userId, bool puedeRevelarDirecto, string ip, string userAgent)
     {
         var credencial = await GetActiveEntityAsync(id);
         var revealedAt = DateTime.UtcNow;
+
+        // El nivel básico (sin permiso directo de revelar) solo puede ver el secreto si tiene una
+        // aprobación vigente. La decisión se toma SIEMPRE en servidor: el claim del JWT no basta.
+        SolicitudRevelacionCredencial? aprobacion = null;
+        if (!puedeRevelarDirecto)
+        {
+            aprobacion = await _solicitudRepository.GetVigenteAsync(id, userId, revealedAt);
+            if (aprobacion is null)
+                throw new RevelacionRequiereSolicitudException();
+        }
 
         await _repository.AddAuditAsync(new AuditoriaCredencial
         {
@@ -135,6 +175,7 @@ public class CredencialService : ICredencialService
             CredencialId = credencial.Id,
             UsuarioId = userId,
             Accion = "Lectura",
+            Detalle = aprobacion is null ? null : $"Revelación autorizada por solicitud {aprobacion.Id}",
             FechaRevelacion = revealedAt,
             Ip = ip,
             UserAgent = userAgent
@@ -149,6 +190,103 @@ public class CredencialService : ICredencialService
             ReveladoEn = revealedAt
         };
     }
+
+    public async Task<SolicitudRevelacionDto> CrearSolicitudAsync(Guid credencialId, Guid solicitanteId, string? motivo)
+    {
+        var credencial = await GetActiveEntityAsync(credencialId);
+
+        if (!_projectScope.VeTodos("proyectos"))
+        {
+            var proyectosAsignados = await _projectScope.ProyectosAsignadosAsync();
+            if (!proyectosAsignados.Contains(credencial.ProyectoId))
+                throw new KeyNotFoundException($"Credencial con ID {credencialId} no encontrada");
+        }
+
+        var now = DateTime.UtcNow;
+
+        // Si ya hay una aprobación vigente o una solicitud pendiente, se devuelve esa (idempotente).
+        var vigente = await _solicitudRepository.GetVigenteAsync(credencialId, solicitanteId, now);
+        if (vigente is not null)
+        {
+            vigente.Credencial = credencial;
+            return ToSolicitudDto(vigente);
+        }
+
+        var pendiente = await _solicitudRepository.GetPendienteAsync(credencialId, solicitanteId);
+        if (pendiente is not null)
+        {
+            pendiente.Credencial = credencial;
+            return ToSolicitudDto(pendiente);
+        }
+
+        var solicitud = new SolicitudRevelacionCredencial
+        {
+            Id = Guid.NewGuid(),
+            CredencialId = credencialId,
+            Credencial = credencial,
+            SolicitanteId = solicitanteId,
+            Estado = EstadoSolicitudRevelacion.Pendiente,
+            Motivo = Truncate(Normalize(motivo), 500),
+            FechaSolicitud = now
+        };
+
+        await _solicitudRepository.CreateAsync(solicitud);
+        return ToSolicitudDto(solicitud);
+    }
+
+    public async Task<IEnumerable<SolicitudRevelacionDto>> GetSolicitudesAsync(EstadoSolicitudRevelacion? estado)
+    {
+        var solicitudes = await _solicitudRepository.ListAsync(estado);
+        return solicitudes.Select(ToSolicitudDto).ToList();
+    }
+
+    public async Task<IEnumerable<SolicitudRevelacionDto>> GetMisSolicitudesAsync(Guid solicitanteId)
+    {
+        var solicitudes = await _solicitudRepository.ListBySolicitanteAsync(solicitanteId);
+        return solicitudes.Select(ToSolicitudDto).ToList();
+    }
+
+    public async Task<SolicitudRevelacionDto> ResolverSolicitudAsync(Guid solicitudId, Guid aprobadorId, bool aprobar, string? nota)
+    {
+        var solicitud = await _solicitudRepository.GetByIdAsync(solicitudId);
+        if (solicitud is null)
+            throw new KeyNotFoundException($"Solicitud con ID {solicitudId} no encontrada");
+
+        if (solicitud.Estado != EstadoSolicitudRevelacion.Pendiente)
+            throw new InvalidOperationException("La solicitud ya fue resuelta.");
+
+        var now = DateTime.UtcNow;
+        solicitud.AprobadorId = aprobadorId;
+        solicitud.Estado = aprobar ? EstadoSolicitudRevelacion.Aprobada : EstadoSolicitudRevelacion.Rechazada;
+        solicitud.NotaResolucion = Truncate(Normalize(nota), 500);
+        solicitud.FechaResolucion = now;
+        solicitud.VigenteHasta = aprobar ? now.Add(RevelacionTemporalTtl) : null;
+
+        await _solicitudRepository.UpdateAsync(solicitud);
+        return ToSolicitudDto(solicitud);
+    }
+
+    private static SolicitudRevelacionDto ToSolicitudDto(SolicitudRevelacionCredencial s) => new()
+    {
+        Id = s.Id,
+        CredencialId = s.CredencialId,
+        CredencialNombre = s.Credencial?.Nombre ?? string.Empty,
+        ProyectoId = s.Credencial?.ProyectoId ?? Guid.Empty,
+        ProyectoNombre = s.Credencial?.Proyecto?.Nombre ?? string.Empty,
+        SolicitanteId = s.SolicitanteId,
+        SolicitanteNombre = FullName(s.Solicitante),
+        AprobadorId = s.AprobadorId,
+        AprobadorNombre = s.Aprobador is null ? null : FullName(s.Aprobador),
+        Estado = s.Estado,
+        Motivo = s.Motivo,
+        NotaResolucion = s.NotaResolucion,
+        FechaSolicitud = s.FechaSolicitud,
+        FechaResolucion = s.FechaResolucion,
+        VigenteHasta = s.VigenteHasta
+    };
+
+    private static string FullName(ApplicationUser? user) =>
+        user is null ? string.Empty : $"{user.Nombres} {user.Apellidos}".Trim();
 
     public async Task RegistrarCopiadoAsync(Guid id, Guid userId, string ip, string userAgent, string? campo)
     {

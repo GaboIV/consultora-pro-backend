@@ -2,7 +2,7 @@ using ConsultoraPro.Domain.Enums;
 
 namespace ConsultoraPro.Domain.Models;
 
-public class ProyectoMiembro
+public class ProyectoMiembro : IProyectoScoped
 {
     public Guid Id { get; set; }
     public Guid UsuarioId { get; set; }

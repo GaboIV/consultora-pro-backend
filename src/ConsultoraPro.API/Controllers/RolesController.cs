@@ -1,3 +1,5 @@
+using ConsultoraPro.API.Interfaces;
+using ConsultoraPro.Application.Interfaces;
 using ConsultoraPro.Application.DTOs.Common;
 using ConsultoraPro.Application.DTOs.Security;
 using ConsultoraPro.Domain.Models;
@@ -17,15 +19,21 @@ public class RolesController : ControllerBase
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly AppDbContext _context;
+    private readonly IAuthService _authService;
+    private readonly IAuditService _auditService;
 
     public RolesController(
         RoleManager<ApplicationRole> roleManager,
         UserManager<ApplicationUser> userManager,
-        AppDbContext context)
+        AppDbContext context,
+        IAuthService authService,
+        IAuditService auditService)
     {
         _roleManager = roleManager;
         _userManager = userManager;
         _context = context;
+        _authService = authService;
+        _auditService = auditService;
     }
 
     [HttpGet]
@@ -67,6 +75,8 @@ public class RolesController : ControllerBase
                 Nombre = list.Nombre,
                 Descripcion = list.Descripcion,
                 EsActivo = list.EsActivo,
+                AccesoTotalProyectos = list.AccesoTotalProyectos,
+                EsSistema = list.EsSistema,
                 UsuariosCount = list.UsuariosCount,
                 Permisos = list.Permisos,
                 PermisosIds = permisosIds
@@ -87,7 +97,9 @@ public class RolesController : ControllerBase
         var role = new ApplicationRole(dto.Nombre.Trim())
         {
             Descripcion = dto.Descripcion.Trim(),
-            EsActivo = true
+            EsActivo = true,
+            AccesoTotalProyectos = dto.AccesoTotalProyectos,
+            EsSistema = false
         };
 
         var result = await _roleManager.CreateAsync(role);
@@ -111,12 +123,16 @@ public class RolesController : ControllerBase
         if (role is null)
             return NotFound(new ApiResponse<object> { Success = false, Message = "Rol no encontrado" });
 
+        // G3: prohibir que un usuario edite su propio rol (escalada de privilegios).
+        if (await IsOwnRoleAsync(id))
+            return Forbid();
+
         if (string.IsNullOrWhiteSpace(dto.Nombre))
             return BadRequest(new ApiResponse<object> { Success = false, Message = "El nombre del rol es obligatorio" });
 
-        if (string.Equals(role.Name, PermissionCatalog.Arquitecto, StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(dto.Nombre.Trim(), PermissionCatalog.Arquitecto, StringComparison.OrdinalIgnoreCase))
-            return Conflict(new ApiResponse<object> { Success = false, Message = "No se puede renombrar el rol Arquitecto" });
+        if (role.EsSistema
+            && !string.Equals(role.Name, dto.Nombre.Trim(), StringComparison.OrdinalIgnoreCase))
+            return Conflict(new ApiResponse<object> { Success = false, Message = $"No se puede renombrar el rol de sistema {role.Name}" });
 
         var existing = await _roleManager.FindByNameAsync(dto.Nombre.Trim());
         if (existing is not null && existing.Id != id)
@@ -125,10 +141,18 @@ public class RolesController : ControllerBase
         role.Name = dto.Nombre.Trim();
         role.Descripcion = dto.Descripcion.Trim();
         role.EsActivo = dto.EsActivo;
+        // El acceso total de los roles de sistema está bloqueado: lo gestiona el seeder.
+        if (!role.EsSistema)
+            role.AccesoTotalProyectos = dto.AccesoTotalProyectos;
 
         var result = await _roleManager.UpdateAsync(role);
         if (!result.Succeeded)
             return BadRequest(ToErrorResponse(result, "No se pudo actualizar el rol"));
+
+        await _authService.IncrementRolePermVersionAsync(role.Id);
+        await _auditService.RecordAsync(
+            GetCurrentUserId(), "Rol.Actualizar", "ApplicationRole", role.Id.ToString(),
+            antes: null, despues: $"{{\"nombre\":\"{role.Name}\",\"accesoTotal\":{role.AccesoTotalProyectos}}}");
 
         return Ok(new ApiResponse<object> { Success = true, Message = "Rol actualizado exitosamente" });
     }
@@ -140,6 +164,10 @@ public class RolesController : ControllerBase
         var role = await FindRoleByIdAsync(id);
         if (role is null)
             return NotFound(new ApiResponse<object> { Success = false, Message = "Rol no encontrado" });
+
+        // G3: prohibir que un usuario edite los permisos de su propio rol.
+        if (await IsOwnRoleAsync(id))
+            return Forbid();
 
         var catalogIds = await _context.Permisos.Select(p => p.Id).ToListAsync();
         var invalidIds = dto.PermisosIds.Except(catalogIds).ToList();
@@ -169,6 +197,10 @@ public class RolesController : ControllerBase
         }
 
         await _context.SaveChangesAsync();
+        await _authService.IncrementRolePermVersionAsync(role.Id);
+        await _auditService.RecordAsync(
+            GetCurrentUserId(), "Rol.ActualizarPermisos", "ApplicationRole", role.Id.ToString(),
+            despues: $"{{\"permisosIds\":[{string.Join(",", dto.PermisosIds)}]}}");
         return Ok(new ApiResponse<object> { Success = true, Message = "Permisos actualizados exitosamente" });
     }
 
@@ -196,6 +228,24 @@ public class RolesController : ControllerBase
 
         await _context.SaveChangesAsync();
         return Ok(new ApiResponse<object> { Success = true, Message = "Rol eliminado exitosamente" });
+    }
+
+    private async Task<bool> IsOwnRoleAsync(Guid roleId)
+    {
+        var userId = GetCurrentUserId();
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user is null) return false;
+        var userRoles = await _userManager.GetRolesAsync(user);
+        var role = await _roleManager.FindByIdAsync(roleId.ToString());
+        return role is not null && userRoles.Any(r => string.Equals(r, role.Name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private Guid GetCurrentUserId()
+    {
+        var claim = User.FindFirst("userId")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(claim, out var id))
+            throw new UnauthorizedAccessException("No se pudo identificar al usuario autenticado");
+        return id;
     }
 
     private async Task<ApplicationRole?> FindRoleByIdAsync(Guid id)
@@ -242,6 +292,8 @@ public class RolesController : ControllerBase
             Nombre = role.Name ?? string.Empty,
             Descripcion = role.Descripcion,
             EsActivo = role.EsActivo,
+            AccesoTotalProyectos = role.AccesoTotalProyectos,
+            EsSistema = role.EsSistema,
             UsuariosCount = users.Count,
             Permisos = permisos
                 .GroupBy(permiso => permiso.Modulo)
