@@ -1,5 +1,8 @@
+using ConsultoraPro.API.Interfaces;
+using ConsultoraPro.Application.Interfaces;
 using ConsultoraPro.Application.DTOs.Common;
 using ConsultoraPro.Application.DTOs.Security;
+using ConsultoraPro.Domain.Enums;
 using ConsultoraPro.Domain.Models;
 using ConsultoraPro.Domain.Security;
 using ConsultoraPro.Infrastructure.Data;
@@ -17,19 +20,28 @@ public class UsuariosController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly AppDbContext _context;
+    private readonly IAuthService _authService;
+    private readonly IAuditService _auditService;
+    private readonly ICurrentUserService _currentUser;
 
     public UsuariosController(
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
-        AppDbContext context)
+        AppDbContext context,
+        IAuthService authService,
+        IAuditService auditService,
+        ICurrentUserService currentUser)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _context = context;
+        _authService = authService;
+        _auditService = auditService;
+        _currentUser = currentUser;
     }
 
     [HttpGet]
-    [Authorize(Policy = "roles.ver")]
+    [Authorize(Policy = "usuarios.ver")]
     public async Task<ActionResult<ApiResponse<PagedResultDto<UsuarioListDto>>>> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -72,7 +84,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "roles.ver")]
+    [Authorize(Policy = "usuarios.ver")]
     public async Task<ActionResult<ApiResponse<UsuarioDetalleDto>>> GetById(Guid id)
     {
         var user = await _userManager.FindByIdAsync(id.ToString());
@@ -106,7 +118,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = "roles.crear")]
+    [Authorize(Policy = "usuarios.editar")]
     public async Task<ActionResult<ApiResponse<UsuarioListDto>>> Create([FromBody] CreateUsuarioDto dto)
     {
         var validation = ValidateUsuario(dto.Nombres, dto.Apellidos, dto.Correo);
@@ -157,7 +169,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "roles.editar")]
+    [Authorize(Policy = "usuarios.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Update(Guid id, [FromBody] UpdateUsuarioDto dto)
     {
         var user = await _userManager.FindByIdAsync(id.ToString());
@@ -176,7 +188,16 @@ public class UsuariosController : ControllerBase
         if (role is null)
             return BadRequest(new ApiResponse<object> { Success = false, Message = "Rol inválido" });
 
+        // G3/G7: cambiar el rol a otro usuario requiere un permiso distinto (roles.asignar).
+        // Si el DTO pide un rol distinto al actual, se verifica que el usuario autenticado
+        // tenga el permiso roles.asignar (además de usuarios.editar).
         var currentRoles = await _userManager.GetRolesAsync(user);
+        var currentRoleName = currentRoles.FirstOrDefault() ?? string.Empty;
+        if (!string.Equals(currentRoleName, role.Name, StringComparison.OrdinalIgnoreCase)
+            && !_currentUser.HasPermission("roles.asignar"))
+        {
+            return Forbid();
+        }
         var currentlyArchitect = currentRoles.Contains(PermissionCatalog.Arquitecto, StringComparer.OrdinalIgnoreCase);
         var willStayArchitect = string.Equals(role.Name, PermissionCatalog.Arquitecto, StringComparison.OrdinalIgnoreCase);
         if (user.Activo && currentlyArchitect && !willStayArchitect && !await HasAnotherActiveArchitectAsync(user.Id))
@@ -206,11 +227,16 @@ public class UsuariosController : ControllerBase
         if (!addResult.Succeeded)
             return BadRequest(ToErrorResponse(addResult, "No se pudo asignar el rol"));
 
+        await _authService.IncrementUserPermVersionAsync(user.Id);
+        await _auditService.RecordAsync(
+            GetCurrentUserId(), "Usuario.ActualizarRol", "ApplicationUser", user.Id.ToString(),
+            despues: $"{{\"rol\":\"{role.Name}\"}}");
+
         return Ok(new ApiResponse<object> { Success = true, Message = "Usuario actualizado exitosamente" });
     }
 
     [HttpPut("{id:guid}/password")]
-    [Authorize(Policy = "roles.editar")]
+    [Authorize(Policy = "usuarios.cambiar-password")]
     public async Task<ActionResult<ApiResponse<object>>> ChangePassword(Guid id, [FromBody] UpdateUsuarioPasswordDto dto)
     {
         var user = await _userManager.FindByIdAsync(id.ToString());
@@ -226,7 +252,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpPut("{id:guid}/toggle")]
-    [Authorize(Policy = "roles.editar")]
+    [Authorize(Policy = "usuarios.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Toggle(Guid id)
     {
         var user = await _userManager.FindByIdAsync(id.ToString());
@@ -249,7 +275,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpPut("{id:guid}/desactivar")]
-    [Authorize(Policy = "roles.editar")]
+    [Authorize(Policy = "usuarios.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Desactivar(Guid id)
     {
         var user = await _userManager.FindByIdAsync(id.ToString());
@@ -268,7 +294,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpPut("{id:guid}/activar")]
-    [Authorize(Policy = "roles.editar")]
+    [Authorize(Policy = "usuarios.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Activar(Guid id)
     {
         var user = await _userManager.FindByIdAsync(id.ToString());
@@ -284,7 +310,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "roles.eliminar")]
+    [Authorize(Policy = "usuarios.eliminar")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(Guid id)
     {
         var user = await _userManager.FindByIdAsync(id.ToString());
@@ -310,6 +336,128 @@ public class UsuariosController : ControllerBase
                 Message = "No se puede eliminar el usuario porque tiene actividades o registros asociados en el sistema. Considere desactivarlo."
             });
         }
+    }
+
+    [HttpGet("{id:guid}/proyectos")]
+    [Authorize(Policy = "usuarios.asignar-proyectos")]
+    public async Task<ActionResult<ApiResponse<UsuarioProyectosAccesoDto>>> GetProyectos(Guid id)
+    {
+        var user = await _userManager.FindByIdAsync(id.ToString());
+        if (user is null)
+            return NotFound(new ApiResponse<UsuarioProyectosAccesoDto> { Success = false, Message = "Usuario no encontrado" });
+
+        var role = await GetSingleRoleAsync(user);
+        var accesoTotal = role?.AccesoTotalProyectos ?? false;
+
+        var asignados = (await _context.ProyectoMiembros
+            .AsNoTracking()
+            .Where(pm => pm.UsuarioId == id)
+            .Select(pm => pm.ProyectoId)
+            .ToListAsync())
+            .ToHashSet();
+
+        var proyectos = await _context.Proyectos
+            .AsNoTracking()
+            .Include(p => p.Cliente)
+            .OrderBy(p => p.Nombre)
+            .Select(p => new UsuarioProyectoAccesoDto
+            {
+                ProyectoId = p.Id,
+                Nombre = p.Nombre,
+                Clave = p.Clave,
+                Cliente = p.Cliente.Nombre,
+                Asignado = asignados.Contains(p.Id)
+            })
+            .ToListAsync();
+
+        return Ok(new ApiResponse<UsuarioProyectosAccesoDto>
+        {
+            Success = true,
+            Data = new UsuarioProyectosAccesoDto { AccesoTotal = accesoTotal, Proyectos = proyectos }
+        });
+    }
+
+    [HttpPut("{id:guid}/proyectos")]
+    [Authorize(Policy = "usuarios.asignar-proyectos")]
+    public async Task<ActionResult<ApiResponse<object>>> UpdateProyectos(Guid id, [FromBody] UpdateUsuarioProyectosDto dto)
+    {
+        var user = await _userManager.FindByIdAsync(id.ToString());
+        if (user is null)
+            return NotFound(new ApiResponse<object> { Success = false, Message = "Usuario no encontrado" });
+
+        var seleccionados = dto.ProyectoIds.Distinct().ToHashSet();
+        if (seleccionados.Count > 0)
+        {
+            var existentes = await _context.Proyectos
+                .Where(p => seleccionados.Contains(p.Id))
+                .Select(p => p.Id)
+                .ToListAsync();
+            if (existentes.Count != seleccionados.Count)
+                return BadRequest(new ApiResponse<object> { Success = false, Message = "La lista contiene proyectos inválidos" });
+        }
+
+        var actuales = await _context.ProyectoMiembros
+            .Where(pm => pm.UsuarioId == id)
+            .ToListAsync();
+        var actualesPorProyecto = actuales.ToDictionary(pm => pm.ProyectoId);
+
+        var afectados = new HashSet<Guid>();
+
+        // Quitar accesos que ya no están seleccionados.
+        foreach (var miembro in actuales.Where(pm => !seleccionados.Contains(pm.ProyectoId)))
+        {
+            _context.ProyectoMiembros.Remove(miembro);
+            afectados.Add(miembro.ProyectoId);
+        }
+
+        // Agregar accesos nuevos.
+        foreach (var proyectoId in seleccionados.Where(pid => !actualesPorProyecto.ContainsKey(pid)))
+        {
+            _context.ProyectoMiembros.Add(new ProyectoMiembro
+            {
+                Id = Guid.NewGuid(),
+                UsuarioId = id,
+                ProyectoId = proyectoId,
+                Rol = RolDesarrollador.Apoyo,
+                FechaAsignacion = DateTime.UtcNow
+            });
+            afectados.Add(proyectoId);
+        }
+
+        if (afectados.Count > 0)
+        {
+            await _context.SaveChangesAsync();
+            await RefreshTotalMiembrosAsync(afectados);
+            await _auditService.RecordAsync(
+                GetCurrentUserId(), "Usuario.AsignarProyectos", "ApplicationUser", user.Id.ToString(),
+                despues: $"{{\"proyectos\":[{string.Join(",", seleccionados.Select(g => $"\"{g}\""))}]}}");
+        }
+
+        return Ok(new ApiResponse<object> { Success = true, Message = "Acceso a proyectos actualizado exitosamente" });
+    }
+
+    private Guid GetCurrentUserId()
+    {
+        var claim = User.FindFirst("userId")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(claim, out var id))
+            throw new UnauthorizedAccessException("No se pudo identificar al usuario autenticado");
+        return id;
+    }
+
+    private async Task RefreshTotalMiembrosAsync(IEnumerable<Guid> proyectoIds)
+    {
+        var ids = proyectoIds.ToList();
+        var conteos = await _context.ProyectoMiembros
+            .Where(pm => ids.Contains(pm.ProyectoId))
+            .GroupBy(pm => pm.ProyectoId)
+            .Select(g => new { ProyectoId = g.Key, Total = g.Count() })
+            .ToDictionaryAsync(x => x.ProyectoId, x => x.Total);
+
+        var proyectos = await _context.Proyectos.Where(p => ids.Contains(p.Id)).ToListAsync();
+        foreach (var proyecto in proyectos)
+            proyecto.TotalMiembros = conteos.TryGetValue(proyecto.Id, out var total) ? total : 0;
+
+        await _context.SaveChangesAsync();
     }
 
     private async Task<UsuarioListDto> MapListDtoAsync(ApplicationUser user)

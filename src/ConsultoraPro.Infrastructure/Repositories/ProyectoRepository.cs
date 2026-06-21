@@ -15,9 +15,9 @@ public class ProyectoRepository : IProyectoRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<Proyecto>> GetAllAsync()
+    public async Task<IEnumerable<Proyecto>> GetAllAsync(Guid? memberUserId = null)
     {
-        return await _context.Proyectos
+        var query = _context.Proyectos
             .Include(p => p.Cliente)
             .Include(p => p.TipoSolucion)
             .Include(p => p.Repositorios)
@@ -25,6 +25,14 @@ public class ProyectoRepository : IProyectoRepository
                 .ThenInclude(s => s.SubidoPor)
             .Include(p => p.ProyectoMiembros)
                 .ThenInclude(pm => pm.Usuario)
+            .AsQueryable();
+
+        if (memberUserId.HasValue)
+        {
+            query = query.Where(p => p.ProyectoMiembros.Any(pm => pm.UsuarioId == memberUserId.Value));
+        }
+
+        return await query
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
     }
@@ -104,7 +112,7 @@ public class ProyectoRepository : IProyectoRepository
         await transaction.CommitAsync();
     }
 
-    public async Task<IEnumerable<Proyecto>> GetPagedAsync(int page, int pageSize, EstadoProyecto? estado = null, Guid? clienteId = null)
+    public async Task<IEnumerable<Proyecto>> GetPagedAsync(int page, int pageSize, EstadoProyecto? estado = null, Guid? clienteId = null, Guid? memberUserId = null)
     {
         var query = _context.Proyectos
             .Include(p => p.Cliente)
@@ -122,6 +130,9 @@ public class ProyectoRepository : IProyectoRepository
         if (clienteId.HasValue)
             query = query.Where(p => p.ClienteId == clienteId.Value);
 
+        if (memberUserId.HasValue)
+            query = query.Where(p => p.ProyectoMiembros.Any(pm => pm.UsuarioId == memberUserId.Value));
+
         return await query
             .OrderByDescending(p => p.CreatedAt)
             .Skip((page - 1) * pageSize)
@@ -129,7 +140,7 @@ public class ProyectoRepository : IProyectoRepository
             .ToListAsync();
     }
 
-    public async Task<int> GetTotalCountAsync(EstadoProyecto? estado = null, Guid? clienteId = null)
+    public async Task<int> GetTotalCountAsync(EstadoProyecto? estado = null, Guid? clienteId = null, Guid? memberUserId = null)
     {
         var query = _context.Proyectos.AsQueryable();
 
@@ -138,6 +149,9 @@ public class ProyectoRepository : IProyectoRepository
 
         if (clienteId.HasValue)
             query = query.Where(p => p.ClienteId == clienteId.Value);
+
+        if (memberUserId.HasValue)
+            query = query.Where(p => p.ProyectoMiembros.Any(pm => pm.UsuarioId == memberUserId.Value));
 
         return await query.CountAsync();
     }

@@ -21,6 +21,7 @@ public class ManagementService : IManagementService
     private readonly IAlertaService _alertaService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IMapper _mapper;
+    private readonly ICurrentUserService _currentUserService;
 
     public ManagementService(
         IClienteRepository clienteRepository,
@@ -32,7 +33,8 @@ public class ManagementService : IManagementService
         IRepositorioRepository repositorioRepository,
         IAlertaService alertaService,
         UserManager<ApplicationUser> userManager,
-        IMapper mapper)
+        IMapper mapper,
+        ICurrentUserService currentUserService)
     {
         _clienteRepository = clienteRepository;
         _proyectoRepository = proyectoRepository;
@@ -44,6 +46,7 @@ public class ManagementService : IManagementService
         _alertaService = alertaService;
         _userManager = userManager;
         _mapper = mapper;
+        _currentUserService = currentUserService;
     }
 
     public async Task<ManagementSnapshotDto> GetSnapshotAsync(string? period = null)
@@ -55,15 +58,38 @@ public class ManagementService : IManagementService
             selectedDate = new DateTime(parsedDate.Year, parsedDate.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         }
 
-        var clientes = await _clienteRepository.GetAllAsync();
-        var proyectos = await _proyectoRepository.GetAllAsync();
+        // Los roles sin acceso total a proyectos (p. ej. Soporte, Dev) solo ven los datos de los
+        // proyectos donde están asignados como miembros. Se usa HasFullProjectAccess (claim del JWT)
+        // en lugar de IsInRole para mantener consistencia con ProyectoService.
+        Guid? memberUserId = null;
+        var restringidoAProyectos = !_currentUserService.HasFullProjectAccessFor("proyectos");
+        if (restringidoAProyectos)
+        {
+            memberUserId = _currentUserService.UserId;
+        }
+
+        var clientes = await _clienteRepository.GetAllAsync(memberUserId);
+        var proyectos = await _proyectoRepository.GetAllAsync(memberUserId);
         var tiposSolucion = await _tipoSolucionRepository.GetAllAsync();
         var users = await _userManager.Users.ToListAsync();
-        var credencialesPorVencer = (await _credencialRepository.GetExpiringWithinAsync(7)).ToList();
-        var ambientes = (await _ambienteRepository.GetAllAsync()).ToList();
-        var repositorios = (await _repositorioRepository.GetAllAsync()).ToList();
-        var despliegues = (await _despliegueRepository.GetRecentAsync(5, selectedDate)).ToList();
-        var (totalDesplieguesMes, exitososDesplieguesMes) = await _despliegueRepository.GetMonthlyStatsAsync(selectedDate);
+        
+        var credencialesPorVencer = !restringidoAProyectos
+            ? (await _credencialRepository.GetExpiringWithinAsync(7)).ToList()
+            : new List<Credencial>();
+
+        var ambientes = (await _ambienteRepository.GetAllAsync(null, memberUserId)).ToList();
+
+        var repositorios = !restringidoAProyectos
+            ? (await _repositorioRepository.GetAllAsync()).ToList()
+            : new List<Repositorio>();
+
+        var despliegues = !restringidoAProyectos
+            ? (await _despliegueRepository.GetRecentAsync(5, selectedDate)).ToList()
+            : (await _despliegueRepository.GetRecentAsync(5, selectedDate)).Where(d => proyectos.Any(p => p.Id == d.ProyectoId)).ToList();
+
+        var (totalDesplieguesMes, exitososDesplieguesMes) = !restringidoAProyectos
+            ? await _despliegueRepository.GetMonthlyStatsAsync(selectedDate)
+            : (0, 0);
 
         var clients = _mapper.Map<List<ManagementClientDto>>(clientes);
         var projects = _mapper.Map<List<ManagementProjectDto>>(proyectos);

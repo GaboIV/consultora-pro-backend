@@ -48,3 +48,25 @@ public class UpdateUsuarioPasswordDto
 {
     public string Password { get; set; } = string.Empty;
 }
+
+/// <summary>Proyecto del catálogo con el indicador de si el usuario tiene acceso asignado.</summary>
+public class UsuarioProyectoAccesoDto
+{
+    public Guid ProyectoId { get; set; }
+    public string Nombre { get; set; } = string.Empty;
+    public string Clave { get; set; } = string.Empty;
+    public string Cliente { get; set; } = string.Empty;
+    public bool Asignado { get; set; }
+}
+
+/// <summary>Estado del acceso a proyectos de un usuario: si su rol tiene acceso total y los proyectos del catálogo.</summary>
+public class UsuarioProyectosAccesoDto
+{
+    public bool AccesoTotal { get; set; }
+    public IReadOnlyList<UsuarioProyectoAccesoDto> Proyectos { get; set; } = Array.Empty<UsuarioProyectoAccesoDto>();
+}
+
+public class UpdateUsuarioProyectosDto
+{
+    public IReadOnlyList<Guid> ProyectoIds { get; set; } = Array.Empty<Guid>();
+}

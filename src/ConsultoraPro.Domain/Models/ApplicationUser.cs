@@ -19,5 +19,8 @@ public class ApplicationUser : IdentityUser<Guid>
     /// <summary>URL de la foto de perfil (proporcionada por Google), opcional.</summary>
     public string? AvatarUrl { get; set; }
 
+    /// <summary>Versión de los permisos del usuario. Se incrementa al cambiar de rol para invalidar JWTs emitidos.</summary>
+    public int PermVersion { get; set; }
+
     public ICollection<ProyectoMiembro> ProyectosMiembro { get; set; } = new List<ProyectoMiembro>();
 }

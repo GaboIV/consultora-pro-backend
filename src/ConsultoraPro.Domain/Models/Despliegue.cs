@@ -2,7 +2,7 @@ using ConsultoraPro.Domain.Enums;
 
 namespace ConsultoraPro.Domain.Models;
 
-public class Despliegue
+public class Despliegue : IProyectoScoped
 {
     public Guid Id { get; set; }
     public Guid ProyectoId { get; set; }

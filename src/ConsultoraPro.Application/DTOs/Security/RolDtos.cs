@@ -6,6 +6,8 @@ public class RolListDto
     public string Nombre { get; set; } = string.Empty;
     public string Descripcion { get; set; } = string.Empty;
     public bool EsActivo { get; set; }
+    public bool AccesoTotalProyectos { get; set; }
+    public bool EsSistema { get; set; }
     public int UsuariosCount { get; set; }
     public IReadOnlyList<PermisoModuloDto> Permisos { get; set; } = Array.Empty<PermisoModuloDto>();
 }
@@ -19,6 +21,7 @@ public class CreateRolDto
 {
     public string Nombre { get; set; } = string.Empty;
     public string Descripcion { get; set; } = string.Empty;
+    public bool AccesoTotalProyectos { get; set; }
 }
 
 public class UpdateRolDto
@@ -26,6 +29,7 @@ public class UpdateRolDto
     public string Nombre { get; set; } = string.Empty;
     public string Descripcion { get; set; } = string.Empty;
     public bool EsActivo { get; set; } = true;
+    public bool AccesoTotalProyectos { get; set; }
 }
 
 public class UpdateRolPermisosDto

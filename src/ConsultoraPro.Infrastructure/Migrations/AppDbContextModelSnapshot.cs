@@ -294,6 +294,11 @@ namespace ConsultoraPro.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
+                    b.Property<bool>("AccesoTotalProyectos")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("longtext");
@@ -308,6 +313,11 @@ namespace ConsultoraPro.Infrastructure.Migrations
                         .HasColumnType("tinyint(1)")
                         .HasDefaultValue(true);
 
+                    b.Property<bool>("EsSistema")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Name")
                         .HasMaxLength(256)
                         .HasColumnType("varchar(256)");
@@ -315,6 +325,11 @@ namespace ConsultoraPro.Infrastructure.Migrations
                     b.Property<string>("NormalizedName")
                         .HasMaxLength(256)
                         .HasColumnType("varchar(256)");
+
+                    b.Property<int>("PermVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.HasKey("Id");
 
@@ -397,6 +412,11 @@ namespace ConsultoraPro.Infrastructure.Migrations
 
                     b.Property<string>("PasswordHash")
                         .HasColumnType("longtext");
+
+                    b.Property<int>("PermVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("longtext");
@@ -487,6 +507,54 @@ namespace ConsultoraPro.Infrastructure.Migrations
                     b.HasIndex("CredencialId", "FechaRevelacion");
 
                     b.ToTable("AuditoriasCredenciales");
+                });
+
+            modelBuilder.Entity("ConsultoraPro.Domain.Models.AuditoriaSeguridad", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Accion")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("varchar(60)");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Antes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Despues")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Entidad")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("EntidadId")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime>("Fecha")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime(6)")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+                    b.Property<string>("Ip")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("varchar(80)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorId", "Fecha");
+
+                    b.HasIndex("Entidad", "Fecha");
+
+                    b.ToTable("AuditoriasSeguridad");
                 });
 
             modelBuilder.Entity("ConsultoraPro.Domain.Models.AzureSubscriptionTenantMapping", b =>
@@ -1122,6 +1190,54 @@ namespace ConsultoraPro.Infrastructure.Migrations
                     b.ToTable("Screenshots");
                 });
 
+            modelBuilder.Entity("ConsultoraPro.Domain.Models.SolicitudRevelacionCredencial", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid?>("AprobadorId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("CredencialId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("FechaResolucion")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("FechaSolicitud")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime(6)")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+                    b.Property<string>("Motivo")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("NotaResolucion")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<Guid>("SolicitanteId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("VigenteHasta")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AprobadorId");
+
+                    b.HasIndex("SolicitanteId");
+
+                    b.HasIndex("CredencialId", "SolicitanteId", "Estado");
+
+                    b.ToTable("SolicitudesRevelacionCredencial");
+                });
+
             modelBuilder.Entity("ConsultoraPro.Domain.Models.Tablero", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1556,6 +1672,17 @@ namespace ConsultoraPro.Infrastructure.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("ConsultoraPro.Domain.Models.AuditoriaSeguridad", b =>
+                {
+                    b.HasOne("ConsultoraPro.Domain.Models.ApplicationUser", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Actor");
+                });
+
             modelBuilder.Entity("ConsultoraPro.Domain.Models.Checklist", b =>
                 {
                     b.HasOne("ConsultoraPro.Domain.Models.Tarjeta", "Tarjeta")
@@ -1757,6 +1884,32 @@ namespace ConsultoraPro.Infrastructure.Migrations
                     b.Navigation("Proyecto");
 
                     b.Navigation("SubidoPor");
+                });
+
+            modelBuilder.Entity("ConsultoraPro.Domain.Models.SolicitudRevelacionCredencial", b =>
+                {
+                    b.HasOne("ConsultoraPro.Domain.Models.ApplicationUser", "Aprobador")
+                        .WithMany()
+                        .HasForeignKey("AprobadorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ConsultoraPro.Domain.Models.Credencial", "Credencial")
+                        .WithMany()
+                        .HasForeignKey("CredencialId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ConsultoraPro.Domain.Models.ApplicationUser", "Solicitante")
+                        .WithMany()
+                        .HasForeignKey("SolicitanteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Aprobador");
+
+                    b.Navigation("Credencial");
+
+                    b.Navigation("Solicitante");
                 });
 
             modelBuilder.Entity("ConsultoraPro.Domain.Models.Tablero", b =>

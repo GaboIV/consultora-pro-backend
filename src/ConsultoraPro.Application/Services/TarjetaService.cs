@@ -16,6 +16,8 @@ public class TarjetaService : ITarjetaService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IStorageService _storageService;
     private readonly IFileUrlResolver _urlResolver;
+    private readonly IProyectoRepository _proyectoRepository;
+    private readonly ICurrentUserService _currentUserService;
 
     public TarjetaService(
         ITarjetaRepository repository,
@@ -23,7 +25,9 @@ public class TarjetaService : ITarjetaService
         ITableroRepository tableroRepository,
         UserManager<ApplicationUser> userManager,
         IStorageService storageService,
-        IFileUrlResolver urlResolver)
+        IFileUrlResolver urlResolver,
+        IProyectoRepository proyectoRepository,
+        ICurrentUserService currentUserService)
     {
         _repository = repository;
         _columnaRepository = columnaRepository;
@@ -31,6 +35,8 @@ public class TarjetaService : ITarjetaService
         _userManager = userManager;
         _storageService = storageService;
         _urlResolver = urlResolver;
+        _proyectoRepository = proyectoRepository;
+        _currentUserService = currentUserService;
     }
 
     public async Task<TarjetaDetalleDto?> GetByIdAsync(Guid id)
@@ -38,6 +44,13 @@ public class TarjetaService : ITarjetaService
         var tarjeta = await _repository.GetDetalleAsync(id);
         if (tarjeta is null || !tarjeta.Activo)
             return null;
+
+        if (!_currentUserService.HasFullProjectAccessFor("proyectos") && tarjeta.Tablero.ProyectoId.HasValue)
+        {
+            var proyecto = await _proyectoRepository.GetByIdAsync(tarjeta.Tablero.ProyectoId.Value);
+            var isMember = proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
+            if (!isMember) return null;
+        }
 
         var dto = KanbanMappers.ToDetalleDto(tarjeta);
         // Las keys de almacenamiento se firman (SAS) en lectura: adjuntos, portada e imágenes inline.
@@ -58,6 +71,8 @@ public class TarjetaService : ITarjetaService
             throw new KeyNotFoundException($"Columna con ID {dto.ColumnaId} no encontrada");
         if (columna.Tablero is null || !columna.Tablero.Activo)
             throw new KeyNotFoundException("El tablero asociado no está disponible");
+
+        await ValidateTableroAccessAsync(columna.TableroId);
 
         var existentes = await _repository.GetActiveByColumnaAsync(dto.ColumnaId);
         var orden = (existentes.LastOrDefault()?.Orden ?? 0d) + FractionalOrder.Step;
@@ -127,6 +142,7 @@ public class TarjetaService : ITarjetaService
     public async Task UpdateAsync(Guid id, UpdateTarjetaDto dto, Guid usuarioId)
     {
         var tarjeta = await GetActiveTarjetaAsync(id);
+        await ValidateTableroAccessAsync(tarjeta.TableroId);
 
         var antesCompletada = tarjeta.Completada;
 
@@ -148,6 +164,7 @@ public class TarjetaService : ITarjetaService
     public async Task MoverAsync(Guid id, MoverTarjetaDto dto, Guid usuarioId)
     {
         var tarjeta = await GetActiveTarjetaAsync(id);
+        await ValidateTableroAccessAsync(tarjeta.TableroId);
 
         var destino = await _columnaRepository.GetByIdAsync(dto.ColumnaDestinoId);
         if (destino is null || !destino.Activo)
@@ -181,6 +198,7 @@ public class TarjetaService : ITarjetaService
     public async Task DeleteAsync(Guid id, Guid usuarioId)
     {
         var tarjeta = await GetActiveTarjetaAsync(id);
+        await ValidateTableroAccessAsync(tarjeta.TableroId);
         tarjeta.Activo = false;
         await _repository.UpdateAsync(tarjeta);
         await LogAsync(id, usuarioId, TipoActividadTarjeta.Archivada);
@@ -191,6 +209,8 @@ public class TarjetaService : ITarjetaService
         var tarjeta = await _repository.GetWithResponsablesAsync(id);
         if (tarjeta is null || !tarjeta.Activo)
             throw new KeyNotFoundException($"Tarjeta con ID {id} no encontrada");
+
+        await ValidateTableroAccessAsync(tarjeta.TableroId);
 
         var deseados = dto.UsuarioIds.Distinct().ToList();
 
@@ -227,6 +247,8 @@ public class TarjetaService : ITarjetaService
         var tarjeta = await _repository.GetWithEtiquetasAsync(id);
         if (tarjeta is null || !tarjeta.Activo)
             throw new KeyNotFoundException($"Tarjeta con ID {id} no encontrada");
+
+        await ValidateTableroAccessAsync(tarjeta.TableroId);
 
         var deseadas = dto.EtiquetaIds.Distinct().ToList();
 
@@ -266,6 +288,8 @@ public class TarjetaService : ITarjetaService
         if (tarjeta is null || !tarjeta.Activo)
             throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
 
+        await ValidateTableroAccessAsync(tarjeta.TableroId);
+
         var maxOrden = tarjeta.Checklists.Count == 0 ? 0d : tarjeta.Checklists.Max(c => c.Orden);
         var checklist = new Checklist
         {
@@ -286,6 +310,8 @@ public class TarjetaService : ITarjetaService
         if (tarjeta is null || !tarjeta.Activo)
             throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
 
+        await ValidateTableroAccessAsync(tarjeta.TableroId);
+
         var checklist = GetChecklistOrThrow(tarjeta, checklistId);
         checklist.Nombre = dto.Nombre.Trim();
 
@@ -299,6 +325,8 @@ public class TarjetaService : ITarjetaService
         if (tarjeta is null || !tarjeta.Activo)
             throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
 
+        await ValidateTableroAccessAsync(tarjeta.TableroId);
+
         var checklist = GetChecklistOrThrow(tarjeta, checklistId);
         tarjeta.Checklists.Remove(checklist);
         await _repository.UpdateAsync(tarjeta);
@@ -309,6 +337,8 @@ public class TarjetaService : ITarjetaService
         var tarjeta = await _repository.GetWithChecklistAsync(tarjetaId);
         if (tarjeta is null || !tarjeta.Activo)
             throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
+
+        await ValidateTableroAccessAsync(tarjeta.TableroId);
 
         var checklist = GetChecklistOrThrow(tarjeta, checklistId);
 
@@ -333,6 +363,8 @@ public class TarjetaService : ITarjetaService
         if (tarjeta is null || !tarjeta.Activo)
             throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
 
+        await ValidateTableroAccessAsync(tarjeta.TableroId);
+
         var checklist = GetChecklistOrThrow(tarjeta, checklistId);
         var item = checklist.Items.FirstOrDefault(c => c.Id == itemId)
             ?? throw new KeyNotFoundException($"Ítem de checklist con ID {itemId} no encontrado");
@@ -352,6 +384,8 @@ public class TarjetaService : ITarjetaService
         if (tarjeta is null || !tarjeta.Activo)
             throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
 
+        await ValidateTableroAccessAsync(tarjeta.TableroId);
+
         var checklist = GetChecklistOrThrow(tarjeta, checklistId);
         var item = checklist.Items.FirstOrDefault(c => c.Id == itemId)
             ?? throw new KeyNotFoundException($"Ítem de checklist con ID {itemId} no encontrado");
@@ -369,6 +403,8 @@ public class TarjetaService : ITarjetaService
         var tarjeta = await _repository.GetWithComentariosAsync(tarjetaId);
         if (tarjeta is null || !tarjeta.Activo)
             throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
+
+        await ValidateTableroAccessAsync(tarjeta.TableroId);
 
         var autor = await _userManager.FindByIdAsync(usuarioId.ToString())
             ?? throw new KeyNotFoundException("Usuario autor no encontrado");
@@ -414,6 +450,8 @@ public class TarjetaService : ITarjetaService
         if (tarjeta is null || !tarjeta.Activo)
             throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
 
+        await ValidateTableroAccessAsync(tarjeta.TableroId);
+
         var comentario = tarjeta.Comentarios.FirstOrDefault(c => c.Id == comentarioId)
             ?? throw new KeyNotFoundException($"Comentario con ID {comentarioId} no encontrado");
 
@@ -449,6 +487,8 @@ public class TarjetaService : ITarjetaService
         if (tarjeta is null || !tarjeta.Activo)
             throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
 
+        await ValidateTableroAccessAsync(tarjeta.TableroId);
+
         var comentario = tarjeta.Comentarios.FirstOrDefault(c => c.Id == comentarioId)
             ?? throw new KeyNotFoundException($"Comentario con ID {comentarioId} no encontrado");
 
@@ -461,6 +501,8 @@ public class TarjetaService : ITarjetaService
         var tarjeta = await _repository.GetWithAdjuntosAsync(tarjetaId);
         if (tarjeta is null || !tarjeta.Activo)
             throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
+
+        await ValidateTableroAccessAsync(tarjeta.TableroId);
 
         var usuario = await _userManager.FindByIdAsync(usuarioId.ToString());
 
@@ -498,6 +540,8 @@ public class TarjetaService : ITarjetaService
         if (tarjeta is null || !tarjeta.Activo)
             throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
 
+        await ValidateTableroAccessAsync(tarjeta.TableroId);
+
         var adjunto = tarjeta.Adjuntos.FirstOrDefault(a => a.Id == adjuntoId)
             ?? throw new KeyNotFoundException($"Adjunto con ID {adjuntoId} no encontrado");
 
@@ -508,6 +552,12 @@ public class TarjetaService : ITarjetaService
 
     public async Task<IEnumerable<ActividadDto>> GetActividadAsync(Guid tarjetaId)
     {
+        var tarjeta = await _repository.GetByIdAsync(tarjetaId);
+        if (tarjeta is null || !tarjeta.Activo)
+            throw new KeyNotFoundException($"Tarjeta con ID {tarjetaId} no encontrada");
+
+        await ValidateTableroAccessAsync(tarjeta.TableroId);
+
         var actividades = await _repository.GetActividadAsync(tarjetaId);
         return actividades.Select(KanbanMappers.ToDto).ToList();
     }
@@ -544,6 +594,21 @@ public class TarjetaService : ITarjetaService
             Tipo = tipo,
             Detalle = detalle
         });
+    }
+
+    private async Task ValidateTableroAccessAsync(Guid tableroId)
+    {
+        if (!_currentUserService.HasFullProjectAccessFor("proyectos"))
+        {
+            var tablero = await _tableroRepository.GetByIdAsync(tableroId);
+            if (tablero?.ProyectoId.HasValue == true)
+            {
+                var proyecto = await _proyectoRepository.GetByIdAsync(tablero.ProyectoId.Value);
+                var isMember = proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
+                if (!isMember)
+                    throw new UnauthorizedAccessException("No tienes acceso a este proyecto.");
+            }
+        }
     }
 
     private static DateTime? ToUtc(DateTime? value)

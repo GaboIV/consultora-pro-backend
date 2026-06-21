@@ -30,6 +30,7 @@ public class ScreenshotsController : ControllerBase
     private readonly IFileUrlResolver _urlResolver;
     private readonly StorageOptions _storage;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
 
     public ScreenshotsController(
@@ -39,6 +40,7 @@ public class ScreenshotsController : ControllerBase
         IFileUrlResolver urlResolver,
         IOptions<StorageOptions> storageOptions,
         UserManager<ApplicationUser> userManager,
+        ICurrentUserService currentUserService,
         IMapper mapper)
     {
         _screenshotRepository = screenshotRepository;
@@ -47,12 +49,22 @@ public class ScreenshotsController : ControllerBase
         _urlResolver = urlResolver;
         _storage = storageOptions.Value;
         _userManager = userManager;
+        _currentUserService = currentUserService;
         _mapper = mapper;
     }
 
     [HttpGet("proyecto/{proyectoId}")]
+    [Authorize(Policy = "screenshots.ver")]
     public async Task<ActionResult<ApiResponse<IEnumerable<ScreenshotDto>>>> GetByProyecto(Guid proyectoId)
     {
+        if (!_currentUserService.HasFullProjectAccessFor("proyectos"))
+        {
+            var proyecto = await _proyectoRepository.GetByIdAsync(proyectoId);
+            var isMember = proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == GetUserId()) ?? false;
+            if (!isMember)
+                return Forbid();
+        }
+
         var screenshots = await _screenshotRepository.GetByProyectoIdAsync(proyectoId);
         var dtos = _mapper.Map<List<ScreenshotDto>>(screenshots);
         // Url lleva la StorageKey desde el mapper: se firma (SAS) en lectura.
@@ -62,6 +74,7 @@ public class ScreenshotsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "screenshots.editar")]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<ApiResponse<ScreenshotDto>>> Upload(
         [FromForm] Guid proyectoId,
@@ -96,6 +109,12 @@ public class ScreenshotsController : ControllerBase
         }
 
         var userId = GetUserId();
+        if (!_currentUserService.HasFullProjectAccessFor("proyectos"))
+        {
+            var isMember = proyecto.ProyectoMiembros.Any(pm => pm.UsuarioId == userId);
+            if (!isMember)
+                return Forbid();
+        }
         var user = await _userManager.FindByIdAsync(userId.ToString());
         if (user == null)
         {
@@ -132,12 +151,21 @@ public class ScreenshotsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Policy = "screenshots.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(Guid id)
     {
         var screenshot = await _screenshotRepository.GetByIdAsync(id);
         if (screenshot == null)
         {
             return NotFound(new ApiResponse<object> { Success = false, Message = "Screenshot no encontrada" });
+        }
+
+        if (!_currentUserService.HasFullProjectAccessFor("proyectos"))
+        {
+            var proyecto = await _proyectoRepository.GetByIdAsync(screenshot.ProyectoId);
+            var isMember = proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == GetUserId()) ?? false;
+            if (!isMember)
+                return Forbid();
         }
 
         // Delete physical file

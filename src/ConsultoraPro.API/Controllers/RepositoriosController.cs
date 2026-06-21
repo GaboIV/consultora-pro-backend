@@ -18,7 +18,7 @@ public class RepositoriosController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Policy = "proyectos.ver")]
+    [Authorize(Policy = "repositorios.ver")]
     public async Task<ActionResult<ApiResponse<IEnumerable<RepositorioDto>>>> GetAll([FromQuery] Guid? proyectoId)
     {
         var data = await _repositorioService.GetAllAsync(proyectoId);
@@ -26,7 +26,7 @@ public class RepositoriosController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    [Authorize(Policy = "proyectos.ver")]
+    [Authorize(Policy = "repositorios.ver")]
     public async Task<ActionResult<ApiResponse<RepositorioDto>>> GetById(Guid id)
     {
         var data = await _repositorioService.GetByIdAsync(id);
@@ -37,7 +37,7 @@ public class RepositoriosController : ControllerBase
     }
 
     [HttpGet("proyecto/{proyectoId}")]
-    [Authorize(Policy = "proyectos.ver")]
+    [Authorize(Policy = "repositorios.ver")]
     public async Task<ActionResult<ApiResponse<IEnumerable<RepositorioDto>>>> GetByProject(Guid proyectoId)
     {
         var data = await _repositorioService.GetAllAsync(proyectoId);
@@ -45,7 +45,7 @@ public class RepositoriosController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = "proyectos.editar")]
+    [Authorize(Policy = "repositorios.editar")]
     public async Task<ActionResult<ApiResponse<RepositorioDto>>> Create([FromBody] CreateRepositorioDto dto)
     {
         var data = await _repositorioService.CreateAsync(dto);
@@ -58,7 +58,7 @@ public class RepositoriosController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Policy = "proyectos.editar")]
+    [Authorize(Policy = "repositorios.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Update(Guid id, [FromBody] UpdateRepositorioDto dto)
     {
         await _repositorioService.UpdateAsync(id, dto);
@@ -66,7 +66,7 @@ public class RepositoriosController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Policy = "proyectos.editar")]
+    [Authorize(Policy = "repositorios.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(Guid id)
     {
         await _repositorioService.DeleteAsync(id);

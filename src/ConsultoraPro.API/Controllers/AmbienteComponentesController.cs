@@ -11,16 +11,21 @@ namespace ConsultoraPro.API.Controllers;
 public class AmbienteComponentesController : ControllerBase
 {
     private readonly IAmbienteComponenteService _service;
+    private readonly ICurrentUserService _currentUserService;
 
-    public AmbienteComponentesController(IAmbienteComponenteService service)
+    public AmbienteComponentesController(IAmbienteComponenteService service, ICurrentUserService currentUserService)
     {
         _service = service;
+        _currentUserService = currentUserService;
     }
 
     [HttpGet]
     [Authorize(Policy = "ambientes.ver")]
     public async Task<ActionResult<ApiResponse<IEnumerable<AmbienteComponenteDto>>>> GetAll(Guid ambienteId)
     {
+        if (!_currentUserService.HasFullProjectAccess)
+            return Forbid();
+
         var data = await _service.GetByAmbienteAsync(ambienteId);
         return Ok(new ApiResponse<IEnumerable<AmbienteComponenteDto>> { Success = true, Data = data });
     }
@@ -29,6 +34,9 @@ public class AmbienteComponentesController : ControllerBase
     [Authorize(Policy = "ambientes.ver")]
     public async Task<ActionResult<ApiResponse<AmbienteComponenteDto>>> GetById(Guid ambienteId, Guid id)
     {
+        if (!_currentUserService.HasFullProjectAccess)
+            return Forbid();
+
         var data = await _service.GetByIdAsync(id);
         if (data is null)
             return NotFound(new ApiResponse<AmbienteComponenteDto> { Success = false, Message = $"Componente con ID {id} no encontrado" });
@@ -40,6 +48,9 @@ public class AmbienteComponentesController : ControllerBase
     [Authorize(Policy = "ambientes.editar")]
     public async Task<ActionResult<ApiResponse<AmbienteComponenteDto>>> Create(Guid ambienteId, [FromBody] CreateAmbienteComponenteDto dto)
     {
+        if (!_currentUserService.HasFullProjectAccess)
+            return Forbid();
+
         dto.AmbienteId = ambienteId;
         var data = await _service.CreateAsync(dto);
         return CreatedAtAction(nameof(GetById), new { ambienteId, id = data.Id }, new ApiResponse<AmbienteComponenteDto>
@@ -54,6 +65,9 @@ public class AmbienteComponentesController : ControllerBase
     [Authorize(Policy = "ambientes.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Update(Guid ambienteId, Guid id, [FromBody] UpdateAmbienteComponenteDto dto)
     {
+        if (!_currentUserService.HasFullProjectAccess)
+            return Forbid();
+
         await _service.UpdateAsync(id, dto);
         return Ok(new ApiResponse<object> { Success = true, Message = "Componente actualizado exitosamente" });
     }
@@ -62,6 +76,9 @@ public class AmbienteComponentesController : ControllerBase
     [Authorize(Policy = "ambientes.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(Guid ambienteId, Guid id)
     {
+        if (!_currentUserService.HasFullProjectAccess)
+            return Forbid();
+
         await _service.DeleteAsync(id);
         return Ok(new ApiResponse<object> { Success = true, Message = "Componente desactivado exitosamente" });
     }
