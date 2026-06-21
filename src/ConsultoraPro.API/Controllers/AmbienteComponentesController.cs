@@ -1,7 +1,6 @@
 using ConsultoraPro.Application.DTOs.AmbienteComponentes;
 using ConsultoraPro.Application.DTOs.Common;
 using ConsultoraPro.Application.Interfaces;
-using ConsultoraPro.Domain.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,17 +11,19 @@ namespace ConsultoraPro.API.Controllers;
 public class AmbienteComponentesController : ControllerBase
 {
     private readonly IAmbienteComponenteService _service;
+    private readonly ICurrentUserService _currentUserService;
 
-    public AmbienteComponentesController(IAmbienteComponenteService service)
+    public AmbienteComponentesController(IAmbienteComponenteService service, ICurrentUserService currentUserService)
     {
         _service = service;
+        _currentUserService = currentUserService;
     }
 
     [HttpGet]
     [Authorize(Policy = "ambientes.ver")]
     public async Task<ActionResult<ApiResponse<IEnumerable<AmbienteComponenteDto>>>> GetAll(Guid ambienteId)
     {
-        if (User.IsInRole(PermissionCatalog.Soporte))
+        if (!_currentUserService.HasFullProjectAccess)
             return Forbid();
 
         var data = await _service.GetByAmbienteAsync(ambienteId);
@@ -33,7 +34,7 @@ public class AmbienteComponentesController : ControllerBase
     [Authorize(Policy = "ambientes.ver")]
     public async Task<ActionResult<ApiResponse<AmbienteComponenteDto>>> GetById(Guid ambienteId, Guid id)
     {
-        if (User.IsInRole(PermissionCatalog.Soporte))
+        if (!_currentUserService.HasFullProjectAccess)
             return Forbid();
 
         var data = await _service.GetByIdAsync(id);
@@ -47,7 +48,7 @@ public class AmbienteComponentesController : ControllerBase
     [Authorize(Policy = "ambientes.editar")]
     public async Task<ActionResult<ApiResponse<AmbienteComponenteDto>>> Create(Guid ambienteId, [FromBody] CreateAmbienteComponenteDto dto)
     {
-        if (User.IsInRole(PermissionCatalog.Soporte))
+        if (!_currentUserService.HasFullProjectAccess)
             return Forbid();
 
         dto.AmbienteId = ambienteId;
@@ -64,7 +65,7 @@ public class AmbienteComponentesController : ControllerBase
     [Authorize(Policy = "ambientes.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Update(Guid ambienteId, Guid id, [FromBody] UpdateAmbienteComponenteDto dto)
     {
-        if (User.IsInRole(PermissionCatalog.Soporte))
+        if (!_currentUserService.HasFullProjectAccess)
             return Forbid();
 
         await _service.UpdateAsync(id, dto);
@@ -75,7 +76,7 @@ public class AmbienteComponentesController : ControllerBase
     [Authorize(Policy = "ambientes.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(Guid ambienteId, Guid id)
     {
-        if (User.IsInRole(PermissionCatalog.Soporte))
+        if (!_currentUserService.HasFullProjectAccess)
             return Forbid();
 
         await _service.DeleteAsync(id);

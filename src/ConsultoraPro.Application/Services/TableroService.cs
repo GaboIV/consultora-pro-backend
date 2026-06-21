@@ -34,7 +34,7 @@ public class TableroService : ITableroService
 
     public async Task<IEnumerable<TableroDto>> GetByProyectoAsync(Guid proyectoId)
     {
-        if (_currentUserService.IsInRole("Soporte"))
+        if (!_currentUserService.HasFullProjectAccess)
         {
             var proyecto = await _proyectoRepository.GetByIdAsync(proyectoId);
             var isMember = proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
@@ -57,7 +57,7 @@ public class TableroService : ITableroService
         if (tablero is null || !tablero.Activo)
             return null;
 
-        if (_currentUserService.IsInRole("Soporte") && tablero.ProyectoId.HasValue)
+        if (!_currentUserService.HasFullProjectAccess && tablero.ProyectoId.HasValue)
         {
             var isMember = tablero.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
             if (!isMember) return null;
@@ -118,7 +118,7 @@ public class TableroService : ITableroService
         }
 
         // Tablero de proyecto.
-        if (_currentUserService.IsInRole("Soporte"))
+        if (!_currentUserService.HasFullProjectAccess)
         {
             var p = await _proyectoRepository.GetByIdAsync(dto.ProyectoId!.Value);
             var isMember = p?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
@@ -184,7 +184,7 @@ public class TableroService : ITableroService
     {
         var tablero = await GetActiveTableroAsync(id);
 
-        if (_currentUserService.IsInRole("Soporte") && tablero.ProyectoId.HasValue)
+        if (!_currentUserService.HasFullProjectAccess && tablero.ProyectoId.HasValue)
         {
             var isMember = tablero.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
             if (!isMember) throw new UnauthorizedAccessException("No tienes acceso a este tablero.");
@@ -206,7 +206,7 @@ public class TableroService : ITableroService
     {
         var tablero = await GetActiveTableroAsync(id);
 
-        if (_currentUserService.IsInRole("Soporte") && tablero.ProyectoId.HasValue)
+        if (!_currentUserService.HasFullProjectAccess && tablero.ProyectoId.HasValue)
         {
             var isMember = tablero.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
             if (!isMember) throw new UnauthorizedAccessException("No tienes acceso a este tablero.");
