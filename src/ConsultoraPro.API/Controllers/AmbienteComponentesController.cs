@@ -1,6 +1,7 @@
 using ConsultoraPro.Application.DTOs.AmbienteComponentes;
 using ConsultoraPro.Application.DTOs.Common;
 using ConsultoraPro.Application.Interfaces;
+using ConsultoraPro.Domain.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,6 +22,9 @@ public class AmbienteComponentesController : ControllerBase
     [Authorize(Policy = "ambientes.ver")]
     public async Task<ActionResult<ApiResponse<IEnumerable<AmbienteComponenteDto>>>> GetAll(Guid ambienteId)
     {
+        if (User.IsInRole(PermissionCatalog.Soporte))
+            return Forbid();
+
         var data = await _service.GetByAmbienteAsync(ambienteId);
         return Ok(new ApiResponse<IEnumerable<AmbienteComponenteDto>> { Success = true, Data = data });
     }
@@ -29,6 +33,9 @@ public class AmbienteComponentesController : ControllerBase
     [Authorize(Policy = "ambientes.ver")]
     public async Task<ActionResult<ApiResponse<AmbienteComponenteDto>>> GetById(Guid ambienteId, Guid id)
     {
+        if (User.IsInRole(PermissionCatalog.Soporte))
+            return Forbid();
+
         var data = await _service.GetByIdAsync(id);
         if (data is null)
             return NotFound(new ApiResponse<AmbienteComponenteDto> { Success = false, Message = $"Componente con ID {id} no encontrado" });
@@ -40,6 +47,9 @@ public class AmbienteComponentesController : ControllerBase
     [Authorize(Policy = "ambientes.editar")]
     public async Task<ActionResult<ApiResponse<AmbienteComponenteDto>>> Create(Guid ambienteId, [FromBody] CreateAmbienteComponenteDto dto)
     {
+        if (User.IsInRole(PermissionCatalog.Soporte))
+            return Forbid();
+
         dto.AmbienteId = ambienteId;
         var data = await _service.CreateAsync(dto);
         return CreatedAtAction(nameof(GetById), new { ambienteId, id = data.Id }, new ApiResponse<AmbienteComponenteDto>
@@ -54,6 +64,9 @@ public class AmbienteComponentesController : ControllerBase
     [Authorize(Policy = "ambientes.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Update(Guid ambienteId, Guid id, [FromBody] UpdateAmbienteComponenteDto dto)
     {
+        if (User.IsInRole(PermissionCatalog.Soporte))
+            return Forbid();
+
         await _service.UpdateAsync(id, dto);
         return Ok(new ApiResponse<object> { Success = true, Message = "Componente actualizado exitosamente" });
     }
@@ -62,6 +75,9 @@ public class AmbienteComponentesController : ControllerBase
     [Authorize(Policy = "ambientes.editar")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(Guid ambienteId, Guid id)
     {
+        if (User.IsInRole(PermissionCatalog.Soporte))
+            return Forbid();
+
         await _service.DeleteAsync(id);
         return Ok(new ApiResponse<object> { Success = true, Message = "Componente desactivado exitosamente" });
     }

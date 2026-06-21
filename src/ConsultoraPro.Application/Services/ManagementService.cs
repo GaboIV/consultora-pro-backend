@@ -21,6 +21,7 @@ public class ManagementService : IManagementService
     private readonly IAlertaService _alertaService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IMapper _mapper;
+    private readonly ICurrentUserService _currentUserService;
 
     public ManagementService(
         IClienteRepository clienteRepository,
@@ -32,7 +33,8 @@ public class ManagementService : IManagementService
         IRepositorioRepository repositorioRepository,
         IAlertaService alertaService,
         UserManager<ApplicationUser> userManager,
-        IMapper mapper)
+        IMapper mapper,
+        ICurrentUserService currentUserService)
     {
         _clienteRepository = clienteRepository;
         _proyectoRepository = proyectoRepository;
@@ -44,6 +46,7 @@ public class ManagementService : IManagementService
         _alertaService = alertaService;
         _userManager = userManager;
         _mapper = mapper;
+        _currentUserService = currentUserService;
     }
 
     public async Task<ManagementSnapshotDto> GetSnapshotAsync(string? period = null)
@@ -55,15 +58,60 @@ public class ManagementService : IManagementService
             selectedDate = new DateTime(parsedDate.Year, parsedDate.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         }
 
-        var clientes = await _clienteRepository.GetAllAsync();
-        var proyectos = await _proyectoRepository.GetAllAsync();
+        Guid? memberUserId = null;
+        var isSupport = _currentUserService.IsInRole("Soporte");
+        var isDev = _currentUserService.IsInRole("Dev");
+        var isDevOrSupport = isSupport || isDev;
+
+        if (isDevOrSupport)
+        {
+            memberUserId = _currentUserService.UserId;
+        }
+
+        var clientes = await _clienteRepository.GetAllAsync(memberUserId);
+        var proyectos = await _proyectoRepository.GetAllAsync(memberUserId);
         var tiposSolucion = await _tipoSolucionRepository.GetAllAsync();
         var users = await _userManager.Users.ToListAsync();
-        var credencialesPorVencer = (await _credencialRepository.GetExpiringWithinAsync(7)).ToList();
-        var ambientes = (await _ambienteRepository.GetAllAsync()).ToList();
-        var repositorios = (await _repositorioRepository.GetAllAsync()).ToList();
-        var despliegues = (await _despliegueRepository.GetRecentAsync(5, selectedDate)).ToList();
-        var (totalDesplieguesMes, exitososDesplieguesMes) = await _despliegueRepository.GetMonthlyStatsAsync(selectedDate);
+        
+        var credencialesPorVencer = new List<Credencial>();
+        if (!isSupport)
+        {
+            var allCreds = await _credencialRepository.GetExpiringWithinAsync(7);
+            credencialesPorVencer = isDev
+                ? allCreds.Where(c => proyectos.Any(p => p.Id == c.ProyectoId)).ToList()
+                : allCreds.ToList();
+        }
+            
+        var ambientes = (await _ambienteRepository.GetAllAsync(null, memberUserId)).ToList();
+        
+        var repositorios = new List<Repositorio>();
+        if (!isSupport)
+        {
+            var allRepos = await _repositorioRepository.GetAllAsync();
+            repositorios = isDev
+                ? allRepos.Where(r => proyectos.Any(p => p.Id == r.ProyectoId)).ToList()
+                : allRepos.ToList();
+        }
+            
+        var despliegues = !isDevOrSupport
+            ? (await _despliegueRepository.GetRecentAsync(5, selectedDate)).ToList()
+            : (await _despliegueRepository.GetRecentAsync(5, selectedDate)).Where(d => proyectos.Any(p => p.Id == d.ProyectoId)).ToList();
+            
+        int totalDesplieguesMes = 0;
+        int exitososDesplieguesMes = 0;
+        if (!isDevOrSupport)
+        {
+            var stats = await _despliegueRepository.GetMonthlyStatsAsync(selectedDate);
+            totalDesplieguesMes = stats.total;
+            exitososDesplieguesMes = stats.exitosos;
+        }
+        else if (isDev)
+        {
+            var monthlyDeps = await _despliegueRepository.GetRecentAsync(1000, selectedDate);
+            var filteredMonthlyDeps = monthlyDeps.Where(d => proyectos.Any(p => p.Id == d.ProyectoId)).ToList();
+            totalDesplieguesMes = filteredMonthlyDeps.Count;
+            exitososDesplieguesMes = filteredMonthlyDeps.Count(d => d.Estado == EstadoDespliegue.Exitoso);
+        }
 
         var clients = _mapper.Map<List<ManagementClientDto>>(clientes);
         var projects = _mapper.Map<List<ManagementProjectDto>>(proyectos);

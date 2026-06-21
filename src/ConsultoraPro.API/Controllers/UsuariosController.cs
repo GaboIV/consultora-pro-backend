@@ -83,6 +83,11 @@ public class UsuariosController : ControllerBase
         var permisos = role is null ? Array.Empty<string>() : await GetGrantedPermissionKeysAsync(role.Id);
         var list = await MapListDtoAsync(user);
 
+        var proyectosIds = await _context.ProyectoMiembros
+            .Where(pm => pm.UsuarioId == id)
+            .Select(pm => pm.ProyectoId)
+            .ToListAsync();
+
         return Ok(new ApiResponse<UsuarioDetalleDto>
         {
             Success = true,
@@ -100,7 +105,8 @@ public class UsuariosController : ControllerBase
                 Activo = list.Activo,
                 FechaAlta = list.FechaAlta,
                 UltimoAcceso = list.UltimoAcceso,
-                Permisos = permisos
+                Permisos = permisos,
+                ProyectosIds = proyectosIds
             }
         });
     }
@@ -146,6 +152,24 @@ public class UsuariosController : ControllerBase
         var roleResult = await _userManager.AddToRoleAsync(user, role.Name!);
         if (!roleResult.Succeeded)
             return BadRequest(ToErrorResponse(roleResult, "No se pudo asignar el rol"));
+
+        // Sync project memberships if role is Dev or Soporte
+        if ((string.Equals(role.Name, PermissionCatalog.Dev, StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(role.Name, PermissionCatalog.Soporte, StringComparison.OrdinalIgnoreCase)) &&
+            dto.ProyectosIds != null)
+        {
+            foreach (var projId in dto.ProyectosIds)
+            {
+                _context.ProyectoMiembros.Add(new ProyectoMiembro
+                {
+                    Id = Guid.NewGuid(),
+                    UsuarioId = user.Id,
+                    ProyectoId = projId,
+                    Rol = ConsultoraPro.Domain.Enums.RolDesarrollador.Apoyo
+                });
+            }
+            await _context.SaveChangesAsync();
+        }
 
         var data = await MapListDtoAsync(user);
         return CreatedAtAction(nameof(GetById), new { id = user.Id }, new ApiResponse<UsuarioListDto>
@@ -205,6 +229,48 @@ public class UsuariosController : ControllerBase
         var addResult = await _userManager.AddToRoleAsync(user, role.Name!);
         if (!addResult.Succeeded)
             return BadRequest(ToErrorResponse(addResult, "No se pudo asignar el rol"));
+
+        // Sync project memberships if role is Dev or Soporte
+        if (string.Equals(role.Name, PermissionCatalog.Dev, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(role.Name, PermissionCatalog.Soporte, StringComparison.OrdinalIgnoreCase))
+        {
+            var targetProyectos = dto.ProyectosIds ?? new List<Guid>();
+            var existingMemberships = await _context.ProyectoMiembros
+                .Where(pm => pm.UsuarioId == user.Id)
+                .ToListAsync();
+
+            var toRemove = existingMemberships
+                .Where(pm => !targetProyectos.Contains(pm.ProyectoId))
+                .ToList();
+            if (toRemove.Count > 0)
+                _context.ProyectoMiembros.RemoveRange(toRemove);
+
+            var existingProjIds = existingMemberships.Select(pm => pm.ProyectoId).ToHashSet();
+            var toAdd = targetProyectos.Where(pid => !existingProjIds.Contains(pid)).ToList();
+            foreach (var projId in toAdd)
+            {
+                _context.ProyectoMiembros.Add(new ProyectoMiembro
+                {
+                    Id = Guid.NewGuid(),
+                    UsuarioId = user.Id,
+                    ProyectoId = projId,
+                    Rol = ConsultoraPro.Domain.Enums.RolDesarrollador.Apoyo
+                });
+            }
+            await _context.SaveChangesAsync();
+        }
+        else
+        {
+            // Clear project memberships for non-restricted users (Gerencia, LT, Arquitecto)
+            var existingMemberships = await _context.ProyectoMiembros
+                .Where(pm => pm.UsuarioId == user.Id)
+                .ToListAsync();
+            if (existingMemberships.Count > 0)
+            {
+                _context.ProyectoMiembros.RemoveRange(existingMemberships);
+                await _context.SaveChangesAsync();
+            }
+        }
 
         return Ok(new ApiResponse<object> { Success = true, Message = "Usuario actualizado exitosamente" });
     }

@@ -16,21 +16,31 @@ public class TableroService : ITableroService
     private readonly IProyectoRepository _proyectoRepository;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IFileUrlResolver _urlResolver;
+    private readonly ICurrentUserService _currentUserService;
 
     public TableroService(
         ITableroRepository repository,
         IProyectoRepository proyectoRepository,
         UserManager<ApplicationUser> userManager,
-        IFileUrlResolver urlResolver)
+        IFileUrlResolver urlResolver,
+        ICurrentUserService currentUserService)
     {
         _repository = repository;
         _proyectoRepository = proyectoRepository;
         _userManager = userManager;
         _urlResolver = urlResolver;
+        _currentUserService = currentUserService;
     }
 
     public async Task<IEnumerable<TableroDto>> GetByProyectoAsync(Guid proyectoId)
     {
+        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        {
+            var proyecto = await _proyectoRepository.GetByIdAsync(proyectoId);
+            var isMember = proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
+            if (!isMember) return [];
+        }
+
         var tableros = await _repository.GetByProyectoAsync(proyectoId);
         return tableros.Select(KanbanMappers.ToDto);
     }
@@ -46,6 +56,12 @@ public class TableroService : ITableroService
         var tablero = await _repository.GetDetalleAsync(id);
         if (tablero is null || !tablero.Activo)
             return null;
+
+        if ((_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev")) && tablero.ProyectoId.HasValue)
+        {
+            var isMember = tablero.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
+            if (!isMember) return null;
+        }
 
         var dto = KanbanMappers.ToDetalleDto(tablero);
         // Firmar (SAS) las portadas y resolver imágenes inline de las descripciones de cada tarjeta.
@@ -102,6 +118,13 @@ public class TableroService : ITableroService
         }
 
         // Tablero de proyecto.
+        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        {
+            var p = await _proyectoRepository.GetByIdAsync(dto.ProyectoId!.Value);
+            var isMember = p?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
+            if (!isMember) throw new UnauthorizedAccessException("No tienes acceso a este proyecto.");
+        }
+
         var proyecto = await _proyectoRepository.GetByIdAsync(dto.ProyectoId!.Value)
             ?? throw new KeyNotFoundException($"Proyecto con ID {dto.ProyectoId} no encontrado");
 
@@ -161,6 +184,12 @@ public class TableroService : ITableroService
     {
         var tablero = await GetActiveTableroAsync(id);
 
+        if ((_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev")) && tablero.ProyectoId.HasValue)
+        {
+            var isMember = tablero.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
+            if (!isMember) throw new UnauthorizedAccessException("No tienes acceso a este tablero.");
+        }
+
         var clave = dto.Clave.Trim().ToUpperInvariant();
         if (await _repository.ClaveExistsAsync(tablero.ProyectoId, tablero.CreadoPorId, clave, id))
             throw new InvalidOperationException($"Ya existe un tablero con la clave '{clave}'.");
@@ -176,6 +205,13 @@ public class TableroService : ITableroService
     public async Task DeleteAsync(Guid id)
     {
         var tablero = await GetActiveTableroAsync(id);
+
+        if ((_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev")) && tablero.ProyectoId.HasValue)
+        {
+            var isMember = tablero.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
+            if (!isMember) throw new UnauthorizedAccessException("No tienes acceso a este tablero.");
+        }
+
         tablero.Activo = false;
         await _repository.UpdateAsync(tablero);
     }

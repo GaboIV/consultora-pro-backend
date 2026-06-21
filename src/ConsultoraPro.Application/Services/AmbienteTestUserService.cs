@@ -10,19 +10,29 @@ public class AmbienteTestUserService : IAmbienteTestUserService
     private readonly IAmbienteTestUserRepository _repository;
     private readonly IAmbienteRepository _ambienteRepository;
     private readonly IEncryptionService _encryptionService;
+    private readonly ICurrentUserService _currentUserService;
 
     public AmbienteTestUserService(
         IAmbienteTestUserRepository repository,
         IAmbienteRepository ambienteRepository,
-        IEncryptionService encryptionService)
+        IEncryptionService encryptionService,
+        ICurrentUserService currentUserService)
     {
         _repository = repository;
         _ambienteRepository = ambienteRepository;
         _encryptionService = encryptionService;
+        _currentUserService = currentUserService;
     }
 
     public async Task<IEnumerable<AmbienteTestUserDto>> GetByAmbienteAsync(Guid ambienteId)
     {
+        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        {
+            var ambiente = await _ambienteRepository.GetByIdAsync(ambienteId);
+            var isMember = ambiente?.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
+            if (!isMember) return [];
+        }
+
         var items = await _repository.GetByAmbienteAsync(ambienteId);
         return items.Where(x => x.Activo).Select(ToDto);
     }
@@ -30,11 +40,26 @@ public class AmbienteTestUserService : IAmbienteTestUserService
     public async Task<AmbienteTestUserDto?> GetByIdAsync(Guid id)
     {
         var entity = await _repository.GetByIdAsync(id);
-        return entity is null || !entity.Activo ? null : ToDto(entity);
+        if (entity is null || !entity.Activo) return null;
+
+        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        {
+            var isMember = entity.Ambiente?.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
+            if (!isMember) return null;
+        }
+
+        return ToDto(entity);
     }
 
     public async Task<AmbienteTestUserDto> CreateAsync(CreateAmbienteTestUserDto dto)
     {
+        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        {
+            var ambiente = await _ambienteRepository.GetByIdAsync(dto.AmbienteId);
+            var isMember = ambiente?.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
+            if (!isMember) throw new UnauthorizedAccessException("No tienes acceso a este ambiente.");
+        }
+
         await EnsureAmbienteExistsAsync(dto.AmbienteId);
 
         var entity = new AmbienteTestUser
@@ -56,6 +81,12 @@ public class AmbienteTestUserService : IAmbienteTestUserService
     {
         var entity = await GetActiveEntityAsync(id);
 
+        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        {
+            var isMember = entity.Ambiente?.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
+            if (!isMember) throw new UnauthorizedAccessException("No tienes acceso a este ambiente.");
+        }
+
         entity.RolAplicacion = dto.RolAplicacion.Trim();
         entity.Correo = dto.Correo.Trim().ToLowerInvariant();
         entity.Notas = dto.Notas?.Trim();
@@ -71,6 +102,13 @@ public class AmbienteTestUserService : IAmbienteTestUserService
     public async Task DeleteAsync(Guid id)
     {
         var entity = await GetActiveEntityAsync(id);
+
+        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        {
+            var isMember = entity.Ambiente?.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
+            if (!isMember) throw new UnauthorizedAccessException("No tienes acceso a este ambiente.");
+        }
+
         entity.Activo = false;
         await _repository.UpdateAsync(entity);
     }

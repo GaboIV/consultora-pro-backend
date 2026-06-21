@@ -56,7 +56,7 @@ public class SearchService : ISearchService
             tasks.Add(SearchProyectosAsync(safeQuery, context));
 
         if (searchTypes.Contains("cliente") && HasPermission(context, "clientes.ver"))
-            tasks.Add(SearchClientesAsync(safeQuery));
+            tasks.Add(SearchClientesAsync(safeQuery, context));
 
         if (searchTypes.Contains("usuario") && HasPermission(context, "roles.ver"))
             tasks.Add(SearchUsuariosAsync(safeQuery));
@@ -67,7 +67,7 @@ public class SearchService : ISearchService
         if (searchTypes.Contains("ambiente") && HasPermission(context, "ambientes.ver"))
             tasks.Add(SearchAmbientesAsync(safeQuery, context));
 
-        if (searchTypes.Contains("repositorio") && HasPermission(context, "proyectos.ver"))
+        if (searchTypes.Contains("repositorio") && HasPermission(context, "repositorios.ver"))
             tasks.Add(SearchRepositoriosAsync(safeQuery, context));
 
         if (searchTypes.Contains("despliegue") && HasPermission(context, "despliegues.ver"))
@@ -161,11 +161,21 @@ public class SearchService : ISearchService
             .ToList();
     }
 
-    private async Task<List<SearchItemDto>> SearchClientesAsync(string query)
+    private async Task<List<SearchItemDto>> SearchClientesAsync(string query, SearchContext context)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var repository = scope.ServiceProvider.GetRequiredService<IClienteRepository>();
-        var clientes = await repository.GetAllAsync();
+        
+        IEnumerable<Cliente> clientes;
+        if (context.Role.Equals(PermissionCatalog.Soporte, StringComparison.OrdinalIgnoreCase)
+            || context.Role.Equals(PermissionCatalog.Dev, StringComparison.OrdinalIgnoreCase))
+        {
+            clientes = await repository.GetAllAsync(context.UserId);
+        }
+        else
+        {
+            clientes = await repository.GetAllAsync();
+        }
 
         return clientes
             .Select(cliente =>
@@ -383,7 +393,8 @@ public class SearchService : ISearchService
     private static bool IsPrivilegedRole(string role)
     {
         return role.Equals(PermissionCatalog.Arquitecto, StringComparison.OrdinalIgnoreCase)
-            || role.Equals(PermissionCatalog.Gerencia, StringComparison.OrdinalIgnoreCase);
+            || role.Equals(PermissionCatalog.Gerencia, StringComparison.OrdinalIgnoreCase)
+            || role.Equals(PermissionCatalog.LT, StringComparison.OrdinalIgnoreCase);
     }
 
     private static IEnumerable<string> ReadPermissions(ClaimsPrincipal user)

@@ -13,6 +13,7 @@ public static class PermissionCatalog
     public const string Arquitecto = "Arquitecto";
     public const string LT = "LT";
     public const string Dev = "Dev";
+    public const string Soporte = "Soporte";
 
     public static readonly IReadOnlyList<PermissionDefinition> All =
     [
@@ -46,7 +47,7 @@ public static class PermissionCatalog
 
         new(23, "roles.ver", "Ver roles", "Roles", "Permite consultar usuarios, roles y permisos."),
         new(24, "roles.crear", "Crear roles", "Roles", "Permite crear roles y usuarios."),
-        new(25, "roles.editar", "Editar roles", "Roles", "Permite modificar roles, usuarios y permisos."),
+        new(25, "roles.editar", "Editar roles", "Roles", "Permite modificar roles, usuarios and permisos."),
         new(26, "roles.eliminar", "Eliminar roles", "Roles", "Permite eliminar roles y usuarios."),
         new(27, "roles.asignar", "Asignar roles", "Roles", "Permite asignar roles a usuarios."),
 
@@ -55,7 +56,10 @@ public static class PermissionCatalog
         new(30, "kanban.editar", "Editar kanban", "Kanban", "Permite editar columnas, tarjetas, mover y asignar."),
         new(31, "kanban.comentar", "Comentar tarjetas", "Kanban", "Permite comentar en tarjetas."),
         new(32, "kanban.eliminar", "Eliminar en kanban", "Kanban", "Permite eliminar/archivar tableros y tarjetas."),
-        new(33, "kanban.gestionar", "Gestionar tableros", "Kanban", "Permite administrar miembros y configuración del tablero.")
+        new(33, "kanban.gestionar", "Gestionar tableros", "Kanban", "Permite administrar miembros y configuración del tablero."),
+
+        new(34, "repositorios.ver", "Ver repositorios", "Repositorios", "Permite consultar listado de repositorios."),
+        new(35, "repositorios.editar", "Editar repositorios", "Repositorios", "Permite modificar repositorios.")
     ];
 
     public static readonly IReadOnlyDictionary<string, IReadOnlySet<string>> RolePermissions =
@@ -71,7 +75,8 @@ public static class PermissionCatalog
                 "equipo.ver",
                 "roles.ver",
                 "kanban.ver",
-                "kanban.comentar"
+                "kanban.comentar",
+                "repositorios.ver"
             },
             [Arquitecto] = All.Select(permission => permission.Clave).ToHashSet(StringComparer.OrdinalIgnoreCase),
             [LT] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -93,7 +98,9 @@ public static class PermissionCatalog
                 "kanban.editar",
                 "kanban.comentar",
                 "kanban.eliminar",
-                "kanban.gestionar"
+                "kanban.gestionar",
+                "repositorios.ver",
+                "repositorios.editar"
             },
             [Dev] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -106,7 +113,22 @@ public static class PermissionCatalog
                 "kanban.ver",
                 "kanban.crear",
                 "kanban.editar",
-                "kanban.comentar"
+                "kanban.comentar",
+                "repositorios.ver"
+            },
+            [Soporte] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "clientes.ver",
+                "proyectos.ver",
+                "ambientes.ver",
+                "ambientes.editar",
+                "equipo.ver",
+                "kanban.ver",
+                "kanban.crear",
+                "kanban.editar",
+                "kanban.comentar",
+                "kanban.eliminar",
+                "kanban.gestionar"
             }
         };
 
@@ -116,6 +138,7 @@ public static class PermissionCatalog
             [Gerencia] = "Visibilidad ejecutiva sin acceso a secretos ni operaciones críticas.",
             [Arquitecto] = "Máximo nivel técnico con acceso completo al portal.",
             [LT] = "Liderazgo técnico con permisos operativos acotados.",
-            [Dev] = "Desarrollador con acceso de consulta a proyectos y equipo."
+            [Dev] = "Desarrollador con acceso de consulta a proyectos y equipo.",
+            [Soporte] = "Soporte técnico con accesos restringidos a sus proyectos asignados."
         };
 }

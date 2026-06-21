@@ -9,27 +9,53 @@ public class AmbienteService : IAmbienteService
 {
     private readonly IAmbienteRepository _repository;
     private readonly IProyectoRepository _proyectoRepository;
+    private readonly ICurrentUserService _currentUserService;
 
-    public AmbienteService(IAmbienteRepository repository, IProyectoRepository proyectoRepository)
+    public AmbienteService(
+        IAmbienteRepository repository, 
+        IProyectoRepository proyectoRepository,
+        ICurrentUserService currentUserService)
     {
         _repository = repository;
         _proyectoRepository = proyectoRepository;
+        _currentUserService = currentUserService;
     }
 
     public async Task<IEnumerable<AmbienteDto>> GetAllAsync(Guid? proyectoId = null)
     {
-        var ambientes = await _repository.GetAllAsync(proyectoId);
+        Guid? memberUserId = null;
+        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        {
+            memberUserId = _currentUserService.UserId;
+        }
+
+        var ambientes = await _repository.GetAllAsync(proyectoId, memberUserId);
         return ambientes.Select(ToDto);
     }
 
     public async Task<AmbienteDto?> GetByIdAsync(Guid id)
     {
         var ambiente = await _repository.GetByIdAsync(id);
-        return ambiente is null || !ambiente.Activo ? null : ToDto(ambiente);
+        if (ambiente is null || !ambiente.Activo) return null;
+
+        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        {
+            var isMember = ambiente.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
+            if (!isMember) return null;
+        }
+
+        return ToDto(ambiente);
     }
 
     public async Task<AmbienteDto> CreateAsync(CreateAmbienteDto dto)
     {
+        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        {
+            var proyecto = await _proyectoRepository.GetByIdAsync(dto.ProyectoId);
+            var isMember = proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
+            if (!isMember) throw new UnauthorizedAccessException("No tienes acceso a este proyecto.");
+        }
+
         await EnsureProjectExistsAsync(dto.ProyectoId);
 
         var ambiente = new Ambiente
@@ -54,6 +80,13 @@ public class AmbienteService : IAmbienteService
     public async Task UpdateAsync(Guid id, UpdateAmbienteDto dto)
     {
         var ambiente = await GetActiveEntityAsync(id);
+
+        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        {
+            var isMember = ambiente.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
+            if (!isMember) throw new UnauthorizedAccessException("No tienes acceso a este ambiente.");
+        }
+
         await EnsureProjectExistsAsync(dto.ProyectoId);
 
         ambiente.Nombre = dto.Nombre.Trim();
@@ -70,6 +103,13 @@ public class AmbienteService : IAmbienteService
     public async Task UpdateEstadoAsync(Guid id, UpdateAmbienteEstadoDto dto)
     {
         var ambiente = await GetActiveEntityAsync(id);
+
+        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        {
+            var isMember = ambiente.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
+            if (!isMember) throw new UnauthorizedAccessException("No tienes acceso a este ambiente.");
+        }
+
         ambiente.Estado = dto.Estado;
         await _repository.UpdateAsync(ambiente);
     }
@@ -77,6 +117,13 @@ public class AmbienteService : IAmbienteService
     public async Task DeleteAsync(Guid id)
     {
         var ambiente = await GetActiveEntityAsync(id);
+
+        if (_currentUserService.IsInRole("Soporte") || _currentUserService.IsInRole("Dev"))
+        {
+            var isMember = ambiente.Proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
+            if (!isMember) throw new UnauthorizedAccessException("No tienes acceso a este ambiente.");
+        }
+
         ambiente.Activo = false;
         await _repository.UpdateAsync(ambiente);
     }

@@ -14,7 +14,7 @@ public class AmbienteRepository : IAmbienteRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<Ambiente>> GetAllAsync(Guid? proyectoId = null)
+    public async Task<IEnumerable<Ambiente>> GetAllAsync(Guid? proyectoId = null, Guid? memberUserId = null)
     {
         var query = _context.Ambientes
             .AsNoTracking()
@@ -24,6 +24,11 @@ public class AmbienteRepository : IAmbienteRepository
 
         if (proyectoId.HasValue)
             query = query.Where(a => a.ProyectoId == proyectoId.Value);
+
+        if (memberUserId.HasValue)
+        {
+            query = query.Where(a => a.Proyecto.ProyectoMiembros.Any(pm => pm.UsuarioId == memberUserId.Value));
+        }
 
         return await query
             .OrderBy(a => a.Proyecto.Cliente.Nombre)

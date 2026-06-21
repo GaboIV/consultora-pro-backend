@@ -53,6 +53,14 @@ public class ScreenshotsController : ControllerBase
     [HttpGet("proyecto/{proyectoId}")]
     public async Task<ActionResult<ApiResponse<IEnumerable<ScreenshotDto>>>> GetByProyecto(Guid proyectoId)
     {
+        if (User.IsInRole(ConsultoraPro.Domain.Security.PermissionCatalog.Soporte) || User.IsInRole(ConsultoraPro.Domain.Security.PermissionCatalog.Dev))
+        {
+            var proyecto = await _proyectoRepository.GetByIdAsync(proyectoId);
+            var isMember = proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == GetUserId()) ?? false;
+            if (!isMember)
+                return Forbid();
+        }
+
         var screenshots = await _screenshotRepository.GetByProyectoIdAsync(proyectoId);
         var dtos = _mapper.Map<List<ScreenshotDto>>(screenshots);
         // Url lleva la StorageKey desde el mapper: se firma (SAS) en lectura.
@@ -96,6 +104,12 @@ public class ScreenshotsController : ControllerBase
         }
 
         var userId = GetUserId();
+        if (User.IsInRole(ConsultoraPro.Domain.Security.PermissionCatalog.Soporte) || User.IsInRole(ConsultoraPro.Domain.Security.PermissionCatalog.Dev))
+        {
+            var isMember = proyecto.ProyectoMiembros.Any(pm => pm.UsuarioId == userId);
+            if (!isMember)
+                return Forbid();
+        }
         var user = await _userManager.FindByIdAsync(userId.ToString());
         if (user == null)
         {
@@ -138,6 +152,14 @@ public class ScreenshotsController : ControllerBase
         if (screenshot == null)
         {
             return NotFound(new ApiResponse<object> { Success = false, Message = "Screenshot no encontrada" });
+        }
+
+        if (User.IsInRole(ConsultoraPro.Domain.Security.PermissionCatalog.Soporte) || User.IsInRole(ConsultoraPro.Domain.Security.PermissionCatalog.Dev))
+        {
+            var proyecto = await _proyectoRepository.GetByIdAsync(screenshot.ProyectoId);
+            var isMember = proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == GetUserId()) ?? false;
+            if (!isMember)
+                return Forbid();
         }
 
         // Delete physical file

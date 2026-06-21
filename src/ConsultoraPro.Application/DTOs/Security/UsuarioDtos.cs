@@ -19,6 +19,7 @@ public class UsuarioListDto
 public class UsuarioDetalleDto : UsuarioListDto
 {
     public IReadOnlyList<string> Permisos { get; set; } = Array.Empty<string>();
+    public List<Guid> ProyectosIds { get; set; } = new();
 }
 
 public class CreateUsuarioDto
@@ -31,6 +32,7 @@ public class CreateUsuarioDto
     public string Puesto { get; set; } = string.Empty;
     public Guid RolId { get; set; }
     public string? Password { get; set; }
+    public List<Guid>? ProyectosIds { get; set; }
 }
 
 public class UpdateUsuarioDto
@@ -42,6 +44,7 @@ public class UpdateUsuarioDto
     public string? Iniciales { get; set; }
     public string Puesto { get; set; } = string.Empty;
     public Guid RolId { get; set; }
+    public List<Guid>? ProyectosIds { get; set; }
 }
 
 public class UpdateUsuarioPasswordDto

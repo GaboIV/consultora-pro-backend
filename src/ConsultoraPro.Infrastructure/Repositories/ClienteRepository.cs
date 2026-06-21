@@ -14,10 +14,17 @@ public class ClienteRepository : IClienteRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<Cliente>> GetAllAsync()
+    public async Task<IEnumerable<Cliente>> GetAllAsync(Guid? memberUserId = null)
     {
-        return await _context.Clientes
-            .Where(c => c.Activo)
+        var query = _context.Clientes
+            .Where(c => c.Activo);
+
+        if (memberUserId.HasValue)
+        {
+            query = query.Where(c => c.Proyectos.Any(p => p.ProyectoMiembros.Any(pm => pm.UsuarioId == memberUserId.Value)));
+        }
+
+        return await query
             .OrderByDescending(c => c.FechaAlta)
             .Include(c => c.Proyectos)
             .ToListAsync();
@@ -49,7 +56,7 @@ public class ClienteRepository : IClienteRepository
         await _context.SaveChangesAsync();
     }
 
-    public async Task<IEnumerable<Cliente>> GetPagedAsync(int page, int pageSize, string? search = null)
+    public async Task<IEnumerable<Cliente>> GetPagedAsync(int page, int pageSize, string? search = null, Guid? memberUserId = null)
     {
         var query = _context.Clientes
             .Where(c => c.Activo);
@@ -60,6 +67,11 @@ public class ClienteRepository : IClienteRepository
             query = query.Where(c => c.Nombre.ToLower().Contains(searchLower));
         }
 
+        if (memberUserId.HasValue)
+        {
+            query = query.Where(c => c.Proyectos.Any(p => p.ProyectoMiembros.Any(pm => pm.UsuarioId == memberUserId.Value)));
+        }
+
         return await query
             .OrderByDescending(c => c.FechaAlta)
             .Include(c => c.Proyectos)
@@ -68,7 +80,7 @@ public class ClienteRepository : IClienteRepository
             .ToListAsync();
     }
 
-    public async Task<int> GetTotalCountAsync(string? search = null)
+    public async Task<int> GetTotalCountAsync(string? search = null, Guid? memberUserId = null)
     {
         var query = _context.Clientes
             .Where(c => c.Activo);
@@ -77,6 +89,11 @@ public class ClienteRepository : IClienteRepository
         {
             var searchLower = search.ToLower();
             query = query.Where(c => c.Nombre.ToLower().Contains(searchLower));
+        }
+
+        if (memberUserId.HasValue)
+        {
+            query = query.Where(c => c.Proyectos.Any(p => p.ProyectoMiembros.Any(pm => pm.UsuarioId == memberUserId.Value)));
         }
 
         return await query.CountAsync();

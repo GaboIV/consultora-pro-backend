@@ -9,6 +9,7 @@ using ConsultoraPro.API.Services;
 using ConsultoraPro.Application;
 using ConsultoraPro.Application.Configuration;
 using ConsultoraPro.Application.DTOs.Common;
+using ConsultoraPro.Application.Interfaces;
 using ConsultoraPro.Domain.Security;
 using ConsultoraPro.Infrastructure;
 using FluentValidation;
@@ -77,6 +78,8 @@ builder.Services.AddAutoMapper(typeof(ConsultoraPro.Application.Profiles.AutoMap
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 // Opciones de autenticación: sección "Auth" + fallback a las env vars planas
 // (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / ALLOWED_DOMAINS) para reutilizar la misma
