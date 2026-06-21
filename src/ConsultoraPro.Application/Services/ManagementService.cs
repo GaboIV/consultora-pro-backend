@@ -58,9 +58,12 @@ public class ManagementService : IManagementService
             selectedDate = new DateTime(parsedDate.Year, parsedDate.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         }
 
+        // Los roles sin acceso total a proyectos (p. ej. Soporte, Dev) solo ven los datos de los
+        // proyectos donde están asignados como miembros. Se usa HasFullProjectAccess (claim del JWT)
+        // en lugar de IsInRole para mantener consistencia con ProyectoService.
         Guid? memberUserId = null;
-        var isSupport = _currentUserService.IsInRole("Soporte");
-        if (isSupport)
+        var restringidoAProyectos = !_currentUserService.HasFullProjectAccess;
+        if (restringidoAProyectos)
         {
             memberUserId = _currentUserService.UserId;
         }
@@ -70,21 +73,21 @@ public class ManagementService : IManagementService
         var tiposSolucion = await _tipoSolucionRepository.GetAllAsync();
         var users = await _userManager.Users.ToListAsync();
         
-        var credencialesPorVencer = !isSupport
+        var credencialesPorVencer = !restringidoAProyectos
             ? (await _credencialRepository.GetExpiringWithinAsync(7)).ToList()
             : new List<Credencial>();
-            
+
         var ambientes = (await _ambienteRepository.GetAllAsync(null, memberUserId)).ToList();
-        
-        var repositorios = !isSupport
+
+        var repositorios = !restringidoAProyectos
             ? (await _repositorioRepository.GetAllAsync()).ToList()
             : new List<Repositorio>();
-            
-        var despliegues = !isSupport
+
+        var despliegues = !restringidoAProyectos
             ? (await _despliegueRepository.GetRecentAsync(5, selectedDate)).ToList()
             : (await _despliegueRepository.GetRecentAsync(5, selectedDate)).Where(d => proyectos.Any(p => p.Id == d.ProyectoId)).ToList();
-            
-        var (totalDesplieguesMes, exitososDesplieguesMes) = !isSupport
+
+        var (totalDesplieguesMes, exitososDesplieguesMes) = !restringidoAProyectos
             ? await _despliegueRepository.GetMonthlyStatsAsync(selectedDate)
             : (0, 0);
 
