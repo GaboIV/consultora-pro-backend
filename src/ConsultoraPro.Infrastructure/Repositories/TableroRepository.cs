@@ -47,6 +47,7 @@ public class TableroRepository : ITableroRepository
     {
         return await _context.Tableros
             .Include(t => t.Proyecto)
+                .ThenInclude(p => p!.ProyectoMiembros)
             .FirstOrDefaultAsync(t => t.Id == id);
     }
 
@@ -56,6 +57,7 @@ public class TableroRepository : ITableroRepository
             .AsNoTracking()
             .AsSplitQuery()
             .Include(t => t.Proyecto)
+                .ThenInclude(p => p!.ProyectoMiembros)
             .Include(t => t.Columnas.Where(c => c.Activo))
                 .ThenInclude(c => c.Tarjetas.Where(ta => ta.Activo))
                     .ThenInclude(ta => ta.Responsables)

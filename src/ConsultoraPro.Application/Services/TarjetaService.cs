@@ -16,8 +16,7 @@ public class TarjetaService : ITarjetaService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IStorageService _storageService;
     private readonly IFileUrlResolver _urlResolver;
-    private readonly IProyectoRepository _proyectoRepository;
-    private readonly ICurrentUserService _currentUserService;
+    private readonly IKanbanAccessGuard _accessGuard;
 
     public TarjetaService(
         ITarjetaRepository repository,
@@ -26,8 +25,7 @@ public class TarjetaService : ITarjetaService
         UserManager<ApplicationUser> userManager,
         IStorageService storageService,
         IFileUrlResolver urlResolver,
-        IProyectoRepository proyectoRepository,
-        ICurrentUserService currentUserService)
+        IKanbanAccessGuard accessGuard)
     {
         _repository = repository;
         _columnaRepository = columnaRepository;
@@ -35,8 +33,7 @@ public class TarjetaService : ITarjetaService
         _userManager = userManager;
         _storageService = storageService;
         _urlResolver = urlResolver;
-        _proyectoRepository = proyectoRepository;
-        _currentUserService = currentUserService;
+        _accessGuard = accessGuard;
     }
 
     public async Task<TarjetaDetalleDto?> GetByIdAsync(Guid id)
@@ -45,12 +42,8 @@ public class TarjetaService : ITarjetaService
         if (tarjeta is null || !tarjeta.Activo)
             return null;
 
-        if (!_currentUserService.HasFullProjectAccessFor("proyectos") && tarjeta.Tablero.ProyectoId.HasValue)
-        {
-            var proyecto = await _proyectoRepository.GetByIdAsync(tarjeta.Tablero.ProyectoId.Value);
-            var isMember = proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
-            if (!isMember) return null;
-        }
+        if (!await _accessGuard.HasTableroAccessAsync(tarjeta.TableroId))
+            return null;
 
         var dto = KanbanMappers.ToDetalleDto(tarjeta);
         // Las keys de almacenamiento se firman (SAS) en lectura: adjuntos, portada e imágenes inline.
@@ -596,20 +589,8 @@ public class TarjetaService : ITarjetaService
         });
     }
 
-    private async Task ValidateTableroAccessAsync(Guid tableroId)
-    {
-        if (!_currentUserService.HasFullProjectAccessFor("proyectos"))
-        {
-            var tablero = await _tableroRepository.GetByIdAsync(tableroId);
-            if (tablero?.ProyectoId.HasValue == true)
-            {
-                var proyecto = await _proyectoRepository.GetByIdAsync(tablero.ProyectoId.Value);
-                var isMember = proyecto?.ProyectoMiembros.Any(pm => pm.UsuarioId == _currentUserService.UserId) ?? false;
-                if (!isMember)
-                    throw new UnauthorizedAccessException("No tienes acceso a este proyecto.");
-            }
-        }
-    }
+    private Task ValidateTableroAccessAsync(Guid tableroId)
+        => _accessGuard.EnsureTableroAccessAsync(tableroId);
 
     private static DateTime? ToUtc(DateTime? value)
         => value.HasValue ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc) : null;
