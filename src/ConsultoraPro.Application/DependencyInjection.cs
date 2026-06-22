@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<IAmbienteCloudResourceService, AmbienteCloudResourceService>();
         services.AddScoped<IAzureSubscriptionTenantMappingService, AzureSubscriptionTenantMappingService>();
         services.AddScoped<IAzurePortalUrlResolver, AzurePortalUrlResolver>();
+        services.AddScoped<IKanbanAccessGuard, KanbanAccessGuard>();
         services.AddScoped<ITableroService, TableroService>();
         services.AddScoped<IColumnaService, ColumnaService>();
         services.AddScoped<ITarjetaService, TarjetaService>();

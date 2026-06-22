@@ -17,19 +17,22 @@ public class TableroService : ITableroService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IFileUrlResolver _urlResolver;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IKanbanAccessGuard _accessGuard;
 
     public TableroService(
         ITableroRepository repository,
         IProyectoRepository proyectoRepository,
         UserManager<ApplicationUser> userManager,
         IFileUrlResolver urlResolver,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IKanbanAccessGuard accessGuard)
     {
         _repository = repository;
         _proyectoRepository = proyectoRepository;
         _userManager = userManager;
         _urlResolver = urlResolver;
         _currentUserService = currentUserService;
+        _accessGuard = accessGuard;
     }
 
     public async Task<IEnumerable<TableroDto>> GetByProyectoAsync(Guid proyectoId)
@@ -218,6 +221,8 @@ public class TableroService : ITableroService
 
     public async Task<IEnumerable<TableroMiembroDto>> UpdateMiembrosAsync(Guid id, UpdateMiembrosDto dto)
     {
+        await _accessGuard.EnsureTableroAccessAsync(id);
+
         var tablero = await _repository.GetWithMiembrosAsync(id)
             ?? throw new KeyNotFoundException($"Tablero con ID {id} no encontrado");
 
@@ -262,6 +267,8 @@ public class TableroService : ITableroService
 
     public async Task<IEnumerable<EtiquetaDto>> GetEtiquetasAsync(Guid tableroId)
     {
+        await _accessGuard.EnsureTableroAccessAsync(tableroId);
+
         var tablero = await _repository.GetWithEtiquetasAsync(tableroId)
             ?? throw new KeyNotFoundException($"Tablero con ID {tableroId} no encontrado");
 
@@ -270,6 +277,8 @@ public class TableroService : ITableroService
 
     public async Task<EtiquetaDto> CreateEtiquetaAsync(Guid tableroId, CreateEtiquetaDto dto)
     {
+        await _accessGuard.EnsureTableroAccessAsync(tableroId);
+
         var exists = await _repository.GetByIdAsync(tableroId);
         if (exists is null || !exists.Activo)
             throw new KeyNotFoundException($"Tablero con ID {tableroId} no encontrado");
@@ -289,6 +298,8 @@ public class TableroService : ITableroService
 
     public async Task<EtiquetaDto> UpdateEtiquetaAsync(Guid tableroId, Guid etiquetaId, UpdateEtiquetaDto dto)
     {
+        await _accessGuard.EnsureTableroAccessAsync(tableroId);
+
         var tablero = await _repository.GetWithEtiquetasAsync(tableroId)
             ?? throw new KeyNotFoundException($"Tablero con ID {tableroId} no encontrado");
 
@@ -304,6 +315,8 @@ public class TableroService : ITableroService
 
     public async Task DeleteEtiquetaAsync(Guid tableroId, Guid etiquetaId)
     {
+        await _accessGuard.EnsureTableroAccessAsync(tableroId);
+
         var tablero = await _repository.GetWithEtiquetasAsync(tableroId)
             ?? throw new KeyNotFoundException($"Tablero con ID {tableroId} no encontrado");
 
