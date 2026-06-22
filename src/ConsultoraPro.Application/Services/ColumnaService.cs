@@ -10,15 +10,22 @@ public class ColumnaService : IColumnaService
 {
     private readonly IColumnaKanbanRepository _repository;
     private readonly ITableroRepository _tableroRepository;
+    private readonly IKanbanAccessGuard _accessGuard;
 
-    public ColumnaService(IColumnaKanbanRepository repository, ITableroRepository tableroRepository)
+    public ColumnaService(
+        IColumnaKanbanRepository repository,
+        ITableroRepository tableroRepository,
+        IKanbanAccessGuard accessGuard)
     {
         _repository = repository;
         _tableroRepository = tableroRepository;
+        _accessGuard = accessGuard;
     }
 
     public async Task<ColumnaDto> CreateAsync(CreateColumnaDto dto)
     {
+        await _accessGuard.EnsureTableroAccessAsync(dto.TableroId);
+
         var tablero = await _tableroRepository.GetByIdAsync(dto.TableroId);
         if (tablero is null || !tablero.Activo)
             throw new KeyNotFoundException($"Tablero con ID {dto.TableroId} no encontrado");
@@ -42,6 +49,7 @@ public class ColumnaService : IColumnaService
     public async Task UpdateAsync(Guid id, UpdateColumnaDto dto)
     {
         var columna = await GetActiveColumnaAsync(id);
+        await _accessGuard.EnsureTableroAccessAsync(columna.TableroId);
         columna.Nombre = dto.Nombre.Trim();
         columna.LimiteWip = dto.LimiteWip;
         await _repository.UpdateAsync(columna);
@@ -50,6 +58,7 @@ public class ColumnaService : IColumnaService
     public async Task ReordenarAsync(Guid id, ReordenarColumnaDto dto)
     {
         var columna = await GetActiveColumnaAsync(id);
+        await _accessGuard.EnsureTableroAccessAsync(columna.TableroId);
 
         var hermanas = await _repository.GetActiveByTableroAsync(columna.TableroId);
         double? antes = dto.AntesDeColumnaId is { } a
@@ -66,6 +75,7 @@ public class ColumnaService : IColumnaService
     public async Task DeleteAsync(Guid id)
     {
         var columna = await GetActiveColumnaAsync(id);
+        await _accessGuard.EnsureTableroAccessAsync(columna.TableroId);
 
         var tarjetas = await _repository.CountTarjetasActivasAsync(id);
         if (tarjetas > 0)
