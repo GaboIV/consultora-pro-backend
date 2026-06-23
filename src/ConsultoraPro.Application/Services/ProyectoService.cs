@@ -156,6 +156,7 @@ public class ProyectoService : IProyectoService
             proyecto.ProyectoMiembros.Remove(m);
 
         // Add or update members
+        var nuevosMiembros = new List<ProyectoMiembro>();
         foreach (var mDto in dto.Miembros)
         {
             if (existingByUser.TryGetValue(mDto.UsuarioId, out var existingMember))
@@ -168,7 +169,7 @@ public class ProyectoService : IProyectoService
                 if (user == null)
                     throw new KeyNotFoundException($"Usuario con ID {mDto.UsuarioId} no encontrado");
 
-                proyecto.ProyectoMiembros.Add(new ProyectoMiembro
+                nuevosMiembros.Add(new ProyectoMiembro
                 {
                     Id = Guid.NewGuid(),
                     UsuarioId = user.Id,
@@ -178,7 +179,13 @@ public class ProyectoService : IProyectoService
             }
         }
 
-        await _repository.UpdateAsync(proyecto);
+        // Los miembros nuevos se insertan vía DbSet.Add (Added); en el mismo
+        // SaveChanges se aplican las ediciones/eliminaciones ya rastreadas. Si no
+        // hay miembros nuevos, basta con persistir los cambios rastreados.
+        if (nuevosMiembros.Count > 0)
+            await _repository.AddChildrenAndSaveAsync(nuevosMiembros.Cast<object>().ToArray());
+        else
+            await _repository.UpdateAsync(proyecto);
         await RefreshClientProjectCountAsync(previousClienteId);
         if (previousClienteId != dto.ClienteId)
             await RefreshClientProjectCountAsync(dto.ClienteId);
