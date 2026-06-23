@@ -128,6 +128,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             entity.HasKey(t => t.Id);
             entity.Property(t => t.Nombre).IsRequired().HasMaxLength(100);
             entity.HasIndex(t => t.Nombre).IsUnique();
+            entity.Property(t => t.Activo).HasDefaultValue(true);
         });
 
         modelBuilder.Entity<Proyecto>(entity =>

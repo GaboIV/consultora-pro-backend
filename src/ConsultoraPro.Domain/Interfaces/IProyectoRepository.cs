@@ -12,5 +12,6 @@ public interface IProyectoRepository
     Task<IEnumerable<Proyecto>> GetByClienteIdAsync(Guid clienteId);
     Task<Proyecto> CreateAsync(Proyecto proyecto);
     Task UpdateAsync(Proyecto proyecto);
+    Task AddChildrenAndSaveAsync(params object[] entities);
     Task DeleteAsync(Proyecto proyecto);
 }

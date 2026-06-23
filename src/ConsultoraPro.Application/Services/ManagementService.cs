@@ -94,11 +94,15 @@ public class ManagementService : IManagementService
         var clients = _mapper.Map<List<ManagementClientDto>>(clientes);
         var projects = _mapper.Map<List<ManagementProjectDto>>(proyectos);
         var userDtos = _mapper.Map<List<UsuarioSnapshotDto>>(users);
-        var tiposSolucionDtos = tiposSolucion.Select(t => new TipoSolucionDto
-        {
-            Id = t.Id.ToString(),
-            Nombre = t.Nombre
-        }).ToList();
+        // Solo los tipos activos se ofrecen al crear/editar proyectos; los inactivos se conservan
+        // para no romper los proyectos históricos que ya los referencian.
+        var tiposSolucionDtos = tiposSolucion
+            .Where(t => t.Activo)
+            .Select(t => new TipoSolucionDto
+            {
+                Id = t.Id.ToString(),
+                Nombre = t.Nombre
+            }).ToList();
 
         var totalProyectos = projects.Count;
         var activos = clientes.Count(c => c.Activo);

@@ -77,6 +77,18 @@ public class ProyectoRepository : IProyectoRepository
         await _context.SaveChangesAsync();
     }
 
+    // Inserta hijos nuevos vía DbSet.Add para que EF los marque como Added.
+    // Agregarlos por la colección de navegación de un padre ya rastreado, con la
+    // clave Guid preasignada, hace que EF los interprete como Modified → UPDATE de
+    // 0 filas → DbUpdateConcurrencyException. El mismo SaveChanges aplica además
+    // las ediciones/eliminaciones pendientes ya rastreadas.
+    public async Task AddChildrenAndSaveAsync(params object[] entities)
+    {
+        foreach (var entity in entities)
+            _context.Add(entity);
+        await _context.SaveChangesAsync();
+    }
+
     public async Task DeleteAsync(Proyecto proyecto)
     {
         await using var transaction = await _context.Database.BeginTransactionAsync();
