@@ -84,7 +84,13 @@ public static class PermissionCatalog
         new(48, "usuarios.editar", "Editar usuarios", "Usuarios", "Permite crear y modificar usuarios."),
         new(49, "usuarios.cambiar-password", "Cambiar contraseña", "Usuarios", "Permite restablecer la contraseña de otros usuarios."),
         new(50, "usuarios.eliminar", "Eliminar usuarios", "Usuarios", "Permite eliminar o desactivar usuarios."),
-        new(51, "usuarios.asignar-proyectos", "Asignar proyectos a usuarios", "Usuarios", "Permite definir a qué proyectos accede cada usuario sin acceso total.")
+        new(51, "usuarios.asignar-proyectos", "Asignar proyectos a usuarios", "Usuarios", "Permite definir a qué proyectos accede cada usuario sin acceso total."),
+
+        // --- Tipos de Solución (catálogo de tipos de proyecto). ---
+        new(52, "tipos-solucion.ver", "Ver tipos de solución", "Tipos de Solución", "Permite consultar el catálogo de tipos de solución."),
+        new(53, "tipos-solucion.crear", "Crear tipos de solución", "Tipos de Solución", "Permite crear tipos de solución."),
+        new(54, "tipos-solucion.editar", "Editar tipos de solución", "Tipos de Solución", "Permite modificar tipos de solución."),
+        new(55, "tipos-solucion.eliminar", "Eliminar tipos de solución", "Tipos de Solución", "Permite eliminar tipos de solución sin proyectos asociados.")
     ];
 
     /// <summary>
@@ -146,7 +152,8 @@ public static class PermissionCatalog
                 "kanban.comentar",
                 "repositorios.ver",
                 "repositorios.ver.todos",
-                "screenshots.ver"
+                "screenshots.ver",
+                "tipos-solucion.ver"
             },
             [Arquitecto] = All.Select(permission => permission.Clave).ToHashSet(StringComparer.OrdinalIgnoreCase),
             [LT] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -176,7 +183,8 @@ public static class PermissionCatalog
                 "repositorios.ver.todos",
                 "repositorios.editar",
                 "screenshots.ver",
-                "screenshots.editar"
+                "screenshots.editar",
+                "tipos-solucion.ver"
             },
             [Dev] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
