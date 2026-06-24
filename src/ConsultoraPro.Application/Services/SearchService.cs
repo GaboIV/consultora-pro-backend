@@ -59,7 +59,7 @@ public class SearchService : ISearchService
             tasks.Add(SearchClientesAsync(safeQuery, context));
 
         if (searchTypes.Contains("usuario") && HasPermission(context, "usuarios.ver"))
-            tasks.Add(SearchUsuariosAsync(safeQuery));
+            tasks.Add(SearchUsuariosAsync(safeQuery, context));
 
         if (searchTypes.Contains("credencial") && HasPermission(context, "credenciales.ver"))
             tasks.Add(SearchCredencialesAsync(safeQuery, context));
@@ -111,17 +111,25 @@ public class SearchService : ISearchService
         _ = Guid.TryParse(userIdValue, out var userId);
 
         if (IsPrivilegedRole(role))
-            return new SearchContext(userId, role, permissions, null);
+            return new SearchContext(userId, role, permissions, null, null);
 
         await using var scope = _scopeFactory.CreateAsyncScope();
         var projectRepository = scope.ServiceProvider.GetRequiredService<IProyectoRepository>();
         var proyectos = await projectRepository.GetAllAsync();
-        var accessibleProjectIds = proyectos
+        var accessibleProjects = proyectos
             .Where(project => userId != Guid.Empty && project.ProyectoMiembros.Any(member => member.UsuarioId == userId))
+            .ToList();
+
+        var accessibleProjectIds = accessibleProjects
             .Select(project => project.Id)
             .ToHashSet();
 
-        return new SearchContext(userId, role, permissions, accessibleProjectIds);
+        // Compañeros de equipo: miembros de los proyectos a los que el usuario tiene acceso.
+        var accessibleUserIds = accessibleProjects
+            .SelectMany(project => project.ProyectoMiembros.Select(member => member.UsuarioId))
+            .ToHashSet();
+
+        return new SearchContext(userId, role, permissions, accessibleProjectIds, accessibleUserIds);
     }
 
     private async Task<List<SearchItemDto>> SearchProyectosAsync(string query, SearchContext context)
@@ -154,7 +162,7 @@ public class SearchService : ISearchService
                     Icon = "folder-kanban",
                     Score = score,
                     UpdatedAt = project.UpdatedAt,
-                    NavigateTo = $"/proyectos?proyectoId={project.Id}"
+                    NavigateTo = $"/proyectos/{project.Id}"
                 };
             })
             .Where(item => ShouldInclude(query, item.Score))
@@ -191,14 +199,14 @@ public class SearchService : ISearchService
                     Icon = "building-skyscraper",
                     Score = score,
                     UpdatedAt = cliente.FechaAlta,
-                    NavigateTo = $"/clientes?clienteId={cliente.Id}"
+                    NavigateTo = $"/clientes/{cliente.Id}"
                 };
             })
             .Where(item => ShouldInclude(query, item.Score))
             .ToList();
     }
 
-    private async Task<List<SearchItemDto>> SearchUsuariosAsync(string query)
+    private async Task<List<SearchItemDto>> SearchUsuariosAsync(string query, SearchContext context)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
@@ -212,6 +220,10 @@ public class SearchService : ISearchService
         var items = new List<SearchItemDto>();
         foreach (var user in users)
         {
+            // Roles con separación de proyectos sólo ven a sus compañeros de equipo.
+            if (!CanSeeUser(user.Id, context))
+                continue;
+
             var role = (await userManager.GetRolesAsync(user)).FirstOrDefault() ?? user.Puesto;
             var fullName = $"{user.Nombres} {user.Apellidos}".Trim();
             var score = CombinedScore(fullName, query, [user.Email ?? string.Empty, user.Puesto, user.Iniciales]);
@@ -229,7 +241,7 @@ public class SearchService : ISearchService
                 Icon = "user",
                 Score = score,
                 UpdatedAt = user.UltimoAcceso ?? user.FechaAlta,
-                NavigateTo = $"/equipo/usuarios?usuarioId={user.Id}"
+                NavigateTo = $"/equipo/usuarios/{user.Id}"
             });
         }
 
@@ -297,7 +309,7 @@ public class SearchService : ISearchService
                     Icon = "server",
                     Score = score,
                     UpdatedAt = ambiente.FechaCreacion,
-                    NavigateTo = $"/ambientes?proyectoId={ambiente.ProyectoId}"
+                    NavigateTo = $"/ambientes/{ambiente.Id}"
                 };
             })
             .Where(item => ShouldInclude(query, item.Score))
@@ -389,6 +401,11 @@ public class SearchService : ISearchService
         return context.AccessibleProjectIds is null || context.AccessibleProjectIds.Contains(projectId);
     }
 
+    private static bool CanSeeUser(Guid userId, SearchContext context)
+    {
+        return context.AccessibleUserIds is null || context.AccessibleUserIds.Contains(userId);
+    }
+
     private static bool IsPrivilegedRole(string role)
     {
         return role.Equals(PermissionCatalog.Arquitecto, StringComparison.OrdinalIgnoreCase)
@@ -428,10 +445,37 @@ public class SearchService : ISearchService
         if (string.IsNullOrWhiteSpace(query))
             return 0.5;
 
-        var nameScore = CalculateScore(name, query);
+        // Puntaje de la query completa contra un solo campo (comportamiento histórico).
+        var fullScore = FieldSetScore(name, secondaryFields, query);
+
+        // Búsqueda multi-término: cada término debe aparecer en algún campo (AND).
+        // Permite encontrar un proyecto combinando título + cliente ("ERP Repsol"),
+        // aunque cada término viva en un campo distinto.
+        var terms = query
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToArray();
+
+        if (terms.Length <= 1)
+            return fullScore;
+
+        double sum = 0;
+        foreach (var term in terms)
+        {
+            var termScore = FieldSetScore(name, secondaryFields, term);
+            if (termScore == 0)
+                return fullScore; // falta un término -> no califica por multi-término
+            sum += termScore;
+        }
+
+        return Math.Max(fullScore, sum / terms.Length);
+    }
+
+    private static double FieldSetScore(string name, IReadOnlyCollection<string> secondaryFields, string term)
+    {
+        var nameScore = CalculateScore(name, term);
         var secondaryScore = secondaryFields
             .Where(field => !string.IsNullOrWhiteSpace(field))
-            .Select(field => CalculateScore(field, query))
+            .Select(field => CalculateScore(field, term))
             .DefaultIfEmpty(0)
             .Max();
 
@@ -609,5 +653,6 @@ public class SearchService : ISearchService
         Guid UserId,
         string Role,
         HashSet<string> Permissions,
-        HashSet<Guid>? AccessibleProjectIds);
+        HashSet<Guid>? AccessibleProjectIds,
+        HashSet<Guid>? AccessibleUserIds);
 }
