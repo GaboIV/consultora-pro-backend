@@ -110,8 +110,13 @@ public class SearchService : ISearchService
         var userIdValue = user.FindFirstValue("userId") ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
         _ = Guid.TryParse(userIdValue, out var userId);
 
-        if (IsPrivilegedRole(role))
-            return new SearchContext(userId, role, permissions, null, null);
+        // El acceso total se decide igual que en CurrentUserService: gana el claim
+        // "accesoTotalProyectos" (flag configurable del rol) y, como respaldo para tokens
+        // antiguos, el nombre de rol. Antes el buscador sólo reconocía Arquitecto/Gerencia,
+        // lo que ocultaba proyectos no asignados a roles con acceso total (p. ej. LT o roles
+        // custom con el flag), pese a que el resto del portal sí los mostraba.
+        if (HasFullProjectAccess(user, role))
+            return new SearchContext(userId, role, permissions, true, null, null);
 
         await using var scope = _scopeFactory.CreateAsyncScope();
         var projectRepository = scope.ServiceProvider.GetRequiredService<IProyectoRepository>();
@@ -129,7 +134,7 @@ public class SearchService : ISearchService
             .SelectMany(project => project.ProyectoMiembros.Select(member => member.UsuarioId))
             .ToHashSet();
 
-        return new SearchContext(userId, role, permissions, accessibleProjectIds, accessibleUserIds);
+        return new SearchContext(userId, role, permissions, false, accessibleProjectIds, accessibleUserIds);
     }
 
     private async Task<List<SearchItemDto>> SearchProyectosAsync(string query, SearchContext context)
@@ -139,7 +144,7 @@ public class SearchService : ISearchService
         var proyectos = await repository.GetAllAsync();
 
         return proyectos
-            .Where(project => CanSeeProject(project.Id, context))
+            .Where(project => CanSeeProject(project.Id, context, "proyectos"))
             .Select(project =>
             {
                 var leadNames = project.ProyectoMiembros
@@ -276,7 +281,10 @@ public class SearchService : ISearchService
                     Icon = "lock",
                     Score = score,
                     UpdatedAt = credencial.UpdatedAt,
-                    NavigateTo = $"/credenciales?proyectoId={credencial.ProyectoId}"
+                    // Lleva al usuario a la sección con la credencial identificada (para abrir
+                    // su bóveda) y repuebla el buscador local con el nombre de la credencial
+                    // seleccionada (no el término buscado) para reflejar exactamente la elección.
+                    NavigateTo = $"/credenciales?credencialId={credencial.Id}&proyectoId={credencial.ProyectoId}&q={Uri.EscapeDataString(credencial.Nombre)}"
                 };
             })
             .Where(item => ShouldInclude(query, item.Score))
@@ -290,7 +298,7 @@ public class SearchService : ISearchService
         var ambientes = await repository.GetAllAsync();
 
         return ambientes
-            .Where(ambiente => CanSeeProject(ambiente.ProyectoId, context))
+            .Where(ambiente => CanSeeProject(ambiente.ProyectoId, context, "ambientes"))
             .Select(ambiente =>
             {
                 var score = CombinedScore(
@@ -303,7 +311,14 @@ public class SearchService : ISearchService
                     Id = ambiente.Id.ToString(),
                     Type = "ambiente",
                     Name = ambiente.Nombre,
-                    Subtitle = $"{ambiente.Proyecto.Nombre} · {ambiente.Tecnologia} · {MapEnvironmentStateLabel(ambiente.Estado)}",
+                    // Cliente · proyecto · tecnología, omitiendo segmentos vacíos (p. ej. sin
+                    // tecnología) para no dejar separadores sueltos. El estado ya va en el badge.
+                    Subtitle = string.Join(" · ", new[]
+                    {
+                        ambiente.Proyecto.Cliente.Nombre,
+                        ambiente.Proyecto.Nombre,
+                        ambiente.Tecnologia
+                    }.Where(part => !string.IsNullOrWhiteSpace(part))),
                     Badge = MapEnvironmentStateLabel(ambiente.Estado),
                     BadgeVariant = MapEnvironmentStateTone(ambiente.Estado),
                     Icon = "server",
@@ -323,7 +338,7 @@ public class SearchService : ISearchService
         var repositorios = await repository.GetAllAsync();
 
         return repositorios
-            .Where(repo => CanSeeProject(repo.ProyectoId, context))
+            .Where(repo => CanSeeProject(repo.ProyectoId, context, "repositorios"))
             .Select(repo =>
             {
                 var score = CombinedScore(
@@ -396,8 +411,16 @@ public class SearchService : ISearchService
         return context.Permissions.Contains(permission);
     }
 
-    private static bool CanSeeProject(Guid projectId, SearchContext context)
+    private static bool CanSeeProject(Guid projectId, SearchContext context, string? scopedModule = null)
     {
+        if (context.HasFullProjectAccess)
+            return true;
+
+        // Mismo criterio que CurrentUserService.HasFullProjectAccessFor: el permiso por módulo
+        // "<modulo>.ver.todos" amplía el alcance a todos los proyectos de ese módulo.
+        if (scopedModule is not null && context.Permissions.Contains($"{scopedModule}.ver.todos"))
+            return true;
+
         return context.AccessibleProjectIds is null || context.AccessibleProjectIds.Contains(projectId);
     }
 
@@ -406,10 +429,14 @@ public class SearchService : ISearchService
         return context.AccessibleUserIds is null || context.AccessibleUserIds.Contains(userId);
     }
 
-    private static bool IsPrivilegedRole(string role)
+    private static bool HasFullProjectAccess(ClaimsPrincipal user, string role)
     {
-        return role.Equals(PermissionCatalog.Arquitecto, StringComparison.OrdinalIgnoreCase)
-            || role.Equals(PermissionCatalog.Gerencia, StringComparison.OrdinalIgnoreCase);
+        var claim = user.FindFirstValue("accesoTotalProyectos");
+        if (!string.IsNullOrEmpty(claim))
+            return string.Equals(claim, "true", StringComparison.OrdinalIgnoreCase);
+
+        // Respaldo para tokens emitidos antes de incorporar el claim: se infiere por nombre de rol.
+        return PermissionCatalog.FullProjectAccessRoles.Contains(role);
     }
 
     private static IEnumerable<string> ReadPermissions(ClaimsPrincipal user)
@@ -653,6 +680,7 @@ public class SearchService : ISearchService
         Guid UserId,
         string Role,
         HashSet<string> Permissions,
+        bool HasFullProjectAccess,
         HashSet<Guid>? AccessibleProjectIds,
         HashSet<Guid>? AccessibleUserIds);
 }
