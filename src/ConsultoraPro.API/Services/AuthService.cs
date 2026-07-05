@@ -5,6 +5,9 @@ using System.Text.Json;
 using ConsultoraPro.API.Interfaces;
 using ConsultoraPro.Application.Configuration;
 using ConsultoraPro.Application.DTOs.Auth;
+using ConsultoraPro.Application.DTOs.Notificaciones;
+using ConsultoraPro.Application.Interfaces;
+using ConsultoraPro.Domain.Enums;
 using ConsultoraPro.Domain.Models;
 using ConsultoraPro.Domain.Security;
 using ConsultoraPro.Infrastructure.Data;
@@ -25,19 +28,22 @@ public class AuthService : IAuthService
     private readonly AppDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly AuthOptions _authOptions;
+    private readonly INotificacionService _notificacionService;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
         AppDbContext context,
         IConfiguration configuration,
-        IOptions<AuthOptions> authOptions)
+        IOptions<AuthOptions> authOptions,
+        INotificacionService notificacionService)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _context = context;
         _configuration = configuration;
         _authOptions = authOptions.Value;
+        _notificacionService = notificacionService;
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
@@ -179,6 +185,19 @@ public class AuthService : IAuthService
 
         var result = await _userManager.ChangePasswordAsync(user, dto.PasswordActual, dto.PasswordNueva);
         ThrowIfFailed(result);
+
+        // Aviso de seguridad al propio usuario: si él no hizo el cambio, debe enterarse.
+        await _notificacionService.PublicarAsync(new PublicarNotificacionDto
+        {
+            Tipo = TipoNotificacion.PasswordCambiada,
+            DestinatarioIds = new List<Guid> { user.Id },
+            ActorId = user.Id,
+            IncluirActor = true,
+            Titulo = "Tu contraseña fue cambiada",
+            Mensaje = "La contraseña de tu cuenta se actualizó desde tu perfil. " +
+                      "Si no fuiste tú, contacta de inmediato a tu administrador.",
+            Url = "/perfil"
+        });
     }
 
     public async Task<AuthResponseDto> UpdatePerfilAsync(Guid userId, UpdatePerfilDto dto)

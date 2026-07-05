@@ -1,6 +1,7 @@
 using System.Text.Json;
 using ConsultoraPro.Application.DTOs.Credenciales;
 using ConsultoraPro.Application.DTOs.Common;
+using ConsultoraPro.Application.DTOs.Notificaciones;
 using ConsultoraPro.Application.Exceptions;
 using ConsultoraPro.Application.Interfaces;
 using ConsultoraPro.Domain.Enums;
@@ -23,6 +24,8 @@ public class CredencialService : ICredencialService
     private readonly IValidator<CreateCredencialDto> _createValidator;
     private readonly ICurrentUserService _currentUser;
     private readonly IProjectScope _projectScope;
+    private readonly INotificacionService _notificacionService;
+    private readonly INotificacionRepository _notificacionRepository;
 
     public CredencialService(
         ICredencialRepository repository,
@@ -32,7 +35,9 @@ public class CredencialService : ICredencialService
         IEncryptionService encryptionService,
         IValidator<CreateCredencialDto> createValidator,
         ICurrentUserService currentUser,
-        IProjectScope projectScope)
+        IProjectScope projectScope,
+        INotificacionService notificacionService,
+        INotificacionRepository notificacionRepository)
     {
         _repository = repository;
         _solicitudRepository = solicitudRepository;
@@ -42,6 +47,8 @@ public class CredencialService : ICredencialService
         _createValidator = createValidator;
         _currentUser = currentUser;
         _projectScope = projectScope;
+        _notificacionService = notificacionService;
+        _notificacionRepository = notificacionRepository;
     }
 
     public async Task<PagedResultDto<CredencialListDto>> GetAllAsync(int page = 1, int pageSize = 20, Guid? proyectoId = null)
@@ -231,6 +238,20 @@ public class CredencialService : ICredencialService
         };
 
         await _solicitudRepository.CreateAsync(solicitud);
+
+        // Avisar a quienes pueden aprobar (permiso credenciales.solicitud.aprobar).
+        var aprobadores = await _notificacionRepository.GetUsuarioIdsConPermisoAsync("credenciales.solicitud.aprobar");
+        await _notificacionService.PublicarAsync(new PublicarNotificacionDto
+        {
+            Tipo = TipoNotificacion.CredencialSolicitud,
+            DestinatarioIds = aprobadores.ToList(),
+            ActorId = solicitanteId,
+            Titulo = "Solicitud de revelación de credencial",
+            Mensaje = $"{{actor}} solicitó revelar la credencial «{credencial.Nombre}»." +
+                      (string.IsNullOrWhiteSpace(solicitud.Motivo) ? string.Empty : $" Motivo: {solicitud.Motivo}"),
+            Url = "/credenciales"
+        });
+
         return ToSolicitudDto(solicitud);
     }
 
@@ -263,6 +284,21 @@ public class CredencialService : ICredencialService
         solicitud.VigenteHasta = aprobar ? now.Add(RevelacionTemporalTtl) : null;
 
         await _solicitudRepository.UpdateAsync(solicitud);
+
+        await _notificacionService.PublicarAsync(new PublicarNotificacionDto
+        {
+            Tipo = TipoNotificacion.CredencialSolicitudResuelta,
+            DestinatarioIds = new List<Guid> { solicitud.SolicitanteId },
+            ActorId = aprobadorId,
+            Titulo = aprobar ? "Solicitud de credencial aprobada" : "Solicitud de credencial rechazada",
+            Mensaje = aprobar
+                ? $"{{actor}} aprobó tu solicitud sobre «{solicitud.Credencial?.Nombre}». " +
+                  $"Tienes {(int)RevelacionTemporalTtl.TotalMinutes} minutos para revelarla."
+                : $"{{actor}} rechazó tu solicitud sobre «{solicitud.Credencial?.Nombre}»." +
+                  (string.IsNullOrWhiteSpace(solicitud.NotaResolucion) ? string.Empty : $" Nota: {solicitud.NotaResolucion}"),
+            Url = "/credenciales"
+        });
+
         return ToSolicitudDto(solicitud);
     }
 

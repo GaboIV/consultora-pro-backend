@@ -1,4 +1,5 @@
 using ConsultoraPro.Application.DTOs.Kanban;
+using ConsultoraPro.Application.DTOs.Notificaciones;
 using ConsultoraPro.Application.Interfaces;
 using ConsultoraPro.Application.Kanban;
 using ConsultoraPro.Domain.Enums;
@@ -17,6 +18,7 @@ public class TarjetaService : ITarjetaService
     private readonly IStorageService _storageService;
     private readonly IFileUrlResolver _urlResolver;
     private readonly IKanbanAccessGuard _accessGuard;
+    private readonly INotificacionService _notificacionService;
 
     public TarjetaService(
         ITarjetaRepository repository,
@@ -25,7 +27,8 @@ public class TarjetaService : ITarjetaService
         UserManager<ApplicationUser> userManager,
         IStorageService storageService,
         IFileUrlResolver urlResolver,
-        IKanbanAccessGuard accessGuard)
+        IKanbanAccessGuard accessGuard,
+        INotificacionService notificacionService)
     {
         _repository = repository;
         _columnaRepository = columnaRepository;
@@ -34,6 +37,7 @@ public class TarjetaService : ITarjetaService
         _storageService = storageService;
         _urlResolver = urlResolver;
         _accessGuard = accessGuard;
+        _notificacionService = notificacionService;
     }
 
     public async Task<TarjetaDetalleDto?> GetByIdAsync(Guid id)
@@ -128,6 +132,16 @@ public class TarjetaService : ITarjetaService
         });
 
         var created = await _repository.CreateAsync(tarjeta);
+
+        var asignados = tarjeta.Responsables.Select(r => r.UsuarioId).Where(u => u != usuarioId).ToList();
+        if (asignados.Count > 0)
+        {
+            await NotificarTarjetaAsync(created.Id, TipoNotificacion.TarjetaAsignada, usuarioId,
+                "Te asignaron una tarjeta",
+                "{actor} te asignó la tarjeta {tarjeta}.",
+                destinatarios: asignados);
+        }
+
         var reloaded = await _repository.GetDetalleAsync(created.Id);
         return KanbanMappers.ToDetalleDto(reloaded ?? created);
     }
@@ -149,9 +163,17 @@ public class TarjetaService : ITarjetaService
         await _repository.UpdateAsync(tarjeta);
 
         if (antesCompletada != dto.Completada)
+        {
             await LogAsync(id, usuarioId, dto.Completada ? TipoActividadTarjeta.Completada : TipoActividadTarjeta.Reabierta);
+            await NotificarTarjetaAsync(id, TipoNotificacion.TarjetaCompletada, usuarioId,
+                dto.Completada ? "Tarjeta completada" : "Tarjeta reabierta",
+                dto.Completada ? "{actor} completó la tarjeta {tarjeta}." : "{actor} reabrió la tarjeta {tarjeta}.",
+                dedupKeyPrefix: "tarjeta-completada");
+        }
         else
+        {
             await LogAsync(id, usuarioId, TipoActividadTarjeta.Editada);
+        }
     }
 
     public async Task MoverAsync(Guid id, MoverTarjetaDto dto, Guid usuarioId)
@@ -186,6 +208,13 @@ public class TarjetaService : ITarjetaService
 
         await _repository.UpdateAsync(tarjeta);
         await LogAsync(id, usuarioId, TipoActividadTarjeta.Movida, $"Movió la tarjeta a «{destino.Nombre}»");
+
+        // Agrupable: si la tarjeta se mueve varias veces dentro de la ventana, el correo
+        // solo informa la última columna (DedupKey por tarjeta).
+        await NotificarTarjetaAsync(id, TipoNotificacion.TarjetaMovida, usuarioId,
+            "Movieron una de tus tarjetas",
+            $"{{actor}} movió la tarjeta {{tarjeta}} a «{destino.Nombre}».",
+            dedupKeyPrefix: "tarjeta-movida");
     }
 
     public async Task DeleteAsync(Guid id, Guid usuarioId)
@@ -208,11 +237,13 @@ public class TarjetaService : ITarjetaService
         var deseados = dto.UsuarioIds.Distinct().ToList();
 
         var aQuitar = tarjeta.Responsables.Where(r => !deseados.Contains(r.UsuarioId)).ToList();
+        var quitadosIds = aQuitar.Select(r => r.UsuarioId).ToList();
         foreach (var r in aQuitar)
             tarjeta.Responsables.Remove(r);
 
         var actuales = tarjeta.Responsables.Select(r => r.UsuarioId).ToHashSet();
         var nuevos = new List<object>();
+        var nuevosIds = new List<Guid>();
         foreach (var usuario in deseados.Where(u => !actuales.Contains(u)))
         {
             await EnsureUsuarioActivoAsync(usuario);
@@ -224,12 +255,28 @@ public class TarjetaService : ITarjetaService
             };
             tarjeta.Responsables.Add(responsable);
             nuevos.Add(responsable);
+            nuevosIds.Add(usuario);
         }
 
         // AddChildrenAndSaveAsync inserta los responsables nuevos y, en el mismo SaveChanges,
         // aplica las eliminaciones marcadas arriba sobre el grafo rastreado.
         await _repository.AddChildrenAndSaveAsync(nuevos.ToArray());
         await LogAsync(id, usuarioId, TipoActividadTarjeta.Asignada, "Actualizó los responsables");
+
+        if (nuevosIds.Count > 0)
+        {
+            await NotificarTarjetaAsync(id, TipoNotificacion.TarjetaAsignada, usuarioId,
+                "Te asignaron una tarjeta",
+                "{actor} te asignó la tarjeta {tarjeta}.",
+                destinatarios: nuevosIds);
+        }
+        if (quitadosIds.Count > 0)
+        {
+            await NotificarTarjetaAsync(id, TipoNotificacion.TarjetaDesasignada, usuarioId,
+                "Te quitaron de una tarjeta",
+                "{actor} te quitó de los responsables de la tarjeta {tarjeta}.",
+                destinatarios: quitadosIds);
+        }
 
         var reloaded = await _repository.GetWithResponsablesAsync(id);
         return (reloaded?.Responsables ?? tarjeta.Responsables).Select(KanbanMappers.ToDto).ToList();
@@ -425,6 +472,14 @@ public class TarjetaService : ITarjetaService
         tarjeta.Actividades.Add(actividad);
         await _repository.AddChildrenAndSaveAsync(comentario, actividad);
 
+        var extracto = dto.Texto.Trim();
+        if (extracto.Length > 120)
+            extracto = extracto[..120] + "…";
+        await NotificarTarjetaAsync(tarjetaId, TipoNotificacion.TarjetaComentario, usuarioId,
+            "Nuevo comentario en una de tus tarjetas",
+            $"{{actor}} comentó en {{tarjeta}}: {extracto}",
+            dedupKeyPrefix: "tarjeta-comentario");
+
         return new ComentarioDto
         {
             Id = comentario.Id,
@@ -591,6 +646,52 @@ public class TarjetaService : ITarjetaService
 
     private Task ValidateTableroAccessAsync(Guid tableroId)
         => _accessGuard.EnsureTableroAccessAsync(tableroId);
+
+    /// <summary>Ruta del frontend al tablero (de proyecto o personal) donde vive la tarjeta.</summary>
+    private static string BuildTableroUrl(Tablero? tablero)
+        => tablero?.ProyectoId is { } proyectoId
+            ? $"/proyectos/{proyectoId}/tableros/{tablero.Id}"
+            : $"/mis-tableros/{tablero?.Id}";
+
+    /// <summary>
+    /// Notifica un evento de la tarjeta a los interesados (responsables + creador, o la lista
+    /// indicada), excluyendo siempre al actor. Usa {tarjeta} en título/mensaje como
+    /// "«CODIGO · Título»".
+    /// </summary>
+    private async Task NotificarTarjetaAsync(
+        Guid tarjetaId,
+        TipoNotificacion tipo,
+        Guid actorId,
+        string titulo,
+        string mensaje,
+        string? dedupKeyPrefix = null,
+        IEnumerable<Guid>? destinatarios = null)
+    {
+        var tarjeta = await _repository.GetWithResponsablesAsync(tarjetaId);
+        if (tarjeta is null)
+            return;
+
+        var interesados = destinatarios?.ToList() ?? tarjeta.Responsables
+            .Select(r => r.UsuarioId)
+            .Concat(tarjeta.CreadaPorId is { } creador ? new[] { creador } : Array.Empty<Guid>())
+            .ToList();
+        if (interesados.Count == 0)
+            return;
+
+        var tablero = await _tableroRepository.GetByIdAsync(tarjeta.TableroId);
+        var etiquetaTarjeta = $"«{tarjeta.Codigo} · {tarjeta.Titulo}»";
+
+        await _notificacionService.PublicarAsync(new PublicarNotificacionDto
+        {
+            Tipo = tipo,
+            DestinatarioIds = interesados,
+            ActorId = actorId,
+            Titulo = titulo.Replace("{tarjeta}", etiquetaTarjeta),
+            Mensaje = mensaje.Replace("{tarjeta}", etiquetaTarjeta),
+            Url = BuildTableroUrl(tablero),
+            DedupKey = dedupKeyPrefix is null ? null : $"{dedupKeyPrefix}:{tarjetaId}"
+        });
+    }
 
     private static DateTime? ToUtc(DateTime? value)
         => value.HasValue ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc) : null;
