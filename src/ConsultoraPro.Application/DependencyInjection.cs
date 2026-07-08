@@ -28,6 +28,7 @@ public static class DependencyInjection
         services.AddScoped<IColumnaService, ColumnaService>();
         services.AddScoped<ITarjetaService, TarjetaService>();
         services.AddScoped<IFileUrlResolver, FileUrlResolver>();
+        services.AddScoped<INotificacionService, NotificacionService>();
         return services;
     }
 }

@@ -4,6 +4,8 @@ using ConsultoraPro.Domain.Interfaces;
 using ConsultoraPro.Domain.Models;
 using ConsultoraPro.Infrastructure.Data;
 using ConsultoraPro.Infrastructure.Data.Seed;
+using ConsultoraPro.Infrastructure.Email;
+using ConsultoraPro.Infrastructure.Notificaciones;
 using ConsultoraPro.Infrastructure.Repositories;
 using ConsultoraPro.Infrastructure.Security;
 using ConsultoraPro.Infrastructure.Storage;
@@ -67,7 +69,40 @@ public static class DependencyInjection
         services.AddScoped<IColumnaKanbanRepository, ColumnaKanbanRepository>();
         services.AddScoped<ITarjetaRepository, TarjetaRepository>();
 
+        AddNotificaciones(services, configuration);
+
         return services;
+    }
+
+    // Notificaciones: repositorio, proveedor de correo seleccionable por config (Email:Provider)
+    // y procesador del outbox que agrupa y envía en segundo plano.
+    private static void AddNotificaciones(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<NotificacionesOptions>()
+            .Bind(configuration.GetSection(NotificacionesOptions.SectionName));
+        services.AddOptions<EmailOptions>()
+            .Bind(configuration.GetSection(EmailOptions.SectionName));
+
+        services.AddScoped<INotificacionRepository, NotificacionRepository>();
+
+        var provider = configuration[$"{EmailOptions.SectionName}:Provider"] ?? "Console";
+        switch (provider.ToLowerInvariant())
+        {
+            case "smtp":
+                services.AddScoped<IEmailSender, SmtpEmailSender>();
+                break;
+            case "brevo":
+                services.AddHttpClient<IEmailSender, BrevoEmailSender>();
+                break;
+            case "resend":
+                services.AddHttpClient<IEmailSender, ResendEmailSender>();
+                break;
+            default:
+                services.AddScoped<IEmailSender, ConsoleEmailSender>();
+                break;
+        }
+
+        services.AddHostedService<CorreoPendienteProcessor>();
     }
 
     public static async Task InitializeDatabaseAsync(this IServiceProvider serviceProvider)

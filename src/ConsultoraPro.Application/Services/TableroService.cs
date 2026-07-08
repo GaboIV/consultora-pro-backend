@@ -1,4 +1,5 @@
 using ConsultoraPro.Application.DTOs.Kanban;
+using ConsultoraPro.Application.DTOs.Notificaciones;
 using ConsultoraPro.Application.Interfaces;
 using ConsultoraPro.Application.Kanban;
 using ConsultoraPro.Domain.Enums;
@@ -18,6 +19,7 @@ public class TableroService : ITableroService
     private readonly IFileUrlResolver _urlResolver;
     private readonly ICurrentUserService _currentUserService;
     private readonly IKanbanAccessGuard _accessGuard;
+    private readonly INotificacionService _notificacionService;
 
     public TableroService(
         ITableroRepository repository,
@@ -25,7 +27,8 @@ public class TableroService : ITableroService
         UserManager<ApplicationUser> userManager,
         IFileUrlResolver urlResolver,
         ICurrentUserService currentUserService,
-        IKanbanAccessGuard accessGuard)
+        IKanbanAccessGuard accessGuard,
+        INotificacionService notificacionService)
     {
         _repository = repository;
         _proyectoRepository = proyectoRepository;
@@ -33,6 +36,7 @@ public class TableroService : ITableroService
         _urlResolver = urlResolver;
         _currentUserService = currentUserService;
         _accessGuard = accessGuard;
+        _notificacionService = notificacionService;
     }
 
     public async Task<IEnumerable<TableroDto>> GetByProyectoAsync(Guid proyectoId)
@@ -237,6 +241,7 @@ public class TableroService : ITableroService
 
         // Añadir o actualizar rol
         var existingByUser = tablero.Miembros.ToDictionary(m => m.UsuarioId);
+        var agregados = new List<Guid>();
         foreach (var (usuarioId, input) in inputByUser)
         {
             if (existingByUser.TryGetValue(usuarioId, out var existing))
@@ -256,10 +261,26 @@ public class TableroService : ITableroService
                     UsuarioId = usuarioId,
                     Rol = input.Rol
                 });
+                agregados.Add(usuarioId);
             }
         }
 
         await _repository.UpdateAsync(tablero);
+
+        if (agregados.Count > 0)
+        {
+            await _notificacionService.PublicarAsync(new PublicarNotificacionDto
+            {
+                Tipo = TipoNotificacion.TableroCompartido,
+                DestinatarioIds = agregados,
+                ActorId = _currentUserService.UserId,
+                Titulo = "Te agregaron a un tablero",
+                Mensaje = $"{{actor}} te agregó como miembro del tablero «{tablero.Nombre}».",
+                Url = tablero.ProyectoId is { } proyectoId
+                    ? $"/proyectos/{proyectoId}/tableros/{tablero.Id}"
+                    : $"/mis-tableros/{tablero.Id}"
+            });
+        }
 
         var reloaded = await _repository.GetWithMiembrosAsync(id);
         return (reloaded?.Miembros ?? tablero.Miembros).Select(KanbanMappers.ToDto).ToList();

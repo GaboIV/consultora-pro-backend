@@ -1,6 +1,7 @@
 using ConsultoraPro.API.Interfaces;
 using ConsultoraPro.Application.Interfaces;
 using ConsultoraPro.Application.DTOs.Common;
+using ConsultoraPro.Application.DTOs.Notificaciones;
 using ConsultoraPro.Application.DTOs.Security;
 using ConsultoraPro.Domain.Enums;
 using ConsultoraPro.Domain.Models;
@@ -23,6 +24,7 @@ public class UsuariosController : ControllerBase
     private readonly IAuthService _authService;
     private readonly IAuditService _auditService;
     private readonly ICurrentUserService _currentUser;
+    private readonly INotificacionService _notificacionService;
 
     public UsuariosController(
         UserManager<ApplicationUser> userManager,
@@ -30,7 +32,8 @@ public class UsuariosController : ControllerBase
         AppDbContext context,
         IAuthService authService,
         IAuditService auditService,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        INotificacionService notificacionService)
     {
         _userManager = userManager;
         _roleManager = roleManager;
@@ -38,6 +41,7 @@ public class UsuariosController : ControllerBase
         _authService = authService;
         _auditService = auditService;
         _currentUser = currentUser;
+        _notificacionService = notificacionService;
     }
 
     [HttpGet]
@@ -159,6 +163,17 @@ public class UsuariosController : ControllerBase
         if (!roleResult.Succeeded)
             return BadRequest(ToErrorResponse(roleResult, "No se pudo asignar el rol"));
 
+        await _notificacionService.PublicarAsync(new PublicarNotificacionDto
+        {
+            Tipo = TipoNotificacion.UsuarioBienvenida,
+            DestinatarioIds = new List<Guid> { user.Id },
+            ActorId = GetCurrentUserId(),
+            Titulo = "¡Bienvenido a ConsultoraPro!",
+            Mensaje = $"{{actor}} creó tu cuenta con el rol {role.Name}. " +
+                      "Ingresa con tu correo; si no conoces tu contraseña, solicítala a tu administrador.",
+            Url = "/perfil"
+        });
+
         var data = await MapListDtoAsync(user);
         return CreatedAtAction(nameof(GetById), new { id = user.Id }, new ApiResponse<UsuarioListDto>
         {
@@ -232,6 +247,20 @@ public class UsuariosController : ControllerBase
             GetCurrentUserId(), "Usuario.ActualizarRol", "ApplicationUser", user.Id.ToString(),
             despues: $"{{\"rol\":\"{role.Name}\"}}");
 
+        if (!string.Equals(currentRoleName, role.Name, StringComparison.OrdinalIgnoreCase))
+        {
+            await _notificacionService.PublicarAsync(new PublicarNotificacionDto
+            {
+                Tipo = TipoNotificacion.RolCambiado,
+                DestinatarioIds = new List<Guid> { user.Id },
+                ActorId = GetCurrentUserId(),
+                Titulo = "Tu rol cambió",
+                Mensaje = $"{{actor}} cambió tu rol de {currentRoleName} a {role.Name}. " +
+                          "Tus permisos se actualizarán en tu próximo inicio de sesión.",
+                Url = "/perfil"
+            });
+        }
+
         return Ok(new ApiResponse<object> { Success = true, Message = "Usuario actualizado exitosamente" });
     }
 
@@ -247,6 +276,18 @@ public class UsuariosController : ControllerBase
         var result = await _userManager.ResetPasswordAsync(user, token, dto.Password);
         if (!result.Succeeded)
             return BadRequest(ToErrorResponse(result, "No se pudo cambiar la contraseña"));
+
+        await _notificacionService.PublicarAsync(new PublicarNotificacionDto
+        {
+            Tipo = TipoNotificacion.PasswordCambiadaPorAdmin,
+            DestinatarioIds = new List<Guid> { user.Id },
+            ActorId = GetCurrentUserId(),
+            IncluirActor = true,
+            Titulo = "Tu contraseña fue restablecida",
+            Mensaje = "{actor} restableció la contraseña de tu cuenta. " +
+                      "Si no reconoces este cambio, contacta de inmediato a tu administrador.",
+            Url = "/perfil"
+        });
 
         return Ok(new ApiResponse<object> { Success = true, Message = "Contraseña actualizada exitosamente" });
     }
@@ -402,12 +443,15 @@ public class UsuariosController : ControllerBase
         var actualesPorProyecto = actuales.ToDictionary(pm => pm.ProyectoId);
 
         var afectados = new HashSet<Guid>();
+        var quitados = new HashSet<Guid>();
+        var agregados = new HashSet<Guid>();
 
         // Quitar accesos que ya no están seleccionados.
         foreach (var miembro in actuales.Where(pm => !seleccionados.Contains(pm.ProyectoId)))
         {
             _context.ProyectoMiembros.Remove(miembro);
             afectados.Add(miembro.ProyectoId);
+            quitados.Add(miembro.ProyectoId);
         }
 
         // Agregar accesos nuevos.
@@ -422,6 +466,7 @@ public class UsuariosController : ControllerBase
                 FechaAsignacion = DateTime.UtcNow
             });
             afectados.Add(proyectoId);
+            agregados.Add(proyectoId);
         }
 
         if (afectados.Count > 0)
@@ -431,9 +476,48 @@ public class UsuariosController : ControllerBase
             await _auditService.RecordAsync(
                 GetCurrentUserId(), "Usuario.AsignarProyectos", "ApplicationUser", user.Id.ToString(),
                 despues: $"{{\"proyectos\":[{string.Join(",", seleccionados.Select(g => $"\"{g}\""))}]}}");
+            await NotificarCambioProyectosAsync(user.Id, agregados, quitados);
         }
 
         return Ok(new ApiResponse<object> { Success = true, Message = "Acceso a proyectos actualizado exitosamente" });
+    }
+
+    // Una sola notificación por lote de proyectos asignados/quitados (evita un correo por proyecto).
+    private async Task NotificarCambioProyectosAsync(Guid usuarioId, HashSet<Guid> agregados, HashSet<Guid> quitados)
+    {
+        var ids = agregados.Concat(quitados).ToList();
+        var nombres = await _context.Proyectos
+            .AsNoTracking()
+            .Where(p => ids.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, p => p.Nombre);
+
+        if (agregados.Count > 0)
+        {
+            var lista = string.Join(", ", agregados.Select(pid => nombres.GetValueOrDefault(pid, "proyecto")));
+            await _notificacionService.PublicarAsync(new PublicarNotificacionDto
+            {
+                Tipo = TipoNotificacion.ProyectoAsignado,
+                DestinatarioIds = new List<Guid> { usuarioId },
+                ActorId = GetCurrentUserId(),
+                Titulo = agregados.Count == 1 ? "Te asignaron a un proyecto" : $"Te asignaron a {agregados.Count} proyectos",
+                Mensaje = $"{{actor}} te dio acceso a: {lista}.",
+                Url = agregados.Count == 1 ? $"/proyectos/{agregados.First()}" : "/proyectos"
+            });
+        }
+
+        if (quitados.Count > 0)
+        {
+            var lista = string.Join(", ", quitados.Select(pid => nombres.GetValueOrDefault(pid, "proyecto")));
+            await _notificacionService.PublicarAsync(new PublicarNotificacionDto
+            {
+                Tipo = TipoNotificacion.ProyectoDesasignado,
+                DestinatarioIds = new List<Guid> { usuarioId },
+                ActorId = GetCurrentUserId(),
+                Titulo = "Se actualizó tu acceso a proyectos",
+                Mensaje = $"{{actor}} retiró tu acceso a: {lista}.",
+                Url = "/proyectos"
+            });
+        }
     }
 
     private Guid GetCurrentUserId()
