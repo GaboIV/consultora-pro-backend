@@ -39,6 +39,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<AdjuntoTarjeta> AdjuntosTarjeta => Set<AdjuntoTarjeta>();
     public DbSet<ActividadTarjeta> ActividadesTarjeta => Set<ActividadTarjeta>();
     public DbSet<AuditoriaSeguridad> AuditoriasSeguridad => Set<AuditoriaSeguridad>();
+    public DbSet<Notificacion> Notificaciones => Set<Notificacion>();
+    public DbSet<PreferenciaNotificacion> PreferenciasNotificacion => Set<PreferenciaNotificacion>();
+    public DbSet<CorreoPendiente> CorreosPendientes => Set<CorreoPendiente>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -379,6 +382,62 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
         });
 
         ConfigureKanban(modelBuilder);
+        ConfigureNotificaciones(modelBuilder);
+    }
+
+    private static void ConfigureNotificaciones(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Notificacion>(entity =>
+        {
+            entity.HasKey(n => n.Id);
+            entity.Property(n => n.Tipo).HasConversion<string>().HasMaxLength(40);
+            entity.Property(n => n.Titulo).IsRequired().HasMaxLength(200);
+            entity.Property(n => n.Mensaje).IsRequired().HasMaxLength(600);
+            entity.Property(n => n.Url).HasMaxLength(300);
+            entity.Property(n => n.Leida).HasDefaultValue(false);
+            entity.Property(n => n.FechaCreacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(n => new { n.UsuarioId, n.Leida, n.FechaCreacion });
+            entity.HasOne(n => n.Usuario)
+                  .WithMany()
+                  .HasForeignKey(n => n.UsuarioId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(n => n.Actor)
+                  .WithMany()
+                  .HasForeignKey(n => n.ActorId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<PreferenciaNotificacion>(entity =>
+        {
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.Tipo).HasConversion<string>().HasMaxLength(40);
+            entity.Property(p => p.EnApp).HasDefaultValue(true);
+            entity.Property(p => p.PorCorreo).HasDefaultValue(true);
+            entity.HasIndex(p => new { p.UsuarioId, p.Tipo }).IsUnique();
+            entity.HasOne(p => p.Usuario)
+                  .WithMany()
+                  .HasForeignKey(p => p.UsuarioId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CorreoPendiente>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Tipo).HasConversion<string>().HasMaxLength(40);
+            entity.Property(c => c.Titulo).IsRequired().HasMaxLength(200);
+            entity.Property(c => c.Mensaje).IsRequired().HasMaxLength(600);
+            entity.Property(c => c.Url).HasMaxLength(300);
+            entity.Property(c => c.DedupKey).HasMaxLength(120);
+            entity.Property(c => c.Estado).HasConversion<string>().HasMaxLength(20);
+            entity.Property(c => c.UltimoError).HasMaxLength(1000);
+            entity.Property(c => c.FechaCreacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(c => new { c.Estado, c.ProgramadoPara });
+            entity.HasIndex(c => new { c.UsuarioId, c.DedupKey, c.Estado });
+            entity.HasOne(c => c.Usuario)
+                  .WithMany()
+                  .HasForeignKey(c => c.UsuarioId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     private static void ConfigureKanban(ModelBuilder modelBuilder)
