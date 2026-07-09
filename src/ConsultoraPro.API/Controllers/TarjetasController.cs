@@ -18,17 +18,20 @@ namespace ConsultoraPro.API.Controllers;
 public class TarjetasController : ControllerBase
 {
     private readonly ITarjetaService _tarjetaService;
+    private readonly ITarjetaExportService _exportService;
     private readonly IStorageService _storageService;
     private readonly IFileUrlResolver _urlResolver;
     private readonly StorageOptions _storage;
 
     public TarjetasController(
         ITarjetaService tarjetaService,
+        ITarjetaExportService exportService,
         IStorageService storageService,
         IFileUrlResolver urlResolver,
         IOptions<StorageOptions> storageOptions)
     {
         _tarjetaService = tarjetaService;
+        _exportService = exportService;
         _storageService = storageService;
         _urlResolver = urlResolver;
         _storage = storageOptions.Value;
@@ -43,6 +46,21 @@ public class TarjetasController : ControllerBase
             return NotFound(new ApiResponse<TarjetaDetalleDto> { Success = false, Message = $"Tarjeta con ID {id} no encontrada" });
 
         return Ok(new ApiResponse<TarjetaDetalleDto> { Success = true, Data = data });
+    }
+
+    /// <summary>
+    /// Descarga un ZIP con todo el contexto de la tarjeta (descripción, checklist, datos generales,
+    /// actividad, comentarios, imágenes inline y adjuntos).
+    /// </summary>
+    [HttpGet("{id}/export")]
+    [Authorize(Policy = "kanban.ver")]
+    public async Task<IActionResult> Export(Guid id)
+    {
+        var result = await _exportService.ExportarAsync(id);
+        if (result is null)
+            return NotFound(new ApiResponse<object> { Success = false, Message = $"Tarjeta con ID {id} no encontrada" });
+
+        return File(result.Contenido, "application/zip", result.NombreArchivo);
     }
 
     [HttpPost]

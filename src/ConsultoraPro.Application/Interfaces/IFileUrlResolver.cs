@@ -1,6 +1,12 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace ConsultoraPro.Application.Interfaces;
+
+/// <summary>Referencia a una imagen de almacenamiento propio embebida en un contenido.</summary>
+/// <param name="Placeholder">Texto exacto a reemplazar en el contenido (ej. "cpfile://inline/abc.png").</param>
+/// <param name="Key">Key relativa en el almacenamiento (ej. "inline/abc.png").</param>
+public readonly record struct StorageImageRef(string Placeholder, string Key);
 
 /// <summary>
 /// Resuelve, en tiempo de lectura, las keys de almacenamiento persistidas en BD a URLs de acceso
@@ -24,4 +30,11 @@ public interface IFileUrlResolver
     /// contenido guardado no contenga URLs firmadas que expiran.
     /// </summary>
     string? ToStoragePlaceholders(string? content);
+
+    /// <summary>
+    /// Extrae las imágenes de almacenamiento propio embebidas en un contenido markdown/HTML
+    /// (normalizando antes URLs legacy a placeholders). Usado por el export para materializar
+    /// cada imagen como archivo y reescribir su enlace a una ruta relativa dentro del ZIP.
+    /// </summary>
+    IReadOnlyList<StorageImageRef> ExtractStorageImages(string? content);
 }
