@@ -654,6 +654,14 @@ public class TarjetaService : ITarjetaService
             : $"/mis-tableros/{tablero?.Id}";
 
     /// <summary>
+    /// Deep-link a una tarjeta concreta: la ruta del tablero con <c>?tarjeta={id}</c>.
+    /// El frontend abre automáticamente la tarjeta al leer este parámetro. Es el mismo
+    /// enlace que produce el botón «Compartir» de la tarjeta.
+    /// </summary>
+    private static string BuildTarjetaUrl(Tablero? tablero, Guid tarjetaId)
+        => $"{BuildTableroUrl(tablero)}?tarjeta={tarjetaId}";
+
+    /// <summary>
     /// Notifica un evento de la tarjeta a los interesados (responsables + creador, o la lista
     /// indicada), excluyendo siempre al actor. Usa {tarjeta} en título/mensaje como
     /// "«CODIGO · Título»".
@@ -688,7 +696,7 @@ public class TarjetaService : ITarjetaService
             ActorId = actorId,
             Titulo = titulo.Replace("{tarjeta}", etiquetaTarjeta),
             Mensaje = mensaje.Replace("{tarjeta}", etiquetaTarjeta),
-            Url = BuildTableroUrl(tablero),
+            Url = BuildTarjetaUrl(tablero, tarjetaId),
             DedupKey = dedupKeyPrefix is null ? null : $"{dedupKeyPrefix}:{tarjetaId}"
         });
     }
