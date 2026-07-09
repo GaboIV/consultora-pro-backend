@@ -65,6 +65,18 @@ public class AzureBlobStorageService : IStorageService
         return Task.FromResult(blob.GenerateSasUri(builder).ToString());
     }
 
+    public async Task<Stream?> OpenReadAsync(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            return null;
+
+        var blob = _container.GetBlobClient(key);
+        if (!await blob.ExistsAsync())
+            return null;
+
+        return await blob.OpenReadAsync();
+    }
+
     public async Task DeleteFileAsync(string key)
     {
         if (string.IsNullOrWhiteSpace(key))
