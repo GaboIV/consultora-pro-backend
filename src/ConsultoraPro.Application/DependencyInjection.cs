@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<ITableroService, TableroService>();
         services.AddScoped<IColumnaService, ColumnaService>();
         services.AddScoped<ITarjetaService, TarjetaService>();
+        services.AddScoped<ITarjetaExportService, TarjetaExportService>();
         services.AddScoped<IFileUrlResolver, FileUrlResolver>();
         services.AddScoped<INotificacionService, NotificacionService>();
         return services;

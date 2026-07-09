@@ -21,6 +21,12 @@ public interface IStorageService
     /// </summary>
     Task<string> GetAccessUrlAsync(string key, TimeSpan? expiry = null);
 
+    /// <summary>
+    /// Abre el contenido de la key para lectura server-side (ej. empaquetar un ZIP). El llamador
+    /// es responsable de liberar el stream. Devuelve <c>null</c> si la key no existe.
+    /// </summary>
+    Task<Stream?> OpenReadAsync(string key);
+
     /// <summary>Elimina el archivo asociado a la key. No falla si la key no existe.</summary>
     Task DeleteFileAsync(string key);
 

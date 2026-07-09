@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ConsultoraPro.Application.Interfaces;
@@ -42,6 +44,23 @@ public partial class FileUrlResolver : IFileUrlResolver
             result = result.Replace(match.Value, url);
         }
         return result;
+    }
+
+    public IReadOnlyList<StorageImageRef> ExtractStorageImages(string? content)
+    {
+        var normalized = ToStoragePlaceholders(content);
+        if (string.IsNullOrWhiteSpace(normalized) || !normalized.Contains(PlaceholderScheme))
+            return Array.Empty<StorageImageRef>();
+
+        var refs = new List<StorageImageRef>();
+        var seen = new HashSet<string>();
+        foreach (Match match in PlaceholderRegex().Matches(normalized))
+        {
+            // match.Value = "cpfile://{key}" (texto a reemplazar); grupo 1 = key.
+            if (seen.Add(match.Value))
+                refs.Add(new StorageImageRef(match.Value, match.Groups[1].Value));
+        }
+        return refs;
     }
 
     public string? ToStoragePlaceholders(string? content)

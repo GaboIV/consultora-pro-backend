@@ -51,6 +51,21 @@ public class LocalStorageService : IStorageService
         return Task.FromResult(url);
     }
 
+    public Task<Stream?> OpenReadAsync(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            return Task.FromResult<Stream?>(null);
+
+        var filePath = Path.Combine(_rootPath, key.Replace('/', Path.DirectorySeparatorChar));
+        // Defensa contra path traversal: el resultado debe quedar dentro de la raíz.
+        var fullRoot = Path.GetFullPath(_rootPath);
+        var fullTarget = Path.GetFullPath(filePath);
+        if (!fullTarget.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase) || !File.Exists(fullTarget))
+            return Task.FromResult<Stream?>(null);
+
+        return Task.FromResult<Stream?>(new FileStream(fullTarget, FileMode.Open, FileAccess.Read, FileShare.Read));
+    }
+
     public Task DeleteFileAsync(string key)
     {
         if (string.IsNullOrWhiteSpace(key))
