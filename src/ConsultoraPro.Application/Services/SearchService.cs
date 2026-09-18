@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using ConsultoraPro.Application.DTOs.Search;
 using ConsultoraPro.Application.Interfaces;
+using ConsultoraPro.Domain.Documentos;
 using ConsultoraPro.Domain.Enums;
 using ConsultoraPro.Domain.Interfaces;
 using ConsultoraPro.Domain.Models;
@@ -28,7 +29,8 @@ public class SearchService : ISearchService
         "credencial",
         "ambiente",
         "repositorio",
-        "despliegue"
+        "despliegue",
+        "documento"
     };
 
     private readonly IServiceScopeFactory _scopeFactory;
@@ -72,6 +74,9 @@ public class SearchService : ISearchService
 
         if (searchTypes.Contains("despliegue") && HasPermission(context, "despliegues.ver"))
             tasks.Add(SearchDesplieguesAsync(safeQuery, context));
+
+        if (searchTypes.Contains("documento") && HasPermission(context, "documentos.ver"))
+            tasks.Add(SearchDocumentosAsync(safeQuery, context));
 
         var matches = tasks.Count == 0
             ? new List<SearchItemDto>()
@@ -397,6 +402,62 @@ public class SearchService : ISearchService
             .Where(item => ShouldInclude(query, item.Score))
             .ToList();
     }
+
+    private async Task<List<SearchItemDto>> SearchDocumentosAsync(string query, SearchContext context)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var repository = scope.ServiceProvider.GetRequiredService<IDocumentoRepository>();
+
+        // Mismo alcance que la pestaña Documentación: todos los proyectos o solo los asignados.
+        var proyectoIds = context.HasFullProjectAccess || context.Permissions.Contains("proyectos.ver.todos")
+            ? null
+            : context.AccessibleProjectIds ?? new HashSet<Guid>();
+
+        // El filtrado grueso (LIKE por término) se hace en BD; aquí solo se puntúa y ordena.
+        var terms = query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var documentos = await repository.SearchAsync(terms, proyectoIds, 50);
+
+        return documentos
+            .Select(documento =>
+            {
+                var tags = documento.Etiquetas.Select(e => e.Nombre).ToArray();
+                var score = CombinedScore(
+                    documento.Titulo,
+                    query,
+                    [documento.Codigo, documento.NombreArchivo, documento.Carpeta.Nombre, documento.Descripcion, documento.Proyecto.Nombre, .. tags]);
+
+                return new SearchItemDto
+                {
+                    Id = documento.Id.ToString(),
+                    Type = "documento",
+                    Name = documento.Titulo,
+                    Subtitle = string.Join(" · ", new[]
+                    {
+                        documento.Codigo,
+                        documento.Proyecto.Nombre,
+                        documento.Carpeta.Nombre,
+                        $"v{documento.VersionActual}"
+                    }.Where(part => !string.IsNullOrWhiteSpace(part))),
+                    Badge = DocumentoCatalogo.EstadoEtiquetas[documento.Estado],
+                    BadgeVariant = MapDocumentStatusTone(documento.Estado),
+                    Icon = "file-text",
+                    // Coincidencias solo en el contenido de campos LIKE no puntuados (p. ej. etiqueta
+                    // parcial de otra palabra) conservan un mínimo para no descartarse.
+                    Score = Math.Max(score, string.IsNullOrWhiteSpace(query) ? 0.5 : 0.3),
+                    UpdatedAt = documento.UpdatedAt,
+                    NavigateTo = $"/proyectos/{documento.ProyectoId}?tab=documentos&documentoId={documento.Id}"
+                };
+            })
+            .ToList();
+    }
+
+    private static string MapDocumentStatusTone(EstadoDocumento estado) => estado switch
+    {
+        EstadoDocumento.Aprobado => "green",
+        EstadoDocumento.EnRevision => "amber",
+        EstadoDocumento.Obsoleto => "gray",
+        _ => "blue"
+    };
 
     private static HashSet<string> NormalizeTypes(IReadOnlyCollection<string> types)
     {

@@ -19,7 +19,8 @@ public class SearchController : ControllerBase
         "credencial",
         "ambiente",
         "repositorio",
-        "despliegue"
+        "despliegue",
+        "documento"
     };
 
     private readonly ISearchService _searchService;

@@ -3,6 +3,7 @@ using System;
 using ConsultoraPro.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ConsultoraPro.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260918024644_AddUsuarioCumpleanos")]
+    partial class AddUsuarioCumpleanos
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -603,56 +606,6 @@ namespace ConsultoraPro.Infrastructure.Migrations
                     b.ToTable("AzureSubscriptionTenantMappings");
                 });
 
-            modelBuilder.Entity("ConsultoraPro.Domain.Models.CarpetaDocumento", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("Codigo")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("varchar(10)");
-
-                    b.Property<Guid?>("CreadoPorId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("Descripcion")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("varchar(300)");
-
-                    b.Property<bool>("EsSistema")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime(6)")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("varchar(120)");
-
-                    b.Property<int>("Orden")
-                        .HasColumnType("int");
-
-                    b.Property<Guid?>("ParentId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<Guid>("ProyectoId")
-                        .HasColumnType("char(36)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ParentId");
-
-                    b.HasIndex("ProyectoId", "ParentId");
-
-                    b.ToTable("CarpetasDocumento");
-                });
-
             modelBuilder.Entity("ConsultoraPro.Domain.Models.Checklist", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1025,192 +978,6 @@ namespace ConsultoraPro.Infrastructure.Migrations
                     b.HasIndex("ProyectoId", "Activo");
 
                     b.ToTable("Despliegues");
-                });
-
-            modelBuilder.Entity("ConsultoraPro.Domain.Models.Documento", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<bool>("Activo")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("tinyint(1)")
-                        .HasDefaultValue(true);
-
-                    b.Property<Guid?>("ActualizadoPorId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<Guid>("CarpetaId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("Codigo")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("varchar(40)");
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("varchar(150)");
-
-                    b.Property<Guid>("CreadoPorId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("Descripcion")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("varchar(1000)");
-
-                    b.Property<string>("Estado")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.Property<string>("Extension")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime(6)")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
-
-                    b.Property<string>("NombreArchivo")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<Guid>("ProyectoId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("StorageKey")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("varchar(300)");
-
-                    b.Property<long>("TamanoBytes")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Tipo")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("varchar(40)");
-
-                    b.Property<string>("Titulo")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("varchar(200)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("VersionActual")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ActualizadoPorId");
-
-                    b.HasIndex("CarpetaId");
-
-                    b.HasIndex("CreadoPorId");
-
-                    b.HasIndex("ProyectoId", "Activo");
-
-                    b.HasIndex("ProyectoId", "Codigo");
-
-                    b.ToTable("Documentos");
-                });
-
-            modelBuilder.Entity("ConsultoraPro.Domain.Models.DocumentoEtiqueta", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<Guid>("DocumentoId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Nombre");
-
-                    b.HasIndex("DocumentoId", "Nombre")
-                        .IsUnique();
-
-                    b.ToTable("DocumentoEtiquetas");
-                });
-
-            modelBuilder.Entity("ConsultoraPro.Domain.Models.DocumentoVersion", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("varchar(150)");
-
-                    b.Property<Guid>("DocumentoId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("Extension")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.Property<DateTime>("FechaSubida")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime(6)")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
-
-                    b.Property<string>("NombreArchivo")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<string>("Nota")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
-
-                    b.Property<int>("Numero")
-                        .HasColumnType("int");
-
-                    b.Property<string>("StorageKey")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("varchar(300)");
-
-                    b.Property<Guid>("SubidoPorId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<long>("TamanoBytes")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Version")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SubidoPorId");
-
-                    b.HasIndex("DocumentoId", "Numero")
-                        .IsUnique();
-
-                    b.ToTable("DocumentoVersiones");
                 });
 
             modelBuilder.Entity("ConsultoraPro.Domain.Models.EtiquetaKanban", b =>
@@ -2079,24 +1846,6 @@ namespace ConsultoraPro.Infrastructure.Migrations
                     b.Navigation("Actor");
                 });
 
-            modelBuilder.Entity("ConsultoraPro.Domain.Models.CarpetaDocumento", b =>
-                {
-                    b.HasOne("ConsultoraPro.Domain.Models.CarpetaDocumento", "Parent")
-                        .WithMany("Subcarpetas")
-                        .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("ConsultoraPro.Domain.Models.Proyecto", "Proyecto")
-                        .WithMany()
-                        .HasForeignKey("ProyectoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Parent");
-
-                    b.Navigation("Proyecto");
-                });
-
             modelBuilder.Entity("ConsultoraPro.Domain.Models.Checklist", b =>
                 {
                     b.HasOne("ConsultoraPro.Domain.Models.Tarjeta", "Tarjeta")
@@ -2211,70 +1960,6 @@ namespace ConsultoraPro.Infrastructure.Migrations
                     b.Navigation("EjecutadoPor");
 
                     b.Navigation("Proyecto");
-                });
-
-            modelBuilder.Entity("ConsultoraPro.Domain.Models.Documento", b =>
-                {
-                    b.HasOne("ConsultoraPro.Domain.Models.ApplicationUser", "ActualizadoPor")
-                        .WithMany()
-                        .HasForeignKey("ActualizadoPorId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("ConsultoraPro.Domain.Models.CarpetaDocumento", "Carpeta")
-                        .WithMany()
-                        .HasForeignKey("CarpetaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ConsultoraPro.Domain.Models.ApplicationUser", "CreadoPor")
-                        .WithMany()
-                        .HasForeignKey("CreadoPorId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("ConsultoraPro.Domain.Models.Proyecto", "Proyecto")
-                        .WithMany()
-                        .HasForeignKey("ProyectoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ActualizadoPor");
-
-                    b.Navigation("Carpeta");
-
-                    b.Navigation("CreadoPor");
-
-                    b.Navigation("Proyecto");
-                });
-
-            modelBuilder.Entity("ConsultoraPro.Domain.Models.DocumentoEtiqueta", b =>
-                {
-                    b.HasOne("ConsultoraPro.Domain.Models.Documento", "Documento")
-                        .WithMany("Etiquetas")
-                        .HasForeignKey("DocumentoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Documento");
-                });
-
-            modelBuilder.Entity("ConsultoraPro.Domain.Models.DocumentoVersion", b =>
-                {
-                    b.HasOne("ConsultoraPro.Domain.Models.Documento", "Documento")
-                        .WithMany("Versiones")
-                        .HasForeignKey("DocumentoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("ConsultoraPro.Domain.Models.ApplicationUser", "SubidoPor")
-                        .WithMany()
-                        .HasForeignKey("SubidoPorId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Documento");
-
-                    b.Navigation("SubidoPor");
                 });
 
             modelBuilder.Entity("ConsultoraPro.Domain.Models.EtiquetaKanban", b =>
@@ -2604,11 +2289,6 @@ namespace ConsultoraPro.Infrastructure.Migrations
                     b.Navigation("ProyectosMiembro");
                 });
 
-            modelBuilder.Entity("ConsultoraPro.Domain.Models.CarpetaDocumento", b =>
-                {
-                    b.Navigation("Subcarpetas");
-                });
-
             modelBuilder.Entity("ConsultoraPro.Domain.Models.Checklist", b =>
                 {
                     b.Navigation("Items");
@@ -2627,13 +2307,6 @@ namespace ConsultoraPro.Infrastructure.Migrations
             modelBuilder.Entity("ConsultoraPro.Domain.Models.Credencial", b =>
                 {
                     b.Navigation("Auditorias");
-                });
-
-            modelBuilder.Entity("ConsultoraPro.Domain.Models.Documento", b =>
-                {
-                    b.Navigation("Etiquetas");
-
-                    b.Navigation("Versiones");
                 });
 
             modelBuilder.Entity("ConsultoraPro.Domain.Models.EtiquetaKanban", b =>

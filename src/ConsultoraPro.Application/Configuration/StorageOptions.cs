@@ -47,4 +47,24 @@ public class StorageLimits
 
     public List<string> AllowedImageExtensions { get; set; } =
         new() { ".png", ".jpg", ".jpeg", ".gif", ".webp" };
+
+    /// <summary>Tope por archivo del repositorio documental de proyectos.</summary>
+    public long MaxDocumentBytes { get; set; } = 50 * 1024 * 1024;   // 50 MB
+
+    /// <summary>
+    /// Lista blanca del repositorio documental: ofimática, MS Project/Visio, artefactos de
+    /// integración (XML/XSD/WSDL/JSON/EDMX), texto, imágenes y comprimidos. Nunca ejecutables.
+    /// </summary>
+    public List<string> AllowedDocumentExtensions { get; set; } = new()
+    {
+        ".pdf", ".doc", ".docx", ".dot", ".dotx", ".rtf", ".odt",
+        ".xls", ".xlsx", ".xlsm", ".xlsb", ".csv", ".ods",
+        ".ppt", ".pptx", ".odp",
+        ".mpp", ".mpt", ".vsd", ".vsdx", ".bpmn", ".drawio",
+        ".txt", ".md", ".log", ".sql", ".abap",
+        ".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".json", ".yaml", ".yml", ".edmx",
+        ".png", ".jpg", ".jpeg", ".gif", ".webp",
+        ".msg", ".eml",
+        ".zip", ".7z", ".rar"
+    };
 }

@@ -14,6 +14,8 @@ public class UsuarioListDto
     public bool Activo { get; set; }
     public DateTime FechaAlta { get; set; }
     public DateTime? UltimoAcceso { get; set; }
+    public int? CumpleanosDia { get; set; }
+    public int? CumpleanosMes { get; set; }
 }
 
 public class UsuarioDetalleDto : UsuarioListDto
@@ -31,6 +33,8 @@ public class CreateUsuarioDto
     public string Puesto { get; set; } = string.Empty;
     public Guid RolId { get; set; }
     public string? Password { get; set; }
+    public int? CumpleanosDia { get; set; }
+    public int? CumpleanosMes { get; set; }
 }
 
 public class UpdateUsuarioDto
@@ -42,6 +46,8 @@ public class UpdateUsuarioDto
     public string? Iniciales { get; set; }
     public string Puesto { get; set; } = string.Empty;
     public Guid RolId { get; set; }
+    public int? CumpleanosDia { get; set; }
+    public int? CumpleanosMes { get; set; }
 }
 
 public class UpdateUsuarioPasswordDto
