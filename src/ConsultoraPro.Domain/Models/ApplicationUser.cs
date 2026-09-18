@@ -13,6 +13,12 @@ public class ApplicationUser : IdentityUser<Guid>
     public DateTime FechaAlta { get; set; } = DateTime.UtcNow;
     public DateTime? UltimoAcceso { get; set; }
 
+    /// <summary>Día del cumpleaños (1-31), sin incluir año.</summary>
+    public int? CumpleanosDia { get; set; }
+
+    /// <summary>Mes del cumpleaños (1-12), sin incluir año.</summary>
+    public int? CumpleanosMes { get; set; }
+
     /// <summary>Origen de la cuenta: "local" (email+password) o "google" (OAuth).</summary>
     public string AuthProvider { get; set; } = "local";
 

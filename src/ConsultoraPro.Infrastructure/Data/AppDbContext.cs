@@ -59,6 +59,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
             entity.Property(u => u.Activo).HasDefaultValue(true);
             entity.Property(u => u.PermVersion).HasDefaultValue(0);
             entity.Property(u => u.FechaAlta).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(u => u.CumpleanosDia);
+            entity.Property(u => u.CumpleanosMes);
             entity.HasIndex(u => u.NormalizedEmail).IsUnique();
             entity.HasIndex(u => u.Email);
         });
