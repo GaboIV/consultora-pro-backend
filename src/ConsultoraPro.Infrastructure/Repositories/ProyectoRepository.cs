@@ -119,6 +119,15 @@ public class ProyectoRepository : IProyectoRepository
         if (miembros.Count != 0)
             _context.ProyectoMiembros.RemoveRange(miembros);
 
+        // Documentación: se borra explícitamente porque Documento→Carpeta y Carpeta→Carpeta son
+        // Restrict y MySQL no garantiza el orden de las cascadas desde Proyecto. Versiones y
+        // etiquetas caen en cascada con el documento; se desanidan las carpetas antes de borrarlas.
+        await _context.Documentos.Where(d => d.ProyectoId == proyectoId).ExecuteDeleteAsync();
+        await _context.CarpetasDocumento
+            .Where(c => c.ProyectoId == proyectoId && c.ParentId != null)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.ParentId, (Guid?)null));
+        await _context.CarpetasDocumento.Where(c => c.ProyectoId == proyectoId).ExecuteDeleteAsync();
+
         _context.Proyectos.Remove(proyecto);
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();

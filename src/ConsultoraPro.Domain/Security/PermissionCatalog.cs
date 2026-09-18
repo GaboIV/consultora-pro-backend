@@ -90,7 +90,12 @@ public static class PermissionCatalog
         new(52, "tipos-solucion.ver", "Ver tipos de solución", "Tipos de Solución", "Permite consultar el catálogo de tipos de solución."),
         new(53, "tipos-solucion.crear", "Crear tipos de solución", "Tipos de Solución", "Permite crear tipos de solución."),
         new(54, "tipos-solucion.editar", "Editar tipos de solución", "Tipos de Solución", "Permite modificar tipos de solución."),
-        new(55, "tipos-solucion.eliminar", "Eliminar tipos de solución", "Tipos de Solución", "Permite eliminar tipos de solución sin proyectos asociados.")
+        new(55, "tipos-solucion.eliminar", "Eliminar tipos de solución", "Tipos de Solución", "Permite eliminar tipos de solución sin proyectos asociados."),
+
+        // --- Documentación de proyecto (repositorio documental). ---
+        new(56, "documentos.ver", "Ver documentación", "Documentación", "Permite consultar y descargar la documentación de los proyectos."),
+        new(57, "documentos.editar", "Gestionar documentación", "Documentación", "Permite subir documentos, nuevas versiones, editar metadatos y crear carpetas."),
+        new(58, "documentos.eliminar", "Eliminar documentación", "Documentación", "Permite eliminar documentos y carpetas vacías.")
     ];
 
     /// <summary>
@@ -115,6 +120,8 @@ public static class PermissionCatalog
 
             // Acciones que implican poder ver.
             ["screenshots.editar"] = ["screenshots.ver"],
+            ["documentos.editar"] = ["documentos.ver"],
+            ["documentos.eliminar"] = ["documentos.ver"],
             ["usuarios.editar"] = ["usuarios.ver"],
             ["usuarios.cambiar-password"] = ["usuarios.ver"],
             ["usuarios.eliminar"] = ["usuarios.ver"]
@@ -153,7 +160,8 @@ public static class PermissionCatalog
                 "repositorios.ver",
                 "repositorios.ver.todos",
                 "screenshots.ver",
-                "tipos-solucion.ver"
+                "tipos-solucion.ver",
+                "documentos.ver"
             },
             [Arquitecto] = All.Select(permission => permission.Clave).ToHashSet(StringComparer.OrdinalIgnoreCase),
             [LT] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -184,7 +192,10 @@ public static class PermissionCatalog
                 "repositorios.editar",
                 "screenshots.ver",
                 "screenshots.editar",
-                "tipos-solucion.ver"
+                "tipos-solucion.ver",
+                "documentos.ver",
+                "documentos.editar",
+                "documentos.eliminar"
             },
             [Dev] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -199,7 +210,9 @@ public static class PermissionCatalog
                 "kanban.editar",
                 "kanban.comentar",
                 "repositorios.ver",
-                "screenshots.ver"
+                "screenshots.ver",
+                "documentos.ver",
+                "documentos.editar"
             },
             [Soporte] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -215,7 +228,9 @@ public static class PermissionCatalog
                 "kanban.eliminar",
                 "kanban.gestionar",
                 "screenshots.ver",
-                "screenshots.editar"
+                "screenshots.editar",
+                "documentos.ver",
+                "documentos.editar"
             }
         };
 

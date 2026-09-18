@@ -42,6 +42,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<Notificacion> Notificaciones => Set<Notificacion>();
     public DbSet<PreferenciaNotificacion> PreferenciasNotificacion => Set<PreferenciaNotificacion>();
     public DbSet<CorreoPendiente> CorreosPendientes => Set<CorreoPendiente>();
+    public DbSet<CarpetaDocumento> CarpetasDocumento => Set<CarpetaDocumento>();
+    public DbSet<Documento> Documentos => Set<Documento>();
+    public DbSet<DocumentoVersion> DocumentoVersiones => Set<DocumentoVersion>();
+    public DbSet<DocumentoEtiqueta> DocumentoEtiquetas => Set<DocumentoEtiqueta>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -363,6 +367,94 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
                   .WithMany()
                   .HasForeignKey(s => s.SubidoPorId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CarpetaDocumento>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Codigo).HasMaxLength(10);
+            entity.Property(c => c.Nombre).IsRequired().HasMaxLength(120);
+            entity.Property(c => c.Descripcion).HasMaxLength(300);
+            entity.Property(c => c.FechaCreacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(c => new { c.ProyectoId, c.ParentId });
+            entity.HasOne(c => c.Proyecto)
+                  .WithMany()
+                  .HasForeignKey(c => c.ProyectoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            // Restrict: una carpeta solo se elimina vacía (lo valida el servicio).
+            entity.HasOne(c => c.Parent)
+                  .WithMany(c => c.Subcarpetas)
+                  .HasForeignKey(c => c.ParentId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Documento>(entity =>
+        {
+            entity.HasKey(d => d.Id);
+            entity.Property(d => d.Codigo).IsRequired().HasMaxLength(40);
+            entity.Property(d => d.Titulo).IsRequired().HasMaxLength(200);
+            entity.Property(d => d.Descripcion).HasMaxLength(1000);
+            entity.Property(d => d.Tipo).HasConversion<string>().HasMaxLength(40);
+            entity.Property(d => d.Estado).HasConversion<string>().HasMaxLength(20);
+            entity.Property(d => d.VersionActual).IsRequired().HasMaxLength(20);
+            entity.Property(d => d.NombreArchivo).IsRequired().HasMaxLength(255);
+            entity.Property(d => d.Extension).HasMaxLength(20);
+            entity.Property(d => d.ContentType).HasMaxLength(150);
+            entity.Property(d => d.StorageKey).IsRequired().HasMaxLength(300);
+            entity.Property(d => d.FechaCreacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(d => d.Activo).HasDefaultValue(true);
+            entity.HasIndex(d => new { d.ProyectoId, d.Activo });
+            entity.HasIndex(d => new { d.ProyectoId, d.Codigo });
+            entity.HasOne(d => d.Proyecto)
+                  .WithMany()
+                  .HasForeignKey(d => d.ProyectoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            // Cascade desde Proyecto; desde Carpeta se restringe (MySQL no admite múltiples rutas de cascada ambiguas).
+            entity.HasOne(d => d.Carpeta)
+                  .WithMany()
+                  .HasForeignKey(d => d.CarpetaId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(d => d.CreadoPor)
+                  .WithMany()
+                  .HasForeignKey(d => d.CreadoPorId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(d => d.ActualizadoPor)
+                  .WithMany()
+                  .HasForeignKey(d => d.ActualizadoPorId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<DocumentoVersion>(entity =>
+        {
+            entity.HasKey(v => v.Id);
+            entity.Property(v => v.Version).IsRequired().HasMaxLength(20);
+            entity.Property(v => v.NombreArchivo).IsRequired().HasMaxLength(255);
+            entity.Property(v => v.Extension).HasMaxLength(20);
+            entity.Property(v => v.ContentType).HasMaxLength(150);
+            entity.Property(v => v.StorageKey).IsRequired().HasMaxLength(300);
+            entity.Property(v => v.Nota).HasMaxLength(500);
+            entity.Property(v => v.FechaSubida).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(v => new { v.DocumentoId, v.Numero }).IsUnique();
+            entity.HasOne(v => v.Documento)
+                  .WithMany(d => d.Versiones)
+                  .HasForeignKey(v => v.DocumentoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(v => v.SubidoPor)
+                  .WithMany()
+                  .HasForeignKey(v => v.SubidoPorId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<DocumentoEtiqueta>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Nombre).IsRequired().HasMaxLength(50);
+            entity.HasIndex(e => new { e.DocumentoId, e.Nombre }).IsUnique();
+            entity.HasIndex(e => e.Nombre);
+            entity.HasOne(e => e.Documento)
+                  .WithMany(d => d.Etiquetas)
+                  .HasForeignKey(e => e.DocumentoId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<AuditoriaSeguridad>(entity =>
@@ -692,6 +784,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
                 if (entry.Entity is Screenshot screenshot && screenshot.FechaSubida == default)
                     screenshot.FechaSubida = now;
 
+                if (entry.Entity is Documento documentoAdd)
+                {
+                    if (documentoAdd.FechaCreacion == default)
+                        documentoAdd.FechaCreacion = now;
+                    documentoAdd.UpdatedAt = now;
+                }
+
                 if (entry.Entity is Tablero tableroAdd)
                 {
                     if (tableroAdd.FechaCreacion == default)
@@ -717,6 +816,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
 
                 if (entry.Entity is Tablero tablero)
                     tablero.UpdatedAt = now;
+
+                if (entry.Entity is Documento documento)
+                    documento.UpdatedAt = now;
 
                 if (entry.Entity is Tarjeta tarjeta)
                     tarjeta.UpdatedAt = now;

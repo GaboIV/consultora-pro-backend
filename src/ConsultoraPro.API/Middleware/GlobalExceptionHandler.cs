@@ -27,6 +27,11 @@ public class GlobalExceptionHandler
             _logger.LogWarning(ex, "Recurso no encontrado");
             await WriteErrorResponse(context, HttpStatusCode.NotFound, ex.Message);
         }
+        catch (ConsultoraPro.Application.Exceptions.AccesoDenegadoException ex)
+        {
+            _logger.LogWarning(ex, "Acceso denegado al recurso");
+            await WriteErrorResponse(context, HttpStatusCode.Forbidden, ex.Message);
+        }
         catch (UnauthorizedAccessException ex)
         {
             _logger.LogWarning(ex, "Acceso no autorizado");
