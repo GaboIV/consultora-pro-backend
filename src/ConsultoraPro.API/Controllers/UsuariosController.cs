@@ -116,6 +116,8 @@ public class UsuariosController : ControllerBase
                 Activo = list.Activo,
                 FechaAlta = list.FechaAlta,
                 UltimoAcceso = list.UltimoAcceso,
+                CumpleanosDia = list.CumpleanosDia,
+                CumpleanosMes = list.CumpleanosMes,
                 Permisos = permisos
             }
         });
@@ -126,6 +128,7 @@ public class UsuariosController : ControllerBase
     public async Task<ActionResult<ApiResponse<UsuarioListDto>>> Create([FromBody] CreateUsuarioDto dto)
     {
         var validation = ValidateUsuario(dto.Nombres, dto.Apellidos, dto.Correo);
+        validation.AddRange(ValidateCumpleanos(dto.CumpleanosDia, dto.CumpleanosMes));
         if (validation.Count > 0)
             return BadRequest(new ApiResponse<object> { Success = false, Message = "Datos inválidos", Errors = validation });
 
@@ -146,6 +149,8 @@ public class UsuariosController : ControllerBase
             PhoneNumber = dto.Telefono.Trim(),
             Iniciales = BuildInitials(dto.Nombres, dto.Apellidos, dto.Iniciales),
             Puesto = role.Name ?? string.Empty,
+            CumpleanosDia = dto.CumpleanosDia,
+            CumpleanosMes = dto.CumpleanosMes,
             Activo = true,
             EmailConfirmed = true,
             FechaAlta = DateTime.UtcNow
@@ -192,6 +197,7 @@ public class UsuariosController : ControllerBase
             return NotFound(new ApiResponse<object> { Success = false, Message = "Usuario no encontrado" });
 
         var validation = ValidateUsuario(dto.Nombres, dto.Apellidos, dto.Correo);
+        validation.AddRange(ValidateCumpleanos(dto.CumpleanosDia, dto.CumpleanosMes));
         if (validation.Count > 0)
             return BadRequest(new ApiResponse<object> { Success = false, Message = "Datos inválidos", Errors = validation });
 
@@ -226,6 +232,8 @@ public class UsuariosController : ControllerBase
         user.PhoneNumber = dto.Telefono.Trim();
         user.Iniciales = BuildInitials(dto.Nombres, dto.Apellidos, dto.Iniciales);
         user.Puesto = role.Name ?? string.Empty;
+        user.CumpleanosDia = dto.CumpleanosDia;
+        user.CumpleanosMes = dto.CumpleanosMes;
 
         var updateResult = await _userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)
@@ -560,7 +568,9 @@ public class UsuariosController : ControllerBase
             Rol = role?.Name ?? string.Empty,
             Activo = user.Activo,
             FechaAlta = user.FechaAlta,
-            UltimoAcceso = user.UltimoAcceso
+            UltimoAcceso = user.UltimoAcceso,
+            CumpleanosDia = user.CumpleanosDia,
+            CumpleanosMes = user.CumpleanosMes
         };
     }
 
@@ -604,6 +614,30 @@ public class UsuariosController : ControllerBase
         if (string.IsNullOrWhiteSpace(apellidos)) errors.Add("Los apellidos son obligatorios.");
         if (string.IsNullOrWhiteSpace(correo)) errors.Add("El correo es obligatorio.");
         if (!correo.Contains('@', StringComparison.Ordinal)) errors.Add("El correo no tiene un formato válido.");
+        return errors;
+    }
+
+    private static List<string> ValidateCumpleanos(int? dia, int? mes)
+    {
+        var errors = new List<string>();
+        if (dia.HasValue && !mes.HasValue) errors.Add("Debe seleccionar un mes para el cumpleaños.");
+        if (!dia.HasValue && mes.HasValue) errors.Add("Debe seleccionar un día para el cumpleaños.");
+        if (mes.HasValue && (mes.Value < 1 || mes.Value > 12)) errors.Add("El mes de cumpleaños debe estar entre 1 y 12.");
+        if (dia.HasValue && mes.HasValue)
+        {
+            if (dia.Value < 1 || dia.Value > 31)
+            {
+                errors.Add("El día de cumpleaños debe estar entre 1 y 31.");
+            }
+            else
+            {
+                var maxDays = DateTime.DaysInMonth(2024, mes.Value);
+                if (dia.Value > maxDays)
+                {
+                    errors.Add($"El día no es válido para el mes seleccionado (máximo {maxDays} días).");
+                }
+            }
+        }
         return errors;
     }
 

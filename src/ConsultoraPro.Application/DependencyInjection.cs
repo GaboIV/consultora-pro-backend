@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddScoped<IRepositorioService, RepositorioService>();
         services.AddScoped<IDespliegueService, DespliegueService>();
         services.AddScoped<ISearchService, SearchService>();
+        services.AddScoped<IDocumentoService, DocumentoService>();
         services.AddScoped<IAmbienteComponenteService, AmbienteComponenteService>();
         services.AddScoped<IAmbienteTestUserService, AmbienteTestUserService>();
         services.AddScoped<IAmbienteCloudResourceService, AmbienteCloudResourceService>();
