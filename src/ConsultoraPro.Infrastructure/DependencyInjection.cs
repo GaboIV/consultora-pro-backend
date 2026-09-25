@@ -53,6 +53,7 @@ public static class DependencyInjection
         services.AddScoped<IAzureSubscriptionTenantMappingRepository, AzureSubscriptionTenantMappingRepository>();
         services.AddScoped<IScreenshotRepository, ScreenshotRepository>();
         services.AddScoped<IDocumentoRepository, DocumentoRepository>();
+        services.AddScoped<IOrganigramaRepository, OrganigramaRepository>();
 
         // Almacenamiento de archivos: proveedor seleccionable por configuración.
         // Local (filesystem) en dev; Azure Blob (contenedor privado + SAS) en QA/Prod.
