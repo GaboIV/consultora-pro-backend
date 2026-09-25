@@ -46,6 +46,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
     public DbSet<Documento> Documentos => Set<Documento>();
     public DbSet<DocumentoVersion> DocumentoVersiones => Set<DocumentoVersion>();
     public DbSet<DocumentoEtiqueta> DocumentoEtiquetas => Set<DocumentoEtiqueta>();
+    public DbSet<Organigrama> Organigramas => Set<Organigrama>();
+    public DbSet<OrganigramaNodo> OrganigramaNodos => Set<OrganigramaNodo>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -386,6 +388,38 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
                   .WithMany(c => c.Subcarpetas)
                   .HasForeignKey(c => c.ParentId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Organigrama>(entity =>
+        {
+            entity.HasKey(o => o.Id);
+            entity.Property(o => o.Nombre).IsRequired().HasMaxLength(120);
+            entity.HasIndex(o => o.Nombre).IsUnique();
+            entity.Property(o => o.Descripcion).HasMaxLength(500);
+            entity.Property(o => o.FechaCreacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(o => o.FechaActualizacion).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasMany(o => o.Nodos)
+                  .WithOne(n => n.Organigrama)
+                  .HasForeignKey(n => n.OrganigramaId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<OrganigramaNodo>(entity =>
+        {
+            entity.HasKey(n => n.Id);
+            entity.Property(n => n.Cargo).IsRequired().HasMaxLength(120);
+            entity.Property(n => n.Area).HasMaxLength(120);
+            entity.Property(n => n.NombreLibre).HasMaxLength(150);
+            entity.Property(n => n.Notas).HasMaxLength(500);
+            entity.Property(n => n.Color).HasMaxLength(20);
+            // ParentId sin FK: la jerarquía la valida el servicio y así el árbol se reemplaza completo
+            // en un solo SaveChanges sin depender del orden de borrado.
+            entity.HasIndex(n => new { n.OrganigramaId, n.ParentId });
+            // Si se elimina el usuario, la posición se conserva vacante.
+            entity.HasOne(n => n.Usuario)
+                  .WithMany()
+                  .HasForeignKey(n => n.UsuarioId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Documento>(entity =>
